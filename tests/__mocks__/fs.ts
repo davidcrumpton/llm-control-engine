@@ -1,5 +1,5 @@
 // tests/__mocks__/fs.ts
-import { Volume, createFsFromVolume } from 'memfs';
+import { Volume, createFsFromVolume } from "memfs";
 
 // Create an empty in-memory filesystem
 const vol = Volume.fromJSON({});
