@@ -19,8 +19,8 @@ variables:
   FF_USE_FASTZIP: "true"
 
 # -- Cache: shared node_modules across jobs -----------------------------------
-.node-cache: &node-cache
-  cache:
+.node-cache:
+  cache: &node-cache-config
     key:
       files:
         - package-lock.json
@@ -32,7 +32,7 @@ variables:
 # -- Base job template for Node.js jobs ---------------------------------------
 .node-base:
   image: $NODE_IMAGE
-  <<: *node-cache
+  cache: *node-cache-config
   before_script:
     - npm ci --prefer-offline
 
@@ -46,8 +46,8 @@ lint:
     - npm run lint
     - npm run format:check
   cache:
-    <<: *node-cache
-    policy: pull-push    # First job seeds the cache
+    <<: *node-cache-config
+    policy: pull-push
 
 typecheck:
   extends: .node-base
