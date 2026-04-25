@@ -235,19 +235,19 @@ In short, you define your long options in the `longopts` array, and they can be 
 
 ```bash
 # Attach a file to the prompt
-./llmctrlx.js chat -f ~/.zshrc  -u 'How can I improve my zsh setup?' -m gemma4:26b
+./llmctrlx.js chat -f ~/.zshrc  -u 'How can I improve my zsh setup?' -m gemma4:26b -k zshrc
 ```
 
 ### Example 4: Continue session
 
 ```bash
-./llmctrlx.js chat -f ~/.zshrc  -u 'output a new zsh file with those recommendations' -m gemma4:26b
+./llmctrlx.js chat -f ~/.zshrc  -u 'output a new zsh file with those recommendations' -m gemma4:26b -k zshrc
 ```
 
 ### Example 5: Review a configuration file
 
 ```bash
-./llmctrlx.js chat -f /etc/doas.conf -u 'How secure is my doas.conf file?' -m gemma4:26b
+./llmctrlx.js chat -f /etc/doas.conf -u 'How secure is my doas.conf file?' -m gemma4:26b -k doas.conf
 ```
 
 ### Example 6: Use streaming

@@ -1,8 +1,8 @@
 
-# Analyze Zsh Configuration
+### Example 4: Continue session
 
 ```bash
-./llmctrlx.js chat -f ~/.zshrc  -u 'How can I improve my zsh setup?' -m gemma4:26b  
+./llmctrlx.js chat -f ~/.zshrc  -u 'output a new zsh file with those recommendations' -m gemma4:26b -k zshrc
 ```
 
 Your current `.zshrc` is a very clean, standard "out-of-the-box" Oh My Zsh configuration. It isn't "bad," but it isn't leveraging the true power of Zsh. Since you are already using LLM integration (`LLMCTRLX`), you clearly value automation and modern workflows.
