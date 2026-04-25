@@ -1,5 +1,14 @@
+# Session Management Example
 
-### Example 4: Continue session
+Use the `-k` flag to save the chat session to a file. This allows you to continue the conversation later.
+
+## Example 1: Analyze Zsh Configuration
+
+```bash
+./llmctrlx.js chat -f ~/.zshrc  -u 'How can I improve my zsh setup?' -m gemma4:26b -k zshrc
+```
+
+## Example 2: Continue session
 
 ```bash
 ./llmctrlx.js chat -f ~/.zshrc  -u 'output a new zsh file with those recommendations' -m gemma4:26b -k zshrc
