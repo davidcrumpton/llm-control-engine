@@ -40,7 +40,7 @@ These options apply to most commands:
 
 #### 1. `chat`
 
-Run a chat session with an LLM. It maintains conversational history in `.chat_history.json` and supports tool usage.
+Run a chat session with an LLM. It maintains conversational history in `.chat_history.json` and supports tool usage.  Tools don't execute when `--stream` option is used, it only generates the tool call and doesn't execute it.
 
 **Options:**
 
@@ -200,6 +200,8 @@ Manage chat history, allowing listing, detailed viewing, and examination of all 
 
 ## Session Usage Example
 
+### Example 1: Analyze a man page and ask a question about it
+
 ```bash
 # This example has the model analyze getopt_long man page and place
 # into its history. The next call uses the history to answer the 
@@ -218,3 +220,38 @@ The description makes this distinction clear when explaining its usage:
 - The structure defining the long options (`struct option longopts[]`) lists *all* desired long options, regardless of what short options are available or what is put in the `optstring` argument.
 
 In short, you define your long options in the `longopts` array, and they can be processed even if they are not reflected in the short option string (`optstring`).
+
+### Example 2: Using multiple sessions
+
+```bash
+# Start a chat session
+./llmctrlx.js chat -u "hello"
+
+# Start another chat session
+./llmctrlx.js chat -u "hello" -k "another-session"
+```
+
+### Example 3: Using attachments and custom tools
+
+```bash
+# Attach a file to the prompt
+./llmctrlx.js chat -f ~/.zshrc  -u 'How can I improve my zsh setup?' -m gemma4:26b
+```
+
+### Example 4: Continue session
+
+```bash
+./llmctrlx.js chat -f ~/.zshrc  -u 'output a new zsh file with those recommendations' -m gemma4:26b
+```
+
+### Example 5: Review a configuration file
+
+```bash
+./llmctrlx.js chat -f /etc/doas.conf -u 'How secure is my doas.conf file?' -m gemma4:26b
+```
+
+### Example 6: Use streaming
+
+```bash
+./llmctrlx.js chat -u 'write a poem about the sea' -m gemma4:26b --stream
+```
