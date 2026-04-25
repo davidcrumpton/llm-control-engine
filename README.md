@@ -170,6 +170,7 @@ Execute a shell command and pass its standard output to an LLM for analysis.
 node llmctrlx.js run -u "df -h" -m llama3
 node llmctrlx.js run -u "ls -la" -m llama3
 ```
+
 #### 5. History Command
 
 Manage chat history, allowing listing, detailed viewing, and examination of all sessions.
