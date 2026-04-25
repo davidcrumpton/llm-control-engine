@@ -1,7 +1,8 @@
 {
   "scripts": {
     "build": "node llmctrlx.js model --pull -m gemma4:e2b -h http://envy.crumpton.org:11434",
-    "test": "node llmctrlx.js chat -u \"Why is the sky blue?\" -m gemma4:e2b -h http://envy.crumpton.org:11434",
+    "test": "vitest run",
+    "test:old": "node llmctrlx.js chat -u \"Why is the sky blue?\" -m gemma4:e2b -h http://envy.crumpton.org:11434",
     "embed": "node llmctrlx.js embed -f README.md -m gemma4:e2b -h http://envy.crumpton.org:11434",
     "bench": "node llmctrlx.js bench -m gemma4:e2b -h http://envy.crumpton.org:11434",
     "run": "node llmctrlx.js run -u \"df\" -m gemma4:e2b -h http://envy.crumpton.org:11434",
@@ -13,5 +14,8 @@
     "ollama": "^0.6.3",
     "uuid": "^14.0.0"
   },
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "vitest": "^4.1.5"
+  }
 }
