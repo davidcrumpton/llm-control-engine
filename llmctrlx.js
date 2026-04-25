@@ -429,6 +429,47 @@ async function cmdRun() {
 // Tools
 // --------
 
+function extractJSON(text) {
+  // First try to find a markdown json block
+  const codeBlockMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/)
+  if (codeBlockMatch) {
+    try {
+      return JSON.parse(codeBlockMatch[1])
+    } catch {
+      // fall through
+    }
+  }
+
+  // Try to find the first valid JSON object by balancing braces
+  let firstBrace = text.indexOf('{')
+  if (firstBrace === -1) return null
+
+  let str = text.slice(firstBrace)
+  let depth = 0
+  let lastBrace = -1
+
+  for (let i = 0; i < str.length; i++) {
+    if (str[i] === '{') depth++
+    else if (str[i] === '}') {
+      depth--
+      if (depth === 0) {
+        lastBrace = i
+        break
+      }
+    }
+  }
+
+  if (lastBrace !== -1) {
+    try {
+      return JSON.parse(str.slice(0, lastBrace + 1))
+    } catch {
+      return null
+    }
+  }
+
+  return null
+}
+
 function validateTool(tool, source) {
   if (!tool || typeof tool !== 'object') {
     throw new Error(`Invalid tool export from ${source}`)
@@ -491,8 +532,13 @@ async function runWithoutTools({ model, messages }) {
 function validateArgs(tool, args) {
   const schema = tool.parameters
 
-  for (const key in schema) {
-    if (schema[key].required && !(key in args)) {
+  // Handle both flat schema and standard JSON schema with 'properties'
+  const properties = schema.properties || schema
+  const requiredList = Array.isArray(schema.required) ? schema.required : []
+
+  for (const key in properties) {
+    const isRequired = properties[key].required || requiredList.includes(key)
+    if (isRequired && !(key in args)) {
       throw new Error(`Missing required param: ${key}`)
     }
   }
@@ -504,11 +550,10 @@ async function runWithTools({ model, messages, tools }) {
 
     const content = res.message.content
 
-    // Try parsing tool call
     try {
-      const parsed = JSON.parse(content)
+        const parsed = extractJSON(content)
 
-      if (parsed.tool) {
+        if (parsed && parsed.tool) {
         const tool = tools.find(t => t.name === parsed.tool)
 
         if (!tool) {
@@ -537,8 +582,8 @@ async function runWithTools({ model, messages, tools }) {
         })
 
         messages.push({
-          role: 'tool',
-          content: result
+          role: 'user',
+          content: `Tool '${tool.name}' output:\n${result}`
         })
 
         continue
@@ -553,10 +598,12 @@ async function runWithTools({ model, messages, tools }) {
 
 function buildToolPrompt(tools) {
   return `
-You have access to tools.
+You MUST respond with ONLY valid JSON when calling a tool.
+Do not include any explanation, text, or markdown.
 
-When needed, respond ONLY in this JSON format:
+If no tool is needed, respond normally.
 
+Tool call format:
 {
   "tool": "tool_name",
   "arguments": { ... }
