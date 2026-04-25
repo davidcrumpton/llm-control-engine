@@ -19,6 +19,7 @@ You can configure the default behavior using environment variables:
 - `LLMCTRLX_API_KEY`: The API key for the cloud provider. Default: `''`
 - `LLMCTRLX_PROVIDER`: The default provider to use. Default: `ollama`. Options: `ollama`, `lmstudio`
 - `LLMCTRLX_MAX_UPLOAD_FILE_SIZE`: The maximum file size to upload. Default: `1024 * 1024 * 10` (10 MB)
+- `LLMCTRLX_SESSION`: The default session to use. Default: `default`
 
 ## Usage
 
