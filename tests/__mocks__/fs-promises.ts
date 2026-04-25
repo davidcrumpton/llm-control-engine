@@ -10,4 +10,4 @@ export {
   copyFile,
   access,
   rm,
-} from 'memfs/lib/promises';
+} from "memfs/lib/promises";

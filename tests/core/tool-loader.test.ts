@@ -1,24 +1,24 @@
 /// tests/core/tool-loader.test.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { vol } from 'memfs';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { vol } from "memfs";
 
 // TODO: Update import path to match your actual tool loader module
 // import { ToolLoader } from '@/core/tool-loader';
 
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
+vi.mock("node:fs");
+vi.mock("node:fs/promises");
 
-describe('ToolLoader', () => {
+describe("ToolLoader", () => {
   beforeEach(() => {
     vol.reset();
   });
 
-  describe('discovery', () => {
-    it('should discover tool files in the configured directory', async () => {
+  describe("discovery", () => {
+    it("should discover tool files in the configured directory", async () => {
       vol.fromJSON({
-        '/tools/search.ts': 'export default { name: "search" }',
-        '/tools/calculator.ts': 'export default { name: "calculator" }',
-        '/tools/README.md': '# Tools directory',
+        "/tools/search.ts": 'export default { name: "search" }',
+        "/tools/calculator.ts": 'export default { name: "calculator" }',
+        "/tools/README.md": "# Tools directory",
       });
 
       // const loader = new ToolLoader({ directory: '/tools' });
@@ -28,15 +28,15 @@ describe('ToolLoader', () => {
       //   expect.arrayContaining(['search', 'calculator'])
       // );
 
-      const files = vol.readdirSync('/tools');
+      const files = vol.readdirSync("/tools");
       expect(files).toHaveLength(3);
     });
 
-    it('should ignore non-TypeScript files', async () => {
+    it("should ignore non-TypeScript files", async () => {
       vol.fromJSON({
-        '/tools/valid-tool.ts': 'export default {}',
-        '/tools/notes.txt': 'some notes',
-        '/tools/data.json': '{}',
+        "/tools/valid-tool.ts": "export default {}",
+        "/tools/notes.txt": "some notes",
+        "/tools/data.json": "{}",
       });
 
       // const loader = new ToolLoader({ directory: '/tools' });
@@ -45,18 +45,18 @@ describe('ToolLoader', () => {
       expect(true).toBe(true); // placeholder
     });
 
-    it('should handle empty tools directory', async () => {
-      vol.mkdirSync('/tools', { recursive: true });
+    it("should handle empty tools directory", async () => {
+      vol.mkdirSync("/tools", { recursive: true });
 
       // const loader = new ToolLoader({ directory: '/tools' });
       // const discovered = await loader.discover();
       // expect(discovered).toHaveLength(0);
 
-      const files = vol.readdirSync('/tools');
+      const files = vol.readdirSync("/tools");
       expect(files).toHaveLength(0);
     });
 
-    it('should throw if tools directory does not exist', async () => {
+    it("should throw if tools directory does not exist", async () => {
       // const loader = new ToolLoader({ directory: '/nonexistent' });
       // await expect(loader.discover())
       //   .rejects.toThrow(/ENOENT|not found/i);
@@ -64,12 +64,12 @@ describe('ToolLoader', () => {
     });
   });
 
-  describe('validation', () => {
-    it('should accept a well-formed tool definition', () => {
+  describe("validation", () => {
+    it("should accept a well-formed tool definition", () => {
       const validTool = {
-        name: 'test-tool',
-        description: 'A test tool',
-        parameters: { type: 'object', properties: {} },
+        name: "test-tool",
+        description: "A test tool",
+        parameters: { type: "object", properties: {} },
         execute: vi.fn(),
       };
 
@@ -78,29 +78,29 @@ describe('ToolLoader', () => {
       expect(validTool.execute).toBeDefined();
     });
 
-    it('should reject a tool missing the name field', () => {
+    it("should reject a tool missing the name field", () => {
       const invalidTool = {
-        description: 'Missing name',
+        description: "Missing name",
         execute: vi.fn(),
       };
 
       // expect(ToolLoader.validate(invalidTool)).toBe(false);
-      expect(invalidTool).not.toHaveProperty('name');
+      expect(invalidTool).not.toHaveProperty("name");
     });
 
-    it('should reject a tool missing the execute function', () => {
+    it("should reject a tool missing the execute function", () => {
       const invalidTool = {
-        name: 'no-execute',
-        description: 'Missing execute',
+        name: "no-execute",
+        description: "Missing execute",
       };
 
       // expect(ToolLoader.validate(invalidTool)).toBe(false);
-      expect(invalidTool).not.toHaveProperty('execute');
+      expect(invalidTool).not.toHaveProperty("execute");
     });
   });
 
-  describe('loading', () => {
-    it('should dynamically import and register valid tools', async () => {
+  describe("loading", () => {
+    it("should dynamically import and register valid tools", async () => {
       // Scaffold: use vi.mock to mock dynamic import()
       // const loader = new ToolLoader({ directory: '/tools' });
       // await loader.loadAll();
@@ -108,8 +108,8 @@ describe('ToolLoader', () => {
       expect(true).toBe(true); // placeholder
     });
 
-    it('should skip invalid tools and log a warning', async () => {
-      const warnSpy = vi.spyOn(console, 'warn');
+    it("should skip invalid tools and log a warning", async () => {
+      const warnSpy = vi.spyOn(console, "warn");
       // const loader = new ToolLoader({ directory: '/tools' });
       // await loader.loadAll(); // includes invalid-tool fixture
       // expect(warnSpy).toHaveBeenCalledWith(
@@ -118,7 +118,7 @@ describe('ToolLoader', () => {
       expect(warnSpy).toBeDefined();
     });
 
-    it('should support hot-reload of a changed tool', async () => {
+    it("should support hot-reload of a changed tool", async () => {
       // Scaffold for file-watcher-based reload
       expect(true).toBe(true); // placeholder
     });

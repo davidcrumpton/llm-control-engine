@@ -1,7 +1,7 @@
 /// tests/__mocks__/fs.ts
 // Auto-mock for 'node:fs' using memfs
 // Install: npm install -D memfs
-export { fs as default } from 'memfs';
+export { fs as default } from "memfs";
 export {
   readFileSync,
   writeFileSync,
@@ -13,4 +13,4 @@ export {
   copyFileSync,
   createReadStream,
   createWriteStream,
-} from 'memfs';
+} from "memfs";

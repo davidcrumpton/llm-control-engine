@@ -1,24 +1,24 @@
 /// tests/fixtures/tools/sample-tool.ts
 // A valid tool module used by the dynamic tool loader tests
-import type { ToolDefinition } from '@/core/types';
+import type { ToolDefinition } from "@/core/types";
 
 const sampleTool: ToolDefinition = {
-  name: 'sample-tool',
-  description: 'A sample tool for testing the dynamic loader',
+  name: "sample-tool",
+  description: "A sample tool for testing the dynamic loader",
   parameters: {
-    type: 'object',
+    type: "object",
     properties: {
       query: {
-        type: 'string',
-        description: 'Search query',
+        type: "string",
+        description: "Search query",
       },
       limit: {
-        type: 'number',
-        description: 'Max results',
+        type: "number",
+        description: "Max results",
         default: 10,
       },
     },
-    required: ['query'],
+    required: ["query"],
   },
   execute: async (params: { query: string; limit?: number }) => {
     return {

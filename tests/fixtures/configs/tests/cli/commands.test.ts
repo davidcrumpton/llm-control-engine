@@ -1,26 +1,25 @@
 /// tests/cli/commands.test.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { vol } from 'memfs';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { vol } from "memfs";
 import {
   createMockProvider,
   createTestConfig,
-} from '../../../../helpers/test-utils.ts';
+} from "../../../../helpers/test-utils.ts";
 
 // TODO: Update import paths
 // import { RunCommand } from '@/cli/commands/run';
 // import { ListModelsCommand } from '@/cli/commands/list-models';
 // import { ListToolsCommand } from '@/cli/commands/list-tools';
 
-vi.mock('node:fs');
+vi.mock("node:fs");
 
-describe('CLI Commands', () => {
+describe("CLI Commands", () => {
   beforeEach(() => {
     vol.reset();
   });
 
-  describe('RunCommand', () => {
-    it('should initialize engine and start interactive loop',
-    async () => {
+  describe("RunCommand", () => {
+    it("should initialize engine and start interactive loop", async () => {
       // const cmd = new RunCommand(createTestConfig());
       // const mockProvider = createMockProvider();
       // cmd.setProvider(mockProvider);
@@ -29,7 +28,7 @@ describe('CLI Commands', () => {
       expect(true).toBe(true);
     });
 
-    it('should handle SIGINT gracefully', async () => {
+    it("should handle SIGINT gracefully", async () => {
       // const cmd = new RunCommand(createTestConfig());
       // const shutdownSpy = vi.spyOn(cmd, 'shutdown');
       // process.emit('SIGINT');
@@ -38,10 +37,9 @@ describe('CLI Commands', () => {
     });
   });
 
-  describe('ListModelsCommand', () => {
-    it('should print available models for the configured provider',
-    async () => {
-      const logSpy = vi.spyOn(console, 'log');
+  describe("ListModelsCommand", () => {
+    it("should print available models for the configured provider", async () => {
+      const logSpy = vi.spyOn(console, "log");
       const mockProvider = createMockProvider();
       // const cmd = new ListModelsCommand(createTestConfig());
       // cmd.setProvider(mockProvider);
@@ -53,8 +51,7 @@ describe('CLI Commands', () => {
       expect(logSpy).toBeDefined();
     });
 
-    it('should show an error if the provider is unavailable',
-    async () => {
+    it("should show an error if the provider is unavailable", async () => {
       const provider = createMockProvider({
         isAvailable: vi.fn().mockResolvedValue(false),
       });
@@ -65,13 +62,13 @@ describe('CLI Commands', () => {
     });
   });
 
-  describe('ListToolsCommand', () => {
-    it('should discover and list registered tools', async () => {
+  describe("ListToolsCommand", () => {
+    it("should discover and list registered tools", async () => {
       vol.fromJSON({
-        '/tools/search.ts': 'export default { name: "search" }',
-        '/tools/calc.ts': 'export default { name: "calc" }',
+        "/tools/search.ts": 'export default { name: "search" }',
+        "/tools/calc.ts": 'export default { name: "calc" }',
       });
-      const logSpy = vi.spyOn(console, 'log');
+      const logSpy = vi.spyOn(console, "log");
       // const cmd = new ListToolsCommand(
       //   createTestConfig({ tools: { directory: '/tools' } })
       // );

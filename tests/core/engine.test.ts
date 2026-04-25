@@ -1,15 +1,15 @@
 /// tests/core/engine.test.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   createMockProvider,
   createTestConfig,
   flushPromises,
-} from '../helpers/test-utils';
+} from "../helpers/test-utils";
 
 // TODO: Update import path to match your actual engine module
 // import { Engine } from '@/core/engine';
 
-describe('Engine', () => {
+describe("Engine", () => {
   let mockProvider: ReturnType<typeof createMockProvider>;
   let config: ReturnType<typeof createTestConfig>;
 
@@ -18,20 +18,20 @@ describe('Engine', () => {
     config = createTestConfig();
   });
 
-  describe('initialization', () => {
-    it('should create an engine instance with valid config', () => {
+  describe("initialization", () => {
+    it("should create an engine instance with valid config", () => {
       // const engine = new Engine(config);
       // expect(engine).toBeDefined();
       expect(true).toBe(true); // placeholder
     });
 
-    it('should throw on missing provider config', () => {
+    it("should throw on missing provider config", () => {
       const badConfig = createTestConfig({ provider: undefined });
       // expect(() => new Engine(badConfig)).toThrow(/provider/i);
       expect(badConfig.provider).toBeUndefined();
     });
 
-    it('should initialize the provider on startup', async () => {
+    it("should initialize the provider on startup", async () => {
       // const engine = new Engine(config);
       // engine.setProvider(mockProvider);
       // await engine.start();
@@ -40,9 +40,9 @@ describe('Engine', () => {
     });
   });
 
-  describe('completion', () => {
-    it('should forward messages to the provider', async () => {
-      const messages = [{ role: 'user', content: 'Hello' }];
+  describe("completion", () => {
+    it("should forward messages to the provider", async () => {
+      const messages = [{ role: "user", content: "Hello" }];
       // const engine = new Engine(config);
       // engine.setProvider(mockProvider);
       // const result = await engine.complete(messages);
@@ -53,7 +53,7 @@ describe('Engine', () => {
       expect(mockProvider.complete).toBeDefined();
     });
 
-    it('should respect temperature and maxTokens from config', async () => {
+    it("should respect temperature and maxTokens from config", async () => {
       // const engine = new Engine(config);
       // engine.setProvider(mockProvider);
       // await engine.complete([{ role: 'user', content: 'test' }]);
@@ -66,9 +66,9 @@ describe('Engine', () => {
       expect(config.temperature).toBe(0.7);
     });
 
-    it('should handle provider errors gracefully', async () => {
+    it("should handle provider errors gracefully", async () => {
       const failProvider = createMockProvider({
-        complete: vi.fn().mockRejectedValue(new Error('API Error')),
+        complete: vi.fn().mockRejectedValue(new Error("API Error")),
       });
       // const engine = new Engine(config);
       // engine.setProvider(failProvider);
@@ -79,8 +79,8 @@ describe('Engine', () => {
     });
   });
 
-  describe('streaming', () => {
-    it('should yield streamed chunks from the provider', async () => {
+  describe("streaming", () => {
+    it("should yield streamed chunks from the provider", async () => {
       // const engine = new Engine(config);
       // engine.setProvider(mockProvider);
       // const chunks: string[] = [];
@@ -94,21 +94,21 @@ describe('Engine', () => {
     });
   });
 
-  describe('tool execution', () => {
-    it('should execute a tool call and return the result', async () => {
+  describe("tool execution", () => {
+    it("should execute a tool call and return the result", async () => {
       // Scaffold: test that when the provider returns a tool_call,
       // the engine executes the matching tool and feeds the result back
       expect(true).toBe(true); // placeholder
     });
 
-    it('should throw if a requested tool is not registered', async () => {
+    it("should throw if a requested tool is not registered", async () => {
       // Scaffold: engine should throw ToolNotFoundError
       expect(true).toBe(true); // placeholder
     });
   });
 
-  describe('shutdown', () => {
-    it('should call provider shutdown on engine stop', async () => {
+  describe("shutdown", () => {
+    it("should call provider shutdown on engine stop", async () => {
       // const engine = new Engine(config);
       // engine.setProvider(mockProvider);
       // await engine.start();
