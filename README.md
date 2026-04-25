@@ -95,7 +95,7 @@ cat examples/prompt.txt | node llmctrlx.js chat
 node llmctrlx.js chat -u "Summarize these files." -f "examples/attachment1.txt" -f "examples/attachment2.txt"
 
 # Attach images
-node llmctrlx.js chat -u "What is this image of?" -f "examples/png.png" -m qwen3-vl:8b
+node llmctrlx.js chat -u "What is this image of?" -f "examples/png.png" -m gemma4:e26b
 ```
 
 ## Ollama

@@ -3,6 +3,7 @@ export default {
   description: 'Get a short description of a command',
   version: 'v1.0.0',
   tags: ['os', 'system'],
+  policies: { maxCalls: 3 },
   parameters: {
     type: 'object',
     properties: {

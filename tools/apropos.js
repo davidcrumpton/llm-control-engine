@@ -3,6 +3,7 @@ export default {
   description: 'Search man page descriptions by keyword',
   version: 'v1.0.0',
   tags: ['os', 'system'],
+  policies: { maxCalls: 3 },
   parameters: {
     type: 'object',
     properties: {
