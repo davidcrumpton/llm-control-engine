@@ -36,7 +36,7 @@ const __dirname = dirname(__filename)
 const DEFAULT_TOOLS_DIR = process.env.LLMCTRLX_TOOLS_DIR || join(__dirname, 'tools')
  
 // --------------------
-// Utils
+// Session History
 // --------------------
 function loadHistory(file) {
   if (!fs.existsSync(file)) return {}
@@ -53,11 +53,15 @@ function saveHistory(file, data) {
 
 function getSession(history, key) {
   if (!history[key]) {
-    history[key] = { messages: [] }
+    history[key] = { session: key, messages: [] }
+  } else if (!history[key].session) {
+    history[key].session = key
   }
   return history[key]
 }
-
+// --------------------
+// Utils
+// --------------------
 function buildOptions(opts) {
   const out = {}
   if (opts.json) out.json = true
@@ -202,8 +206,8 @@ const options = getopts(argv.slice(1), {
     api_key: DEFAULT_API_KEY,
     provider: DEFAULT_PROVIDER,
   },
-  boolean: ['json', 'stream', 'no_tools'],
-  string: ['user', 'system', 'files', 'tools_dir', 'provider']
+  boolean: ['json', 'stream', 'no_tools', 'all', 'list'],
+  string: ['user', 'system', 'files', 'tools_dir', 'provider', 'show']
 })
 
 // abort if -W and -T is given 
@@ -223,7 +227,23 @@ if (options.provider === 'lmstudio') {
 // --------------------
 // Commands
 // --------------------
+function cmdHistory() {
+  const historyData = loadHistory(DEFAULT_HISTORY)
+  
+  if (options.all) {
+    console.log(JSON.stringify(historyData, null, 2))
+    return
+  }
 
+  if (options.list) {
+    console.log(Object.keys(historyData).join('\n'))
+    return
+  }
+
+  const sessionKey = options.show ? options.show : options.session
+  const session = getSession(historyData, sessionKey)
+  console.log(JSON.stringify(session, null, 2))
+}
 async function cmdChat() {
   const historyData = loadHistory(DEFAULT_HISTORY)
   const session = getSession(historyData, options.session)
@@ -686,6 +706,9 @@ async function main() {
     case 'tools':
       await cmdTools()
       break
+    case 'history':
+      await cmdHistory()
+      break
     case 'version':
       console.log(`${APP_NAME} v${APP_VERSION}`)
       break
@@ -699,6 +722,7 @@ Usage:
   bench    Benchmark models
   run      Execute command + analyze
   tools    Manage tools (--list, --show, --pull, --delete)
+  history  Show chat history (--show or --list --all) 
   version  Show version
 
 Examples:

@@ -170,8 +170,33 @@ Execute a shell command and pass its standard output to an LLM for analysis.
 node llmctrlx.js run -u "df -h" -m llama3
 node llmctrlx.js run -u "ls -la" -m llama3
 ```
+#### 5. History Command
 
-#### 6. Session Usage Example
+Manage chat history, allowing listing, detailed viewing, and examination of all sessions.
+
+**Options:**
+
+- `--show`: Show the current chat history. Default when no other options are provided.
+- `--all`: Show all chat history entries.
+- `--list`: List session keys.
+
+**Examples:**
+
+```bash
+# Show current session history
+./llmctrlx.js history 
+
+# Show all sessions
+./llmctrlx.js history --all
+
+# List available sessions
+./llmctrlx.js history --list
+
+# Show history for a specific session
+./llmctrlx.js history --show -k my-session
+```
+
+## Session Usage Example
 
 ```bash
 # This example has the model analyze getopt_long man page and place
