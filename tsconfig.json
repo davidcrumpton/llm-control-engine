@@ -1,37 +1,27 @@
 {
   "compilerOptions": {
-    /* Language & Module System */
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
 
-    /* Required for NodeNext + TS tests */
+    /* Dev-only: allow .ts imports */
     "allowImportingTsExtensions": true,
     "noEmit": true,
+
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
 
-    /* Paths */
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
     },
 
     /* Vitest */
-    "types": ["vitest/globals","node"]
+    "types": ["vitest/globals", "node"]
   },
 
-  /* Include TS files in both src and tests */
-  "include": [
-    "src/**/*.ts",
-    "tests/**/*.ts"
-  ],
-
-  /* Exclude build artifacts */
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "include": ["src/**/*.ts", "tests/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }
