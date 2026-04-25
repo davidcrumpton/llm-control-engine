@@ -1,27 +1,104 @@
 {
+  "name": "@llm-engine/control",
+  "version": "0.1.0",
+  "description": "A modular LLM control engine with dynamic tool loading and multi-provider support",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./core": {
+      "import": {
+        "types": "./dist/core/index.d.ts",
+        "default": "./dist/core/index.js"
+      }
+    },
+    "./providers": {
+      "import": {
+        "types": "./dist/providers/index.d.ts",
+        "default": "./dist/providers/index.js"
+      }
+    }
+  },
+  "bin": {
+    "llm-engine": "./dist/cli/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "scripts": {
-    "build": "node llmctrlx.js model --pull -m gemma4:e2b -h http://envy.crumpton.org:11434",
+    "build": "tsc -p tsconfig.build.json",
+    "build:clean": "rm -rf dist && npm run build",
+    "dev": "tsx watch src/cli/index.ts",
+    "start": "node dist/cli/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:ui": "vitest --ui",
-    "test:old": "node llmctrlx.js chat -u \"Why is the sky blue?\" -m gemma4:e2b -h http://envy.crumpton.org:11434",
-    "embed": "node llmctrlx.js embed -f README.md -m gemma4:e2b -h http://envy.crumpton.org:11434",
-    "bench": "node llmctrlx.js bench -m gemma4:e2b -h http://envy.crumpton.org:11434",
-    "run": "node llmctrlx.js run -u \"df\" -m gemma4:e2b -h http://envy.crumpton.org:11434",
-    "list": "node llmctrlx.js model --list -h http://envy.crumpton.org:11434"
+    "test:ci": "vitest run --reporter=junit --outputFile=reports/junit.xml --coverage",
+    "lint": "eslint src/ tests/ --ext .ts",
+    "lint:fix": "eslint src/ tests/ --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build:clean && npm run test && npm run lint",
+    "prepack": "npm run build",
+    "release": "semantic-release",
+    "docker:build": "docker build -t llm-engine .",
+    "docker:run": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "clean": "rm -rf dist node_modules/.cache reports coverage"
   },
   "dependencies": {
-    "getopts": "^2.3.0",
-    "node-fetch": "^3.3.2",
-    "ollama": "^0.6.3",
-    "uuid": "^14.0.0"
+    "commander": "^12.1.0",
+    "chalk": "^5.3.0",
+    "zod": "^3.23.0"
   },
-  "type": "module",
   "devDependencies": {
-    "@vitest/coverage-v8": "^4.1.5",
-    "@vitest/ui": "^4.1.5",
-    "memfs": "^4.57.2",
-    "vitest": "^4.1.5"
+    "@types/node": "^20.14.0",
+    "@vitest/coverage-v8": "^2.1.0",
+    "eslint": "^9.12.0",
+    "memfs": "^4.14.0",
+    "prettier": "^3.4.0",
+    "semantic-release": "^24.2.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/gitlab": "^13.2.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  },
+  "peerDependencies": {
+    "openai": "^4.0.0",
+    "@anthropic-ai/sdk": "^0.30.0"
+  },
+  "peerDependenciesMeta": {
+    "openai": { "optional": true },
+    "@anthropic-ai/sdk": { "optional": true }
+  },
+  "keywords": [
+    "llm", "ai", "openai", "anthropic", "ollama", "tool-use", "agent", "cli"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/your-namespace/llm-control-engine.git"
+  },
+  "bugs": {
+    "url": "https://gitlab.com/your-namespace/llm-control-engine/-/issues"
   }
 }

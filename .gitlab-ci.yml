@@ -1,0 +1,167 @@
+# ==============================================================================
+# LLM Control Engine — GitLab CI/CD Pipeline
+# ==============================================================================
+# Stages: lint → test → build → docker → release
+# ==============================================================================
+
+stages:
+  - lint
+  - test
+  - build
+  - docker
+  - release
+
+variables:
+  NODE_IMAGE: node:22-alpine3.20
+  DOCKER_IMAGE: docker:27
+  DOCKER_DIND_IMAGE: docker:27-dind
+  NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.npm-cache"
+  FF_USE_FASTZIP: "true"
+
+# -- Cache: shared node_modules across jobs -----------------------------------
+.node-cache: &node-cache
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm-cache/
+      - node_modules/
+    policy: pull
+
+# -- Base job template for Node.js jobs ---------------------------------------
+.node-base:
+  image: $NODE_IMAGE
+  <<: *node-cache
+  before_script:
+    - npm ci --prefer-offline
+
+# =============================================================================
+# Stage: Lint
+# =============================================================================
+lint:
+  extends: .node-base
+  stage: lint
+  script:
+    - npm run lint
+    - npm run format:check
+  cache:
+    <<: *node-cache
+    policy: pull-push    # First job seeds the cache
+
+typecheck:
+  extends: .node-base
+  stage: lint
+  script:
+    - npm run typecheck
+
+# =============================================================================
+# Stage: Test
+# =============================================================================
+test:unit:
+  extends: .node-base
+  stage: test
+  script:
+    - npm run test:ci
+  artifacts:
+    when: always
+    paths:
+      - reports/junit.xml
+      - coverage/
+    reports:
+      junit: reports/junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
+  coverage: '/All files[^|]*\|[^|]*\|\s*([\d.]+)/'
+
+# =============================================================================
+# Stage: Build
+# =============================================================================
+build:tsc:
+  extends: .node-base
+  stage: build
+  script:
+    - npm run build:clean
+    - echo "Build output:"
+    - ls -la dist/
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week
+
+build:package-dry-run:
+  extends: .node-base
+  stage: build
+  script:
+    - npm pack --dry-run
+  needs:
+    - build:tsc
+
+# =============================================================================
+# Stage: Docker
+# =============================================================================
+docker:build:
+  stage: docker
+  image: $DOCKER_IMAGE
+  services:
+    - name: $DOCKER_DIND_IMAGE
+      alias: docker
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+    IMAGE_TAG: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+    IMAGE_LATEST: "$CI_REGISTRY_IMAGE:latest"
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+  script:
+    # Build production image
+    - docker build --target production -t "$IMAGE_TAG" -t "$IMAGE_LATEST" .
+    # Run tests inside Docker as a validation gate
+    - docker build --target test -t "$CI_REGISTRY_IMAGE:test" .
+    # Push production images
+    - docker push "$IMAGE_TAG"
+    - docker push "$IMAGE_LATEST"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+docker:build-mr:
+  stage: docker
+  image: $DOCKER_IMAGE
+  services:
+    - name: $DOCKER_DIND_IMAGE
+      alias: docker
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+  script:
+    # Build only — don't push on merge requests
+    - docker build --target production -t "$CI_REGISTRY_IMAGE:mr-$CI_MERGE_REQUEST_IID" .
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+
+# =============================================================================
+# Stage: Release
+# =============================================================================
+release:npm:
+  extends: .node-base
+  stage: release
+  script:
+    - npm run release
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
+
+release:tag:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  script:
+    - echo "Creating release for $CI_COMMIT_TAG"
+  release:
+    tag_name: $CI_COMMIT_TAG
+    name: "Release $CI_COMMIT_TAG"
+    description: "Automated release for $CI_COMMIT_TAG"
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/

@@ -1,0 +1,15 @@
+node_modules
+dist
+coverage
+reports
+.git
+.gitignore
+.gitlab-ci.yml
+*.md
+!README.md
+.env*
+.vscode
+.idea
+*.log
+Makefile
+.releaserc.json

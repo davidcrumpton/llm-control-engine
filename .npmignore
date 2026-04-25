@@ -1,0 +1,27 @@
+# Source and config
+src/
+tests/
+tsconfig*.json
+vitest.config.ts
+.gitlab-ci.yml
+Dockerfile
+docker-compose.yml
+.dockerignore
+Makefile
+.releaserc.json
+.eslintrc*
+.prettierrc*
+.editorconfig
+
+# Dev artifacts
+coverage/
+reports/
+node_modules/
+.env*
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
