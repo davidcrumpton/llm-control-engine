@@ -50,8 +50,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ci": "vitest run --reporter=junit --outputFile=reports/junit.xml --coverage",
-    "lint": "eslint src/ tests/ --ext .ts",
-    "lint:fix": "eslint src/ tests/ --ext .ts --fix",
+    "lint": "eslint src/ tests/",
+    "lint:fix": "eslint src/ tests/ --fix",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
     "typecheck": "tsc --noEmit",
@@ -64,34 +64,47 @@
     "clean": "rm -rf dist node_modules/.cache reports coverage"
   },
   "dependencies": {
-    "commander": "^12.1.0",
     "chalk": "^5.3.0",
+    "commander": "^12.1.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/gitlab": "^13.2.0",
     "@types/node": "^20.14.0",
     "@vitest/coverage-v8": "^2.1.0",
     "eslint": "^9.12.0",
     "memfs": "^4.14.0",
     "prettier": "^3.4.0",
     "semantic-release": "^24.2.0",
-    "@semantic-release/changelog": "^6.0.3",
-    "@semantic-release/git": "^10.0.1",
-    "@semantic-release/gitlab": "^13.2.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
+    "typescript-eslint": "^8.59.0",
     "vitest": "^2.1.0"
   },
   "peerDependencies": {
-    "openai": "^4.0.0",
-    "@anthropic-ai/sdk": "^0.30.0"
+    "@anthropic-ai/sdk": "^0.30.0",
+    "openai": "^4.0.0"
   },
   "peerDependenciesMeta": {
-    "openai": { "optional": true },
-    "@anthropic-ai/sdk": { "optional": true }
+    "openai": {
+      "optional": true
+    },
+    "@anthropic-ai/sdk": {
+      "optional": true
+    }
   },
   "keywords": [
-    "llm", "ai", "openai", "anthropic", "ollama", "tool-use", "agent", "cli"
+    "llm",
+    "ai",
+    "openai",
+    "anthropic",
+    "ollama",
+    "tool-use",
+    "agent",
+    "cli"
   ],
   "license": "MIT",
   "repository": {
