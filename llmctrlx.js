@@ -20,7 +20,7 @@ import { readdirSync } from 'node:fs'
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.2.00'
+const APP_VERSION = '0.2.40'
 const DEFAULT_HOST = process.env.LLMCTRLX_HOST || 'http://127.0.0.1:11434'
 const DEFAULT_MODEL = process.env.LLMCTRLX_MODEL || 'gemma4:e4b'
 const DEFAULT_HISTORY = process.env.LLMCTRLX_HISTORY || path.join(os.homedir(), '.llmctrlx_history.json')
