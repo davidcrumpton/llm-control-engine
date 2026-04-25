@@ -1,0 +1,31 @@
+A GPU (Graphics Processing Unit) is a specialized electronic circuit designed to rapidly manipulate and alter memory to accelerate the creation of images in a frame buffer intended for output to a display device. It is a highly parallel processor capable of performing tens of thousands of operations simultaneously.
+
+### Core Architecture
+
+The fundamental difference between a CPU (Central Processing Unit) and a GPU is their architecture. A CPU is optimized for sequential task processing and decision-making, featuring a few powerful cores. In contrast, a GPU is composed of thousands of smaller, more specialized cores that work in parallel.
+
+### Key Components
+
+The GPU consists of several critical components:
+1.  **Streaming Multiprocessors (SMs):** These are the core processing units of the GPU. Each SM contains numerous CUDA cores (in NVIDIA terminology), Tensor cores, and RT cores.
+2.  **CUDA Cores:** These are the fundamental processing units responsible for general-purpose parallel computation. They perform the mathematical calculations required for rendering graphics.
+3.  **Tensor Cores:** These are specialized cores designed to accelerate matrix operations, which are essential for artificial intelligence and deep learning tasks.
+4.  **RT Cores:** These are dedicated hardware units for accelerating ray tracing calculations, enabling more realistic lighting, shadows, and reflections in graphics.
+5.  **Memory:** GPUs have their own dedicated high-speed memory, typically GDDR (Graphics Double Data Rate). This memory is optimized for high bandwidth to feed the massive number of cores with data.
+6.  **Rasterizer:** This hardware component converts vector graphics data into pixels.
+
+### How GPUs Work
+
+The operation of a GPU can be broken down into several stages:
+
+1.  **Data Preparation:** The CPU sends graphics commands and data to the GPU. This data includes vertex data (defining the 3D shapes of objects), texture data (images mapped onto surfaces), and shader programs (instructions for how objects should look).
+2.  **Geometry Processing:** The GPU processes the vertices of the 3D models. This involves transforming their coordinates from 3D space to 2D screen space, a process that is highly parallelizable.
+3.  **Rasterization:** The rasterizer takes the processed geometric data and determines which pixels on the screen each triangle covers. It fills in these pixels with color data.
+4.  **Pixel Processing (Shading):** This is the most computationally intensive part of the process. The GPU executes shader programs for each pixel to determine its final color. This includes calculating lighting, shadows, reflections, and applying textures.
+5.  **Output:** The final pixel data is written to the frame buffer, which is then sent to the display device.
+
+### The Role of Parallelism
+
+The power of the GPU comes from its ability to perform these operations in parallel. For example, when rendering a scene with thousands of triangles, the GPU can process the vertices of all triangles simultaneously. Similarly, when calculating pixel colors, it can process thousands of pixels at the same time.
+
+This parallel architecture is what makes GPUs ideal not only for graphics rendering but also for general-purpose computing tasks, such as scientific simulations, machine learning, and data analysis.

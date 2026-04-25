@@ -1,0 +1,2 @@
+An SSD (Solid State Drive) is a type of data storage device that stores and retrieves digital information using integrated circuit assemblies to non-volatile flash memory, as opposed to the magnetic platters and moving read-write heads used in traditional hard disk drives (HDDs). This fundamental difference in technology gives SSDs significant advantages in terms of speed, durability, and form factor.
+
