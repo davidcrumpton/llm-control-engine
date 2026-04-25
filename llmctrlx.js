@@ -7,23 +7,15 @@
 
 import getopts from 'getopts'
 import path from 'path'
-import { fileURLToPath } from 'url'
+import { fileURLToPath, pathToFileURL } from 'url'
 import { dirname, join } from 'path'
 import os from 'os'
 
-// Import providers
-import { OllamaProvider, LMStudioProvider } from './src/providers/index.js'
-
-// Import CLI commands
-import {
-  cmdChat,
-  cmdModel,
-  cmdEmbed,
-  cmdBench,
-  cmdRun,
-  cmdTools,
-  cmdHistory
-} from './src/cli/index.js'
+// --------------------
+// Setup paths relative to script location
+// --------------------
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 // --------------------
 // Defaults
@@ -41,8 +33,6 @@ const DEFAULT_SESSION = process.env.LLMCTRLX_SESSION || 'default'
 // --------------------
 // Tools Directory
 // --------------------
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
 const DEFAULT_TOOLS_DIR = process.env.LLMCTRLX_TOOLS_DIR || join(__dirname, 'tools')
  
 // --------------------
@@ -86,19 +76,35 @@ if (options.no_tools && options.tools_dir) {
 }
 const toolsDir = options.tools_dir || DEFAULT_TOOLS_DIR
 
-// Initialize LLM provider
-let llm
-
-if (options.provider === 'lmstudio') {
-  llm = new LMStudioProvider({ host: options.host })
-} else {
-  llm = new OllamaProvider({ host: options.host, apiKey: options.api_key })
-}
-
 // --------------------
 // Router
 // --------------------
 async function main() {
+  // Dynamically import modules relative to script location
+  // Convert to file:// URLs for proper module resolution across platforms
+  const providersPath = pathToFileURL(join(__dirname, 'src/providers/index.js')).href
+  const cliPath = pathToFileURL(join(__dirname, 'src/cli/index.js')).href
+
+  const { OllamaProvider, LMStudioProvider } = await import(providersPath)
+  const {
+    cmdChat,
+    cmdModel,
+    cmdEmbed,
+    cmdBench,
+    cmdRun,
+    cmdTools,
+    cmdHistory
+  } = await import(cliPath)
+
+  // Initialize LLM provider
+  let llm
+
+  if (options.provider === 'lmstudio') {
+    llm = new LMStudioProvider({ host: options.host })
+  } else {
+    llm = new OllamaProvider({ host: options.host, apiKey: options.api_key })
+  }
+
   switch (command) {
     case 'chat':
       await cmdChat(llm, options, DEFAULT_HISTORY, toolsDir, DEFAULT_MAX_UPLOAD_FILE_SIZE)
