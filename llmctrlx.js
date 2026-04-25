@@ -20,7 +20,7 @@ import { readdirSync } from 'node:fs'
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.1.9'
+const APP_VERSION = '0.2.00'
 const DEFAULT_HOST = process.env.LLMCTRLX_HOST || 'http://127.0.0.1:11434'
 const DEFAULT_MODEL = process.env.LLMCTRLX_MODEL || 'gemma4:e4b'
 const DEFAULT_HISTORY = process.env.LLMCTRLX_HISTORY || path.join(os.homedir(), '.llmctrlx_history.json')
@@ -198,6 +198,7 @@ const options = getopts(argv.slice(1), {
     T: 'tools_dir',
     W: 'no_tools',
     K: 'api_key',
+    g: 'tags',
   },
   default: {
     host: DEFAULT_HOST,
@@ -208,7 +209,7 @@ const options = getopts(argv.slice(1), {
     provider: DEFAULT_PROVIDER,
   },
   boolean: ['json', 'stream', 'no_tools', 'all', 'list'],
-  string: ['user', 'system', 'files', 'tools_dir', 'provider', 'show']
+  string: ['user', 'system', 'files', 'tools_dir', 'provider', 'show', 'tags']
 })
 
 // abort if -W and -T is given 
@@ -325,7 +326,8 @@ async function cmdChat() {
     session.messages.push({ role: 'assistant', content: full })
   } else {
     if (!options.no_tools) {
-      const tools = await loadTools()
+      const requestedTags = options.tags ? options.tags.split(',').map(t => t.trim()) : null
+      const tools = await loadTools(requestedTags)
 
       messages.unshift({
         role: 'system',
@@ -525,6 +527,12 @@ function validateTool(tool, source) {
     throw new Error(`Tool '${tool.name}' missing version`)
   }
 
+  if (tool.tags !== undefined) {
+    if (!Array.isArray(tool.tags) || !tool.tags.every(t => typeof t === 'string')) {
+      throw new Error(`Tool '${tool.name}' tags must be an array of strings`)
+    }
+  }
+
   return tool
 }
 
@@ -638,7 +646,7 @@ ${tools.map(t => `
 `
 }
 
-async function loadTools() {
+async function loadTools(requestedTags = null) {
   const files = readdirSync(toolsDir).filter(f => f.endsWith('.js'))
 
   const toolMap = new Map()
@@ -649,6 +657,15 @@ async function loadTools() {
     try {
       const mod = await import(fullPath)
       const tool = validateTool(mod.default, fullPath)
+
+      if (requestedTags) {
+        const toolTags = tool.tags || []
+        const hasAlways = toolTags.includes('always')
+        const hasMatch = requestedTags.some(tag => toolTags.includes(tag))
+        if (!hasAlways && !hasMatch) {
+          continue
+        }
+      }
 
       // last one wins (allows overrides)
       toolMap.set(tool.name, tool)
@@ -663,7 +680,8 @@ async function loadTools() {
 }
 
 async function cmdTools() {
-  const tools = await loadTools()
+  const requestedTags = options.tags ? options.tags.split(',').map(t => t.trim()) : null
+  const tools = await loadTools(requestedTags)
 
   if (options.json) {
     console.log(JSON.stringify(tools, null, 2))
@@ -673,6 +691,10 @@ async function cmdTools() {
   for (const tool of tools) {
     console.log(`\n${tool.name}`)
     console.log(`  ${tool.description}`)
+
+    if (tool.tags) {
+      console.log(`  tags: ${JSON.stringify(tool.tags)}`)
+    }
 
     if (tool.parameters && Object.keys(tool.parameters).length) {
       console.log(`  params:`)

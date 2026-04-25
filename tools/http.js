@@ -2,6 +2,7 @@ export default {
   name: 'http_get',
   description: 'Fetch a URL',
   version: 'v1.0.0',
+  tags: ['network', 'web'],
   parameters: {
     type: 'object',
     properties: {

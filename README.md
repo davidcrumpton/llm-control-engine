@@ -56,9 +56,12 @@ Run a chat session with an LLM. It maintains conversational history in `.chat_hi
 - `-P, --provider <provider>`: Set the provider to use. Default: `ollama`. Options: `ollama`, `lmstudio`.
 - `-K, --api-key <key>`: Set the API key for the cloud Ollama instance. Default: `''`.
 - `-W, --no-tools`: Disable tool usage.
+- `-g, --tags <tags>`: Comma-separated list of tags to filter loaded tools.
 
 **Tool Usage:**
 The `chat` command automatically loads JavaScript modules from the `./tools` directory. If the model decides to use a tool, it will execute the module's `run` method and feed the result back to the LLM.
+
+You can restrict which tools are loaded by using the `--tags` flag. When tags are specified, only tools matching the provided tags (or tools with the special `always` tag) will be loaded. If no tags are provided, all tools are loaded. Tools define their tags via a `tags` array property (e.g., `tags: ['network', 'system']`).
 
 **Examples:**
 
@@ -75,6 +78,9 @@ node llmctrlx.js chat -u "What time is it?" -m gemma4:e2b
 
 # Chat with custom tools directory  
 node llmctrlx.js chat -u "What time is it?" -T "~/my-tools" -m gemma4:e2b
+
+# Chat with specific tool tags
+node llmctrlx.js chat -u "Check my IP" --tags network -m gemma4:e2b
 
 # Chat with tools and session
 node llmctrlx.js chat -u "What time is it?" -k "my-session" -m gemma4:e2b
@@ -172,7 +178,26 @@ node llmctrlx.js run -u "df -h" -m llama3
 node llmctrlx.js run -u "ls -la" -m llama3
 ```
 
-#### 5. History Command
+#### 6. `tools`
+
+List and inspect available LLM tools.
+
+**Options:**
+
+- `-g, --tags <tags>`: Filter the displayed tools by tags. Tools with the `always` tag are always included.
+- `--json`: Output tools in JSON format.
+
+**Examples:**
+
+```bash
+# List all tools, showing their tags and parameters
+node llmctrlx.js tools
+
+# List only network and web related tools
+node llmctrlx.js tools --tags network,web
+```
+
+#### 7. History Command
 
 Manage chat history, allowing listing, detailed viewing, and examination of all sessions.
 

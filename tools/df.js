@@ -2,6 +2,7 @@ export default {
   name: 'df',
   description: 'Get disk usage (df -h)',
   version: 'v1.0.0',
+  tags: ['os', 'system'],
   parameters: {
     type: 'object',
     properties: {},
