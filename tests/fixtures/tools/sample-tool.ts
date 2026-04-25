@@ -1,6 +1,6 @@
 /// tests/fixtures/tools/sample-tool.ts
 // A valid tool module used by the dynamic tool loader tests
-import type { ToolDefinition } from "@/core/types";
+import type { ToolDefinition } from "../../../src/core/types.js";
 
 const sampleTool: ToolDefinition = {
   name: "sample-tool",

@@ -5,7 +5,7 @@ import {
   OPENAI_STREAM_CHUNKS,
   OPENAI_TOOL_CALL_RESPONSE,
   PROVIDER_ERROR_RESPONSES,
-} from "../fixtures/providers/mock-responses";
+} from "../fixtures/providers/mock-responses.ts";
 
 // TODO: Update import path to match your actual OpenAI provider module
 // import { OpenAIProvider } from '@/providers/openai';

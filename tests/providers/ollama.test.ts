@@ -4,7 +4,7 @@ import {
   OLLAMA_CHAT_RESPONSE,
   OLLAMA_GENERATE_RESPONSE,
   PROVIDER_ERROR_RESPONSES,
-} from "../fixtures/providers/mock-responses";
+} from "../fixtures/providers/mock-responses.ts";
 
 // TODO: Update import path
 // import { OllamaProvider } from '@/providers/ollama';
