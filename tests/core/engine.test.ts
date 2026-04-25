@@ -4,7 +4,7 @@ import {
   createMockProvider,
   createTestConfig,
   flushPromises,
-} from "../helpers/test-utils";
+} from "../helpers/test-utils.ts";
 
 // TODO: Update import path to match your actual engine module
 // import { Engine } from '@/core/engine';

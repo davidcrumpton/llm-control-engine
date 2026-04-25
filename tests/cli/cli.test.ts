@@ -1,6 +1,6 @@
 /// tests/cli/cli.test.ts
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createTestConfig } from "../helpers/test-utils";
+import { createTestConfig } from "../helpers/test-utils.ts";
 
 // TODO: Update import path
 // import { CLI } from '@/cli';

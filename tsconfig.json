@@ -20,7 +20,7 @@
     },
 
     /* Vitest */
-    "types": ["vitest/globals",]
+    "types": ["vitest/globals","node"]
   },
 
   /* Include TS files in both src and tests */
