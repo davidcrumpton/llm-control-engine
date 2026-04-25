@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 // LLM Control Engine - llmctrlx
+// A local LLM orchestration and execution CLI with tool support
+// Author: davidcrumpton
+// github: https://github.com/davidcrumpton/llm-control-engine
+// license: Apache 2.0
+
 import getopts from 'getopts'
 import { Ollama } from 'ollama'
 import fs from 'fs'
-import { execSync } from 'child_process'
 import path from 'path'
-import { readdirSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import os from 'os'
@@ -14,9 +17,11 @@ import fetch from 'node-fetch'
 // --------------------
 // Defaults
 // --------------------
+const APP_NAME = 'llmctrlx'
+const APP_VERSION = '0.1.0'
 const DEFAULT_HOST = process.env.LLMCTRLX_HOST || 'http://127.0.0.1:11434'
 const DEFAULT_MODEL = process.env.LLMCTRLX_MODEL || 'gemma4:e4b'
-const DEFAULT_HISTORY = process.env.LLMCTRLX_HISTORY || path.join(os.homedir(), '.chat_history.json')
+const DEFAULT_HISTORY = process.env.LLMCTRLX_HISTORY || path.join(os.homedir(), '.llmctrlx_history.json')
 const DEFAULT_API_KEY = process.env.LLMCTRLX_API_KEY || ''
 const DEFAULT_MAX_UPLOAD_FILE_SIZE = process.env.LLMCTRLX_MAX_UPLOAD_FILE_SIZE || 1024 * 1024 * 10 // 10 MB
 const DEFAULT_PROVIDER = process.env.LLMCTRLX_PROVIDER || 'ollama'
@@ -632,7 +637,11 @@ async function main() {
     case 'tools':
       await cmdTools()
       break
+    case 'version':
+      console.log(`${APP_NAME} v${APP_VERSION}`)
+      break
     default:
+      console.log(`${APP_NAME} v${APP_VERSION}`)
       console.log(`
 Usage:
   chat     Run chat session
@@ -640,6 +649,8 @@ Usage:
   embed    Generate embeddings
   bench    Benchmark models
   run      Execute command + analyze
+  tools    Manage tools (--list, --show, --pull, --delete)
+  version  Show version
 
 Examples:
   chat -u "hello"
