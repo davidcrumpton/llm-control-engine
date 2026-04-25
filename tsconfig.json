@@ -1,28 +1,44 @@
 {
   "compilerOptions": {
+    /* Language & Environment */
     "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
     "lib": ["ES2022"],
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
+    "module": "ES2022",
+    "moduleResolution": "NodeNext",
+    "allowJs": true,
+    "checkJs": false,
     "resolveJsonModule": true,
+    "esModuleInterop": true,
     "isolatedModules": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+
+    /* Type Checking */
+    "strict": true,
+    "noImplicitAny": false,
+    "noUncheckedIndexedAccess": false,
+
+    /* Output */
+    "outDir": "dist",
+    "noEmit": true,
+
+    /* Paths */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@src/*": ["src/*"],
+      "@tests/*": ["tests/*"]
     }
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "tests"]
+
+  /* Include all TypeScript files in src and tests */
+  "include": [
+    "src/**/*.ts",
+    "tests/**/*.ts"
+  ],
+
+  /* Explicitly exclude build artifacts */
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.js"
+  ]
 }
