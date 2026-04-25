@@ -27,6 +27,7 @@ const DEFAULT_HISTORY = process.env.LLMCTRLX_HISTORY || path.join(os.homedir(), 
 const DEFAULT_API_KEY = process.env.LLMCTRLX_API_KEY || ''
 const DEFAULT_MAX_UPLOAD_FILE_SIZE = process.env.LLMCTRLX_MAX_UPLOAD_FILE_SIZE || 1024 * 1024 * 10 // 10 MB
 const DEFAULT_PROVIDER = process.env.LLMCTRLX_PROVIDER || 'ollama'
+const DEFAULT_SESSION = process.env.LLMCTRLX_SESSION || 'default'
 	
 // --------------------
 // Tools Directory
@@ -201,7 +202,7 @@ const options = getopts(argv.slice(1), {
   default: {
     host: DEFAULT_HOST,
     model: DEFAULT_MODEL,
-    session: 'default',
+    session: DEFAULT_SESSION,
     no_tools: false,
     api_key: DEFAULT_API_KEY,
     provider: DEFAULT_PROVIDER,
