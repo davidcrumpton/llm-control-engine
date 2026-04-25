@@ -2,6 +2,9 @@
   "scripts": {
     "build": "node llmctrlx.js model --pull -m gemma4:e2b -h http://envy.crumpton.org:11434",
     "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui",
     "test:old": "node llmctrlx.js chat -u \"Why is the sky blue?\" -m gemma4:e2b -h http://envy.crumpton.org:11434",
     "embed": "node llmctrlx.js embed -f README.md -m gemma4:e2b -h http://envy.crumpton.org:11434",
     "bench": "node llmctrlx.js bench -m gemma4:e2b -h http://envy.crumpton.org:11434",
@@ -16,6 +19,9 @@
   },
   "type": "module",
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.5",
+    "@vitest/ui": "^4.1.5",
+    "memfs": "^4.57.2",
     "vitest": "^4.1.5"
   }
 }
