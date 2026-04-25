@@ -13,6 +13,7 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import os from 'os'
 import fetch from 'node-fetch'
+import { readdirSync } from 'node:fs'
 
 // --------------------
 // Defaults
