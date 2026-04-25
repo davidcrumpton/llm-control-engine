@@ -533,6 +533,15 @@ function validateTool(tool, source) {
     }
   }
 
+  if (tool.policies !== undefined) {
+    if (typeof tool.policies !== 'object' || Array.isArray(tool.policies)) {
+      throw new Error(`Tool '${tool.name}' policies must be an object`)
+    }
+    if (tool.policies.requires && !Array.isArray(tool.policies.requires)) {
+      throw new Error(`Tool '${tool.name}' policies.requires must be an array`)
+    }
+  }
+
   return tool
 }
 
@@ -574,6 +583,10 @@ function validateArgs(tool, args) {
 }
 
 async function runWithTools({ model, messages, tools }) {
+  const toolHistory = []
+  let loopCount = 0
+  const MAX_LOOPS = 15
+
   while (true) {
     const res = await llm.chat({ model, messages })
 
@@ -603,7 +616,53 @@ async function runWithTools({ model, messages, tools }) {
           continue
         }
 
+        const argsStr = JSON.stringify(parsed.arguments || {})
+
+        loopCount++
+        if (loopCount > MAX_LOOPS) {
+          messages.push({
+            role: 'user',
+            content: `System Error: Maximum tool loop limit reached (${MAX_LOOPS}). Please provide your final answer to the user.`
+          })
+          continue
+        }
+
+        const isDuplicate = toolHistory.some(h => h.name === parsed.tool && h.argsStr === argsStr)
+        if (isDuplicate) {
+          messages.push({
+            role: 'user',
+            content: `System Error: You already called '${parsed.tool}' with these exact arguments. Do not repeat identical tool calls. Try a different approach or provide your final answer.`
+          })
+          continue
+        }
+
+        const toolPolicies = tool.policies || {}
+        
+        if (toolPolicies.requires) {
+          const missing = toolPolicies.requires.find(req => !toolHistory.some(h => h.name === req))
+          if (missing) {
+            messages.push({
+              role: 'user',
+              content: `System Error: Policy violation. You must use the '${missing}' tool before using '${tool.name}'.`
+            })
+            continue
+          }
+        }
+
+        if (toolPolicies.maxCalls) {
+          const callCount = toolHistory.filter(h => h.name === parsed.tool).length
+          if (callCount >= toolPolicies.maxCalls) {
+            messages.push({
+              role: 'user',
+              content: `System Error: Policy violation. You have reached the maximum allowed calls (${toolPolicies.maxCalls}) for '${tool.name}'.`
+            })
+            continue
+          }
+        }
+
         const result = await executeTool(tool, parsed.arguments || {})
+
+        toolHistory.push({ name: parsed.tool, argsStr })
 
         messages.push({
           role: 'assistant',
@@ -629,6 +688,11 @@ function buildToolPrompt(tools) {
   return `
 You MUST respond with ONLY valid JSON when calling a tool.
 Do not include any explanation, text, or markdown.
+
+Tool usage strategy:
+1. Do not repeat identical tool calls with the same arguments.
+2. If a tool fails or returns no useful information, try a different approach or tool.
+3. For system command research: use \`apropos\` to discover commands, \`whatis\` to confirm purpose, and \`man\` only for deeper details.
 
 If no tool is needed, respond normally.
 

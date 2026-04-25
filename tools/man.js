@@ -3,6 +3,7 @@ export default {
   description: 'Get a specific section of a man page',
   version: 'v1.0.0',
   tags: ['os', 'system'],
+  policies: { maxCalls: 2, requires: ['whatis'] },
   parameters: {
     type: 'object',
     properties: {
