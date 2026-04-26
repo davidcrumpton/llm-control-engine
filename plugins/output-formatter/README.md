@@ -46,4 +46,3 @@ and registers a `response:filter` handler at `HookPriority.NORMAL`.
 Install the plugin in your plugin directory and ensure the plugin loader can discover it.
 
 If the environment or prompt requests a supported format, the plugin will transform the response before it is returned.
-
