@@ -1,11 +1,33 @@
-# Plugin System — LLM Control Engine
+# Plugin System — LLM Control Engine  
+Event‑based hook architecture for extending the LLM Control Engine without modifying core code.
 
-Event-based hook architecture for extending the LLM Control Engine
-without modifying core code.
+---
 
-## Quick Start
+# ⚠️ Two Coexisting Plugin Systems
 
-```typescript
+The LLM Control Engine currently supports **two plugin architectures**:
+
+1. **Legacy Hook‑Based Plugin System**  
+   - This is the system used by all example plugins in the repository today  
+   - This is the system loaded by `PluginLoader`  
+   - This is the system used by `prompt-guard.plugin.js`  
+   - This system is **stable and fully supported**
+
+2. **Unified Plugin Specification (Experimental)**  
+   - A newer, declarative plugin format  
+   - Not yet fully integrated into the engine  
+   - Not used by example plugins  
+   - Intended future direction, but **not ready for production**
+
+Both formats work, but the **legacy hook‑based format is the authoritative one today**.
+
+This README documents **both**, explains when to use each, and provides a **migration guide**.
+
+---
+
+# Quick Start
+
+```ts
 import { HookManager, PluginLoader, EngineHookIntegration } from './src/plugins';
 
 // 1. Create the manager
@@ -20,169 +42,318 @@ const engine = new EngineHookIntegration(manager);
 await engine.init();
 
 // 4. Use in your request cycle
-const prompt  = await engine.preProcessPrompt(requestId, userInput);
-const gate    = await engine.gateInference(requestId, prompt);
+const prompt = await engine.preProcessPrompt(requestId, userInput);
+const gate   = await engine.gateInference(requestId, prompt);
 if (!gate.allowed) throw new Error(gate.reason);
+
 // ... run inference ...
-const output  = await engine.postProcessInference(requestId, result);
-const final   = await engine.filterResponse(requestId, output.output);
+
+const output = await engine.postProcessInference(requestId, result);
+const final  = await engine.filterResponse(requestId, output.output);
 await engine.complete(requestId, final);
+```
+
+---
+
+# 1. Legacy Hook‑Based Plugin Format (CURRENT, FULLY SUPPORTED)
+
+This is the plugin system used by all existing plugins in the repository.
+
+## Structure
+
+```js
+export default {
+  meta: {
+    name: 'my-plugin',
+    version: '1.0.0',
+    description: 'Does something useful.',
+    author: 'Your Name',
+  },
+
+  install(tap) {
+    tap(
+      'prompt:pre-process',
+      async (ctx) => {
+        // modify ctx.data or bail
+        return { data: ctx.data };
+      },
+      HookPriority.NORMAL
+    );
+  },
+};
 ```
 
 ## Hook Events
 
-| Event | Mode | Description |
-| ------- | ------ | --------- |
-| `engine:init` | Parallel | Engine startup and plugin initialization |
-| `engine:shutdown` | Parallel | Graceful shutdown notification |
-| `prompt:pre-process` | Waterfall | Transform raw user prompt |
-| `prompt:post-process` | Waterfall | Transform assembled prompt |
-| `inference:pre` | Bail | Gate: block or allow inference |
-| `inference:post` | Waterfall | Transform model output |
-| `response:filter` | Waterfall | Content filtering |
-| `response:complete` | Parallel | Observe completed cycle |
-| `engine:error` | Parallel | Error notification |
+Common events include:
 
-## Execution Modes
+| Event | Description |
+|-------|-------------|
+| `prompt:pre-process` | Before prompt normalization |
+| `inference:pre` | Before inference is allowed to run |
+| `inference:post` | After inference completes |
+| `tool:pre` | Before a tool call |
+| `tool:post` | After a tool call |
+| `response:filter` | Before final output is returned |
 
-### Waterfall
+## Hook Return Values
 
-Each handler receives the previous handler's output. Return `{ data }`
-to pass a modified payload downstream. Omit `data` to pass through
-unchanged.
+Handlers may return:
 
-### Bail
+- `{}` — no change  
+- `{ data }` — modify event payload  
+- `{ bail: true, reason }` — stop the pipeline early  
 
-Handlers run sequentially. Return `{ bail: true, reason: '...' }` to
-short-circuit. If no handler bails, the operation proceeds.
+## Hook Priorities
 
-### Parallel
+```js
+const HookPriority = {
+  SYSTEM: 0,
+  HIGH: 100,
+  NORMAL: 500,
+  LOW: 900,
+  MONITOR: 1000,
+};
+```
 
-All handlers fire concurrently via `Promise.allSettled`. Used for
-side-effects (logging, metrics). Return values are ignored.
+Higher priority runs earlier.
 
-## Writing a Plugin
+## Example: Prompt Guard Plugin
 
-```typescript
-import { HookPlugin, HookPriority } from './src/plugins';
+```js
+const DEFAULT_CONFIG = {
+  denyPatterns: [
+    /ignore\s+(all\s+)?(previous\s+)?instructions/i,
+    /system\s*prompt/i,
+    /\bDAN\b/i,
+    /do\s+anything\s+now/i,
+    /\b(sudo|doas|su)\b/i,
+    /chmod\s+.*[0-7]{3,4}/i,
+  ],
+  blockMessage:
+    'Request blocked by prompt-guard: potential security risk detected.',
+};
 
-const myPlugin: HookPlugin = {
+export default {
   meta: {
-    name: 'my-plugin',
-    version: '0.1.0',
-    description: 'Does something useful.',
+    name: 'prompt-guard',
+    version: '1.0.0',
+    description:
+      'Blocks prompts matching configurable deny-patterns (bail pattern demo).',
+    author: 'LLM Control Engine',
   },
 
   install(tap) {
-    tap('prompt:pre-process', async (ctx) => {
-      const modified = ctx.data.processed.trim();
-      return { data: { ...ctx.data, processed: modified } };
-    }, HookPriority.NORMAL);
+    const config = { ...DEFAULT_CONFIG };
+
+    tap(
+      'inference:pre',
+      async (ctx) => {
+        const { prompt } = ctx.data;
+        for (const pattern of config.denyPatterns) {
+          if (pattern.test(prompt)) {
+            return {
+              bail: true,
+              reason: `${config.blockMessage} (matched: ${pattern.source})`,
+            };
+          }
+        }
+        return {};
+      },
+      HookPriority.HIGH
+    );
+
+    tap(
+      'prompt:pre-process',
+      async (ctx) => {
+        return { data: ctx.data };
+      },
+      HookPriority.HIGH
+    );
   },
 };
-
-export default myPlugin;
 ```
 
-### File Naming
+---
 
-Files must end with `.plugin.ts` or `.plugin.js`.
+# 2. Unified Plugin Specification (EXPERIMENTAL)
 
-### Priority Levels
+This is the **new** plugin format described in earlier versions of the README.  
+It is **not yet fully wired into the engine**.
 
-| Level | Value | Use Case |
-| ------- | ------ | --------- |
-| `SYSTEM` | 0 | Engine internals only |
-| `HIGH` | 100 | Security, auth, guards |
-| `NORMAL` | 500 | General-purpose plugins |
-| `LOW` | 900 | Analytics, logging |
-| `MONITOR` | 1000 | Read-only observers |
+## Structure
 
-## API Reference
+```js
+export default {
+  type: 'tool' | 'policy' | 'provider' | 'hook',
+  name: 'my-plugin',
+  version: 'v1.0.0',
+  description: 'Unified plugin example',
+  tags: ['example'],
 
-### HookManager
+  parameters: {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean', default: true },
+    },
+  },
 
-| Method | Description |
-| ------ | ----------- |
-| `register(plugin)` | Register and install a plugin |
-| `unregister(name)` | Teardown and remove a plugin |
-| `listPlugins()` | List registered plugin names |
-| `waterfall(event, ctx)` | Run waterfall execution |
-| `bail(event, ctx)` | Run bail execution |
-| `parallel(event, ctx)` | Run parallel execution |
-
-### PluginLoader
-
-| Method | Description |
-| ------ | ----------- |
-| `loadFromDirectory(dir)` | Discover and load plugins from dir |
-| `loadPlugin(path)` | Load a single plugin file |
-
-### EngineHookIntegration
-
-| Method | Description |
-| ------ | ----------- |
-| `init()` | Fire `engine:init` |
-| `shutdown()` | Fire `engine:shutdown` |
-| `preProcessPrompt(id, raw)` | Waterfall `prompt:pre-process` |
-| `postProcessPrompt(id, assembled)` | Waterfall `prompt:post-process` |
-| `gateInference(id, prompt)` | Bail `inference:pre` |
-| `postProcessInference(id, result)` | Waterfall `inference:post` |
-| `filterResponse(id, content)` | Waterfall `response:filter` |
-| `complete(id, response)` | Parallel `response:complete` |
-| `onError(id, error, phase)` | Parallel `engine:error` |
-
-## Error Handling
-
-Plugins are error-isolated. If a handler throws:
-
-- The error is caught and logged via `HookLogger`.
-- Remaining handlers continue executing.
-- The engine never crashes due to a plugin failure.
-- In waterfall mode, the previous output passes forward unchanged.
-
-## Example Plugins
-
-### `logger.plugin.ts`
-
-Subscribes to all events at MONITOR priority. Logs timing and metadata
-for every hook invocation. Great for debugging execution order.
-
-### `prompt-guard.plugin.ts`
-
-Demonstrates the bail pattern. Blocks inference when the prompt matches
-configurable regex deny-patterns (prompt injection). Runs at HIGH priority.
-
-## Contributing
-
-1. Create `plugins/my-plugin.plugin.ts`
-2. Implement the `HookPlugin` interface
-3. Test with logger enabled to verify hook ordering
-4. Submit a merge request with your plugin and tests
-
-## Example Run
-
-```sh
-llmctrlx run -u 'doas ls' -v
+  run: async (args) => {
+    // unified execution entry point
+  },
+};
 ```
 
-```text
-[PluginLoader] Found 2 plugin file(s) in /Users/bear/.llmctrlx_plugins
-[HookManager] Tapped "engine:init" by lifecycle-logger (priority 1000)
-[HookManager] Tapped "engine:shutdown" by lifecycle-logger (priority 1000)
-[HookManager] Tapped "prompt:pre-process" by lifecycle-logger (priority 1000)
-[HookManager] Tapped "prompt:post-process" by lifecycle-logger (priority 1000)
-[HookManager] Tapped "inference:pre" by lifecycle-logger (priority 1000)
-[HookManager] Tapped "inference:post" by lifecycle-logger (priority 1000)
-[HookManager] Tapped "response:filter" by lifecycle-logger (priority 1000)
-[HookManager] Tapped "response:complete" by lifecycle-logger (priority 1000)
-[HookManager] Tapped "engine:error" by lifecycle-logger (priority 1000)
-[HookManager] Registered plugin: lifecycle-logger v1.0.0
-[PluginLoader] Loaded: lifecycle-logger from /Users/bear/.llmctrlx_plugins/logger.plugin.js
-[HookManager] Tapped "inference:pre" by prompt-guard (priority 100)
-[HookManager] Tapped "prompt:pre-process" by prompt-guard (priority 100)
-[HookManager] Registered plugin: prompt-guard v1.0.0
-[PluginLoader] Loaded: prompt-guard from /Users/bear/.llmctrlx_plugins/prompt-guard.plugin.js
-[HookManager] Bail triggered by prompt-guard::inference:pre::10: Request blocked by prompt-guard: potential security risk detected. (matched: \b(sudo|doas|su)\b)
-Command blocked: Request blocked by prompt-guard: potential security risk detected. (matched: \b(sudo|doas|su)\b)
+## Characteristics
+
+- Declarative metadata  
+- JSON‑schema parameters  
+- Single `run()` entry point  
+- Intended to unify tools, policies, providers, and hooks  
+- Not yet used by example plugins  
+- Not yet fully supported by the loader  
+
+## When to use it
+
+- For experimentation  
+- For future‑proof plugin development  
+- Not recommended for production yet  
+
+---
+
+# 3. Migration Guide  
+### Moving from Legacy Hook‑Based Plugins → Unified Plugin Spec
+
+This guide explains how to convert an existing hook‑based plugin into the new unified format.
+
+---
+
+## Step 1 — Map `meta` → top‑level fields
+
+Legacy:
+
+```js
+meta: {
+  name: 'prompt-guard',
+  version: '1.0.0',
+  description: '...',
+}
 ```
+
+Unified:
+
+```js
+name: 'prompt-guard',
+version: 'v1.0.0',
+description: '...',
+tags: ['security', 'guardrail'],
+```
+
+---
+
+## Step 2 — Replace `install(tap)` with `run()`
+
+Legacy:
+
+```js
+install(tap) {
+  tap('inference:pre', handler, HookPriority.HIGH);
+}
+```
+
+Unified:
+
+```js
+type: 'policy',
+run: async ({ event, data }) => {
+  if (event === 'inference:pre') {
+    // handler logic
+  }
+}
+```
+
+---
+
+## Step 3 — Convert hook handlers into event switches
+
+Legacy:
+
+```js
+tap('prompt:pre-process', async (ctx) => { ... });
+```
+
+Unified:
+
+```js
+run: async ({ event, data }) => {
+  switch (event) {
+    case 'prompt:pre-process':
+      return { data };
+  }
+}
+```
+
+---
+
+## Step 4 — Convert bail pattern
+
+Legacy:
+
+```js
+return { bail: true, reason: 'blocked' };
+```
+
+Unified:
+
+```js
+return {
+  outcome: 'blocked',
+  reason: 'blocked',
+};
+```
+
+---
+
+## Step 5 — Convert configuration to JSON‑schema parameters
+
+Legacy:
+
+```js
+const config = { denyPatterns: [...] };
+```
+
+Unified:
+
+```js
+parameters: {
+  type: 'object',
+  properties: {
+    denyPatterns: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+  },
+},
+```
+
+---
+
+## Step 6 — Update plugin loader (future work)
+
+The current loader only supports legacy plugins.  
+Unified plugin support is planned but incomplete.
+
+---
+
+# 4. Recommendations
+
+### If you are writing plugins today  
+➡️ Use the **legacy hook‑based format**.
+
+### If you want to experiment with the future  
+➡️ Try the unified format, but expect breaking changes.
+
+### If you maintain the repository  
+➡️ Keep both documented until the migration is complete.
+
+Just tell me what direction you want next.
