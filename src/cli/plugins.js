@@ -4,7 +4,6 @@
 
 import fs from 'fs'
 import path from 'path'
-import { fileURLToPath } from 'url'
 
 /**
  * Discover plugin files in a directory
@@ -78,7 +77,7 @@ async function readPluginMetadata(filePath) {
       description,
       version
     }
-  } catch (err) {
+  } catch {
     return null
   }
 }
