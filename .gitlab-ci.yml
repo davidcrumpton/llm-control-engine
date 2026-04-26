@@ -147,6 +147,8 @@ docker:build-mr:
 release:npm:
   extends: .node-base
   stage: release
+  before_script:
+    - apk add --no-cache git
   script:
     - npm run release
   rules:
