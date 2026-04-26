@@ -1,9 +1,10 @@
 # Plugin System — LLM Control Engine  
+
 Event‑based hook architecture for extending the LLM Control Engine without modifying core code.
 
 ---
 
-# ⚠️ Two Coexisting Plugin Systems
+## ⚠️ Two Coexisting Plugin Systems
 
 The LLM Control Engine currently supports **two plugin architectures**:
 
@@ -25,7 +26,7 @@ This README documents **both**, explains when to use each, and provides a **migr
 
 ---
 
-# Quick Start
+## Quick Start
 
 ```ts
 import { HookManager, PluginLoader, EngineHookIntegration } from './src/plugins';
@@ -55,11 +56,11 @@ await engine.complete(requestId, final);
 
 ---
 
-# 1. Legacy Hook‑Based Plugin Format (CURRENT, FULLY SUPPORTED)
+## 1. Legacy Hook‑Based Plugin Format (CURRENT, FULLY SUPPORTED)
 
 This is the plugin system used by all existing plugins in the repository.
 
-## Structure
+### Structure
 
 ```js
 export default {
@@ -83,12 +84,12 @@ export default {
 };
 ```
 
-## Hook Events
+### Hook Events
 
 Common events include:
 
 | Event | Description |
-|-------|-------------|
+| ------- | ------------- |
 | `prompt:pre-process` | Before prompt normalization |
 | `inference:pre` | Before inference is allowed to run |
 | `inference:post` | After inference completes |
@@ -96,7 +97,7 @@ Common events include:
 | `tool:post` | After a tool call |
 | `response:filter` | Before final output is returned |
 
-## Hook Return Values
+### Hook Return Values
 
 Handlers may return:
 
@@ -104,7 +105,7 @@ Handlers may return:
 - `{ data }` — modify event payload  
 - `{ bail: true, reason }` — stop the pipeline early  
 
-## Hook Priorities
+### Hook Priorities
 
 ```js
 const HookPriority = {
@@ -118,7 +119,7 @@ const HookPriority = {
 
 Higher priority runs earlier.
 
-## Example: Prompt Guard Plugin
+### Example: Prompt Guard Plugin
 
 ```js
 const DEFAULT_CONFIG = {
@@ -176,12 +177,12 @@ export default {
 
 ---
 
-# 2. Unified Plugin Specification (EXPERIMENTAL)
+## 2. Unified Plugin Specification (EXPERIMENTAL)
 
 This is the **new** plugin format described in earlier versions of the README.  
 It is **not yet fully wired into the engine**.
 
-## Structure
+### Unified Plugin Structure
 
 ```js
 export default {
@@ -204,7 +205,7 @@ export default {
 };
 ```
 
-## Characteristics
+### Characteristics
 
 - Declarative metadata  
 - JSON‑schema parameters  
@@ -213,7 +214,7 @@ export default {
 - Not yet used by example plugins  
 - Not yet fully supported by the loader  
 
-## When to use it
+### When to use it
 
 - For experimentation  
 - For future‑proof plugin development  
@@ -221,14 +222,15 @@ export default {
 
 ---
 
-# 3. Migration Guide  
+## 3. Migration Guide  
+
 ### Moving from Legacy Hook‑Based Plugins → Unified Plugin Spec
 
 This guide explains how to convert an existing hook‑based plugin into the new unified format.
 
 ---
 
-## Step 1 — Map `meta` → top‑level fields
+### Step 1 — Map `meta` → top‑level fields
 
 Legacy:
 
@@ -251,7 +253,7 @@ tags: ['security', 'guardrail'],
 
 ---
 
-## Step 2 — Replace `install(tap)` with `run()`
+### Step 2 — Replace `install(tap)` with `run()`
 
 Legacy:
 
@@ -274,7 +276,7 @@ run: async ({ event, data }) => {
 
 ---
 
-## Step 3 — Convert hook handlers into event switches
+### Step 3 — Convert hook handlers into event switches
 
 Legacy:
 
@@ -295,7 +297,7 @@ run: async ({ event, data }) => {
 
 ---
 
-## Step 4 — Convert bail pattern
+### Step 4 — Convert bail pattern
 
 Legacy:
 
@@ -314,7 +316,7 @@ return {
 
 ---
 
-## Step 5 — Convert configuration to JSON‑schema parameters
+### Step 5 — Convert configuration to JSON‑schema parameters
 
 Legacy:
 
@@ -338,22 +340,23 @@ parameters: {
 
 ---
 
-## Step 6 — Update plugin loader (future work)
+### Step 6 — Update plugin loader (future work)
 
 The current loader only supports legacy plugins.  
 Unified plugin support is planned but incomplete.
 
 ---
 
-# 4. Recommendations
+## 4. Recommendations
 
 ### If you are writing plugins today  
+
 ➡️ Use the **legacy hook‑based format**.
 
 ### If you want to experiment with the future  
+
 ➡️ Try the unified format, but expect breaking changes.
 
-### If you maintain the repository  
-➡️ Keep both documented until the migration is complete.
+### If you maintain the repository
 
-Just tell me what direction you want next.
+➡️ Keep both documented until the migration is complete.
