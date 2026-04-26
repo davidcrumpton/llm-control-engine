@@ -24,6 +24,64 @@ npm install -g .
 
 This creates the `llmctrlx` executable in your global npm bin path.
 
+## Shell Completions
+
+`llmctrlx` supports auto-completion for bash, zsh, and fish shells.
+
+### Completion Installation Information
+
+#### Automatic Installation
+
+Use the provided installer script:
+
+```bash
+# Install for your current shell
+node install-completion.js
+
+# Or specify a shell
+node install-completion.js bash
+node install-completion.js zsh
+node install-completion.js fish
+```
+
+#### Manual Installation
+
+Generate the completion script for your shell:
+
+```bash
+# For bash
+llmctrlx completion --shell bash > /usr/local/etc/bash_completion.d/llmctrlx
+
+# For zsh
+llmctrlx completion --shell zsh > /usr/local/share/zsh/site-functions/_llmctrlx
+
+# For fish
+llmctrlx completion --shell fish > ~/.config/fish/completions/llmctrlx.fish
+```
+
+Then restart your shell or source the completion file:
+
+```bash
+# For bash
+source /usr/local/etc/bash_completion.d/llmctrlx
+
+# For zsh
+exec zsh
+
+# For fish
+source ~/.config/fish/completions/llmctrlx.fish
+```
+
+### Features
+
+The completion provides:
+
+- Command completion (`chat`, `model`, `embed`, etc.)
+- Option completion for each command
+- File completion for `-f/--files` and `-T/--tools_dir` options
+- Provider completion (`ollama`, `lmstudio`)
+- Shell type completion for the `completion` command
+
 ## Environment Variables
 
 You can configure the default behavior using environment variables:
@@ -237,6 +295,27 @@ llmctrlx history --list
 
 # Show history for a specific session
 llmctrlx history --show -k my-session
+```
+
+#### 8. `completion`
+
+Generate shell completion scripts for bash, zsh, and fish.
+
+**Options:**
+
+- `--shell <shell>`: Shell type to generate completion for. Options: `bash`, `zsh`, `fish`. If not specified, defaults to the current shell.
+
+**Examples:**
+
+```bash
+# Generate bash completion
+llmctrlx completion --shell bash
+
+# Generate zsh completion
+llmctrlx completion --shell zsh
+
+# Generate fish completion
+llmctrlx completion --shell fish
 ```
 
 ## Session Usage Example

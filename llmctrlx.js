@@ -66,7 +66,7 @@ const options = getopts(argv.slice(1), {
     provider: DEFAULT_PROVIDER,
   },
   boolean: ['json', 'stream', 'no_tools', 'all', 'list'],
-  string: ['user', 'system', 'files', 'tools_dir', 'provider', 'show', 'tags']
+  string: ['user', 'system', 'files', 'tools_dir', 'provider', 'show', 'tags', 'shell']
 })
 
 // abort if -W and -T is given
@@ -127,6 +127,9 @@ async function main() {
     case 'history':
       cmdHistory(options, DEFAULT_HISTORY)
       break
+    case 'completion':
+      cmdCompletion(options.shell || process.env.SHELL)
+      break
     case 'version':
       console.log(`${APP_NAME} v${APP_VERSION}`)
       break
@@ -141,6 +144,7 @@ Usage:
   run      Execute command + analyze
   tools    Manage tools (--list, --show, --pull, --delete)
   history  Show chat history (--show or --list --all) 
+  completion Generate shell completion script
   version  Show version
 
 Examples:
@@ -149,8 +153,320 @@ Examples:
   embed -f file.txt
   bench -m mistral,gemma -u "test"
   run -u "df -h"
+  completion --shell bash
 `)
   }
+}
+
+/**
+ * Handle completion command
+ * @param {string} shell - Shell type (bash, zsh, fish)
+ */
+function cmdCompletion(shell) {
+  const shellName = shell ? shell.split('/').pop() : 'bash'
+  
+  switch (shellName) {
+    case 'bash':
+      console.log(generateBashCompletion())
+      break
+    case 'zsh':
+      console.log(generateZshCompletion())
+      break
+    case 'fish':
+      console.log(generateFishCompletion())
+      break
+    default:
+      console.error(`Unsupported shell: ${shellName}. Supported: bash, zsh, fish`)
+      process.exit(1)
+  }
+}
+
+/**
+ * Generate bash completion script
+ */
+function generateBashCompletion() {
+  return `#!/bin/bash
+
+_llmctrlx_completions() {
+  local cur prev opts cmds
+  COMPREPLY=()
+  cur="\${COMP_WORDS[COMP_CWORD]}"
+  prev="\${COMP_WORDS[COMP_CWORD-1]}"
+  cmd="\${COMP_WORDS[1]}"
+
+  # Main commands
+  cmds="chat model embed bench run tools history completion version"
+
+  # Global options
+  global_opts="-h --host -m --model -u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags --json --stream --all --list"
+
+  case \${cmd} in
+    chat)
+      opts="-u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags --json --stream"
+      ;;
+    model)
+      opts="--list --show --pull --delete -m --model"
+      ;;
+    embed)
+      opts="-f --files -m --model -P --provider -K --api_key --json"
+      ;;
+    bench)
+      opts="-m --model -u --user -s --system -t --temperature -p --top_p -P --provider -K --api_key --json"
+      ;;
+    run)
+      opts="-u --user -s --system -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key --json"
+      ;;
+    tools)
+      opts="--list --show --pull --delete"
+      ;;
+    history)
+      opts="--show --list --all -k --session"
+      ;;
+    completion)
+      opts="--shell"
+      ;;
+    *)
+      COMPREPLY=( \$(compgen -W "\${cmds}" -- \${cur}) )
+      return 0
+      ;;
+  esac
+
+  # Handle option values
+  case \${prev} in
+    -P|--provider)
+      COMPREPLY=( \$(compgen -W "ollama lmstudio" -- \${cur}) )
+      return 0
+      ;;
+    -f|--files)
+      COMPREPLY=( \$(compgen -f -- \${cur}) )
+      return 0
+      ;;
+    --shell)
+      COMPREPLY=( \$(compgen -W "bash zsh fish" -- \${cur}) )
+      return 0
+      ;;
+  esac
+
+  # Complete options
+  COMPREPLY=( \$(compgen -W "\${opts} \${global_opts}" -- \${cur}) )
+  return 0
+}
+
+complete -F _llmctrlx_completions llmctrlx`
+}
+
+/**
+ * Generate zsh completion script
+ */
+function generateZshCompletion() {
+  return `#compdef llmctrlx
+
+_llmctrlx() {
+  local -a commands options
+  
+  commands=(
+    'chat:Run chat session'
+    'model:Manage models'
+    'embed:Generate embeddings'
+    'bench:Benchmark models'
+    'run:Execute command + analyze'
+    'tools:Manage tools'
+    'history:Show chat history'
+    'completion:Generate shell completion script'
+    'version:Show version'
+  )
+
+  _arguments -C \\
+    '1: :->command' \\
+    '*:: :->args'
+
+  case \$state in
+    command)
+      _describe -t commands 'llmctrlx command' commands
+      ;;
+    args)
+      case \$words[2] in
+        chat)
+          _arguments \\
+            '-u[user message]:message:' \\
+            '-s[system message]:message:' \\
+            '-f[files]:file:_files' \\
+            '-k[session]:session:' \\
+            '-t[temperature]:temperature:' \\
+            '-p[top_p]:top_p:' \\
+            '-P[provider]:provider:(ollama lmstudio)' \\
+            '-T[tools_dir]:directory:_directories' \\
+            '-W[no_tools]' \\
+            '-K[api_key]:api_key:' \\
+            '-g[tags]:tags:' \\
+            '--json' \\
+            '--stream'
+          ;;
+        model)
+          _arguments \\
+            '--list' \\
+            '--show' \\
+            '--pull' \\
+            '--delete' \\
+            '-m[model]:model:'
+          ;;
+        embed)
+          _arguments \\
+            '-f[files]:file:_files' \\
+            '-m[model]:model:' \\
+            '-P[provider]:provider:(ollama lmstudio)' \\
+            '-K[api_key]:api_key:' \\
+            '--json'
+          ;;
+        bench)
+          _arguments \\
+            '-m[model]:model:' \\
+            '-u[user message]:message:' \\
+            '-s[system message]:message:' \\
+            '-t[temperature]:temperature:' \\
+            '-p[top_p]:top_p:' \\
+            '-P[provider]:provider:(ollama lmstudio)' \\
+            '-K[api_key]:api_key:' \\
+            '--json'
+          ;;
+        run)
+          _arguments \\
+            '-u[user message]:message:' \\
+            '-s[system message]:message:' \\
+            '-t[temperature]:temperature:' \\
+            '-p[top_p]:top_p:' \\
+            '-P[provider]:provider:(ollama lmstudio)' \\
+            '-T[tools_dir]:directory:_directories' \\
+            '-W[no_tools]' \\
+            '-K[api_key]:api_key:' \\
+            '--json'
+          ;;
+        tools)
+          _arguments \\
+            '--list' \\
+            '--show' \\
+            '--pull' \\
+            '--delete'
+          ;;
+        history)
+          _arguments \\
+            '--show' \\
+            '--list' \\
+            '--all' \\
+            '-k[session]:session:'
+          ;;
+        completion)
+          _arguments \\
+            '--shell:shell:(bash zsh fish)'
+          ;;
+      esac
+      ;;
+  esac
+}
+
+_llmctrlx`
+}
+
+/**
+ * Generate fish completion script
+ */
+function generateFishCompletion() {
+  return `# Fish completion for llmctrlx
+
+# Commands
+complete -c llmctrlx -n '__fish_use_subcommand' -a 'chat' -d 'Run chat session'
+complete -c llmctrlx -n '__fish_use_subcommand' -a 'model' -d 'Manage models'
+complete -c llmctrlx -n '__fish_use_subcommand' -a 'embed' -d 'Generate embeddings'
+complete -c llmctrlx -n '__fish_use_subcommand' -a 'bench' -d 'Benchmark models'
+complete -c llmctrlx -n '__fish_use_subcommand' -a 'run' -d 'Execute command + analyze'
+complete -c llmctrlx -n '__fish_use_subcommand' -a 'tools' -d 'Manage tools'
+complete -c llmctrlx -n '__fish_use_subcommand' -a 'history' -d 'Show chat history'
+complete -c llmctrlx -n '__fish_use_subcommand' -a 'completion' -d 'Generate shell completion script'
+complete -c llmctrlx -n '__fish_use_subcommand' -a 'version' -d 'Show version'
+
+# Global options
+complete -c llmctrlx -s h -l host -d 'Host' -x
+complete -c llmctrlx -s m -l model -d 'Model' -x
+complete -c llmctrlx -s u -l user -d 'User message' -x
+complete -c llmctrlx -s s -l system -d 'System message' -x
+complete -c llmctrlx -s f -l files -d 'Files' -F
+complete -c llmctrlx -s k -l session -d 'Session' -x
+complete -c llmctrlx -s t -l temperature -d 'Temperature' -x
+complete -c llmctrlx -s p -l top_p -d 'Top P' -x
+complete -c llmctrlx -s P -l provider -d 'Provider' -a 'ollama lmstudio' -x
+complete -c llmctrlx -s T -l tools_dir -d 'Tools directory' -F
+complete -c llmctrlx -s W -l no_tools -d 'No tools'
+complete -c llmctrlx -s K -l api_key -d 'API key' -x
+complete -c llmctrlx -s g -l tags -d 'Tags' -x
+complete -c llmctrlx -l json -d 'JSON output'
+complete -c llmctrlx -l stream -d 'Stream output'
+complete -c llmctrlx -l all -d 'All'
+complete -c llmctrlx -l list -d 'List'
+
+# Chat command options
+complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s u -l user -d 'User message' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s s -l system -d 'System message' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s f -l files -d 'Files' -F
+complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s k -l session -d 'Session' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s t -l temperature -d 'Temperature' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s p -l top_p -d 'Top P' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s P -l provider -d 'Provider' -a 'ollama lmstudio' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s T -l tools_dir -d 'Tools directory' -F
+complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s W -l no_tools -d 'No tools'
+complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s K -l api_key -d 'API key' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s g -l tags -d 'Tags' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -l json -d 'JSON output'
+complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -l stream -d 'Stream output'
+
+# Model command options
+complete -c llmctrlx -n '__fish_seen_subcommand_from model' -l list -d 'List models'
+complete -c llmctrlx -n '__fish_seen_subcommand_from model' -l show -d 'Show model'
+complete -c llmctrlx -n '__fish_seen_subcommand_from model' -l pull -d 'Pull model'
+complete -c llmctrlx -n '__fish_seen_subcommand_from model' -l delete -d 'Delete model'
+complete -c llmctrlx -n '__fish_seen_subcommand_from model' -s m -l model -d 'Model name' -x
+
+# Embed command options
+complete -c llmctrlx -n '__fish_seen_subcommand_from embed' -s f -l files -d 'Files' -F
+complete -c llmctrlx -n '__fish_seen_subcommand_from embed' -s m -l model -d 'Model' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from embed' -s P -l provider -d 'Provider' -a 'ollama lmstudio' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from embed' -s K -l api_key -d 'API key' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from embed' -l json -d 'JSON output'
+
+# Bench command options
+complete -c llmctrlx -n '__fish_seen_subcommand_from bench' -s m -l model -d 'Model' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from bench' -s u -l user -d 'User message' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from bench' -s s -l system -d 'System message' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from bench' -s t -l temperature -d 'Temperature' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from bench' -s p -l top_p -d 'Top P' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from bench' -s P -l provider -d 'Provider' -a 'ollama lmstudio' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from bench' -s K -l api_key -d 'API key' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from bench' -l json -d 'JSON output'
+
+# Run command options
+complete -c llmctrlx -n '__fish_seen_subcommand_from run' -s u -l user -d 'User message' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from run' -s s -l system -d 'System message' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from run' -s t -l temperature -d 'Temperature' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from run' -s p -l top_p -d 'Top P' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from run' -s P -l provider -d 'Provider' -a 'ollama lmstudio' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from run' -s T -l tools_dir -d 'Tools directory' -F
+complete -c llmctrlx -n '__fish_seen_subcommand_from run' -s W -l no_tools -d 'No tools'
+complete -c llmctrlx -n '__fish_seen_subcommand_from run' -s K -l api_key -d 'API key' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from run' -l json -d 'JSON output'
+
+# Tools command options
+complete -c llmctrlx -n '__fish_seen_subcommand_from tools' -l list -d 'List tools'
+complete -c llmctrlx -n '__fish_seen_subcommand_from tools' -l show -d 'Show tool'
+complete -c llmctrlx -n '__fish_seen_subcommand_from tools' -l pull -d 'Pull tool'
+complete -c llmctrlx -n '__fish_seen_subcommand_from tools' -l delete -d 'Delete tool'
+
+# History command options
+complete -c llmctrlx -n '__fish_seen_subcommand_from history' -l show -d 'Show history'
+complete -c llmctrlx -n '__fish_seen_subcommand_from history' -l list -d 'List history'
+complete -c llmctrlx -n '__fish_seen_subcommand_from history' -l all -d 'All history'
+complete -c llmctrlx -n '__fish_seen_subcommand_from history' -s k -l session -d 'Session' -x
+
+# Completion command options
+complete -c llmctrlx -n '__fish_seen_subcommand_from completion' -l shell -d 'Shell type' -a 'bash zsh fish' -x`
 }
 
 main()

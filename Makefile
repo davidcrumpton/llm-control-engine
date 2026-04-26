@@ -39,7 +39,9 @@ lint-fix: ## Lint and auto-fix
 	npm run lint:fix
 
 format: ## Format all TypeScript files
+	npx prettier --write "src/**/*.ts" "tests/**/*.ts"
 	npm run format
+	
 
 typecheck: ## Run TypeScript type checker
 	npm run typecheck
