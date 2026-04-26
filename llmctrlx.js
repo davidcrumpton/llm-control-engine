@@ -21,7 +21,7 @@ const __dirname = dirname(__filename)
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.4.10'
+const APP_VERSION = '0.4.15'
 const DEFAULT_HOST = process.env.LLMCTRLX_HOST || 'http://127.0.0.1:11434'
 const DEFAULT_MODEL = process.env.LLMCTRLX_MODEL || 'gemma4:e4b'
 const DEFAULT_HISTORY = process.env.LLMCTRLX_HISTORY || path.join(os.homedir(), '.llmctrlx_history.json')
@@ -38,7 +38,7 @@ const DEFAULT_TOOLS_DIR = process.env.LLMCTRLX_TOOLS_DIR || join(__dirname, 'too
 // --------------------
 // Plugins Directory
 // --------------------
-const DEFAULT_PLUGINS_DIR = process.env.LLMCTRLX_PLUGINS_DIR || join(__dirname, 'src/plugins')
+const DEFAULT_PLUGINS_DIR = process.env.LLMCTRLX_PLUGINS_DIR || path.join(os.homedir(), '.llmctrlx_plugins')
  
 // --------------------
 // CLI parsing
@@ -89,6 +89,7 @@ async function main() {
   // Convert to file:// URLs for proper module resolution across platforms
   const providersPath = pathToFileURL(join(__dirname, 'src/providers/index.js')).href
   const cliPath = pathToFileURL(join(__dirname, 'src/cli/index.js')).href
+  const pluginsPath = pathToFileURL(join(__dirname, 'dist/plugins/index.js')).href
 
   const { OllamaProvider, LMStudioProvider } = await import(providersPath)
   const {
@@ -101,6 +102,7 @@ async function main() {
     cmdHistory,
     cmdPlugins
   } = await import(cliPath)
+  const { HookManager, PluginLoader, EngineHookIntegration } = await import(pluginsPath)
 
   // Initialize LLM provider
   let llm
@@ -110,6 +112,12 @@ async function main() {
   } else {
     llm = new OllamaProvider({ host: options.host, apiKey: options.api_key })
   }
+
+  // Initialize plugin system
+  const hookManager = new HookManager(console)
+  const pluginLoader = new PluginLoader(hookManager, console)
+  await pluginLoader.loadFromDirectory(DEFAULT_PLUGINS_DIR)
+  const engineHooks = new EngineHookIntegration(hookManager)
 
   switch (command) {
     case 'chat':
@@ -125,7 +133,7 @@ async function main() {
       await cmdBench(llm, options)
       break
     case 'run':
-      await cmdRun(llm, options)
+      await cmdRun(llm, options, engineHooks)
       break
     case 'tools':
       await cmdTools(options, toolsDir)

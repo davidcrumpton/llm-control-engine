@@ -23,8 +23,10 @@ const DEFAULT_CONFIG: GuardConfig = {
     /system\s*prompt/i,
     /\bDAN\b/,
     /do\s+anything\s+now/i,
+    /\b(sudo|doas|su)\b/i,
+    /chmod\s+.*[0-7]{3,4}/i,
   ],
-  blockMessage: 'Request blocked by prompt-guard: potential prompt injection detected.',
+  blockMessage: 'Request blocked by prompt-guard: potential security risk detected.',
 };
 
 // ---------------------------------------------------------------------------
