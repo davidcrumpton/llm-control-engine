@@ -16,9 +16,9 @@ The LLM Control Engine currently supports **two plugin architectures**:
 
 2. **Unified Plugin Specification (Experimental)**  
    - A newer, declarative plugin format  
-   - Not yet fully integrated into the engine  
-   - Not used by example plugins  
-   - Intended future direction, but **not ready for production**
+   - **Now supported** by the PluginLoader with automatic conversion  
+   - Not yet used by example plugins  
+   - Intended future direction, but **functional for experimentation**
 
 Both formats work, but the **legacy hook‑based format is the authoritative one today**.
 
@@ -211,8 +211,8 @@ export default {
 - JSON‑schema parameters  
 - Single `run()` entry point  
 - Intended to unify tools, policies, providers, and hooks  
-- Not yet used by example plugins  
-- Not yet fully supported by the loader  
+- **Now automatically converted to legacy format**  
+- **Functional for experimentation**  
 
 ### When to use it
 
@@ -340,10 +340,9 @@ parameters: {
 
 ---
 
-### Step 6 — Update plugin loader (future work)
+### Step 6 — Update plugin loader (completed)
 
-The current loader only supports legacy plugins.  
-Unified plugin support is planned but incomplete.
+The current loader **now supports unified plugins** with automatic conversion to legacy format.
 
 ---
 
@@ -355,7 +354,7 @@ Unified plugin support is planned but incomplete.
 
 ### If you want to experiment with the future  
 
-➡️ Try the unified format, but expect breaking changes.
+➡️ Try the **unified format** — it now works!
 
 ### If you maintain the repository
 

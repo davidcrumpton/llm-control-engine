@@ -130,9 +130,8 @@ export class EngineHookIntegration {
 
   async filterResponse(
     requestId: string,
-    content: string,
+    payload: ResponsePayload,
   ): Promise<ResponsePayload> {
-    const payload: ResponsePayload = { content, filtered: false };
     const result = await this.hooks.waterfall(
       "response:filter",
       this.ctx("response:filter", payload, requestId),

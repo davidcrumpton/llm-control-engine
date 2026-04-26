@@ -14,10 +14,19 @@ import { createPluginRegistry, runWithTools, runWithoutTools } from '../core/too
  * @param {string} defaultHistoryFile - Default history file path
  * @param {string} toolsDir - Default tools directory
  * @param {number} maxUploadFileSize - Maximum file upload size
+ * @param {Object} engineHooks - Engine hooks integration
  */
-export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUploadFileSize) {
+export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUploadFileSize, engineHooks) {
   const historyData = loadHistory(defaultHistoryFile)
   const session = getSession(historyData, options.session)
+
+  // Helper function to filter response through plugins
+  async function filterResponse(content) {
+    if (!engineHooks) return content;
+    const payload = { content, filtered: false, requestMeta: { flags: options } };
+    const filtered = await engineHooks.filterResponse('chat', payload);
+    return filtered.content;
+  }
 
   const messages = []
 
@@ -108,8 +117,10 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
       full += chunk.message.content
     }
 
+    const filtered = await filterResponse(full);
+
     session.messages.push({ role: 'user', content: userContent })
-    session.messages.push({ role: 'assistant', content: full })
+    session.messages.push({ role: 'assistant', content: filtered })
   } else {
     if (!options.no_tools) {
       const requestedTags = options.tags ? options.tags.split(',').map(t => t.trim()) : null
@@ -132,16 +143,18 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
 
       const policyPlugins = registry.list('policy')
       const res = await runWithTools(llm, options.model, messages, tools, policyPlugins)
-      console.log(res)
+      const filtered = await filterResponse(res);
+      console.log(filtered)
 
       session.messages.push({ role: 'user', content: userContent })
-      session.messages.push({ role: 'assistant', content: res })
+      session.messages.push({ role: 'assistant', content: filtered })
     } else {
       const res = await runWithoutTools(llm, options.model, messages)
-      console.log(res)
+      const filtered = await filterResponse(res);
+      console.log(filtered)
 
       session.messages.push({ role: 'user', content: userContent })
-      session.messages.push({ role: 'assistant', content: res })
+      session.messages.push({ role: 'assistant', content: filtered })
     }
   }
 

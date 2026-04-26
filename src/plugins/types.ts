@@ -120,3 +120,45 @@ export type TapFunction = <T = unknown>(
   handler: HookHandler<T>,
   priority?: HookPriority,
 ) => void;
+
+// ---------------------------------------------------------------------------
+// Unified Plugin Interface (Experimental)
+// ---------------------------------------------------------------------------
+
+export interface UnifiedPluginMeta {
+  name: string;
+  version: string;
+  description: string;
+  tags?: string[];
+  type?: "tool" | "policy" | "provider" | "hook";
+}
+
+export interface UnifiedPluginResult {
+  outcome?: "modified" | "blocked" | "unchanged";
+  data?: unknown;
+  reason?: string;
+}
+
+export interface UnifiedPluginRunArgs {
+  event: HookEvent;
+  data: unknown;
+  parameters: Record<string, unknown>;
+  meta: Readonly<HookMeta>;
+}
+
+/**
+ * Unified plugin interface — experimental, not yet fully supported.
+ */
+export interface UnifiedPlugin {
+  readonly name: string;
+  readonly version: string;
+  readonly description: string;
+  readonly tags?: string[];
+  readonly type?: "tool" | "policy" | "provider" | "hook";
+  readonly parameters?: Record<string, unknown>;
+
+  /**
+   * Single execution entry point for all events.
+   */
+  run(args: UnifiedPluginRunArgs): Promise<UnifiedPluginResult | void>;
+}

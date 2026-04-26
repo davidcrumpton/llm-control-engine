@@ -6,9 +6,14 @@
  * their exports, and registers them with the HookManager.
  */
 
-import { readdir } from "node:fs/promises";
+import { readdir, stat } from "node:fs/promises";
 import { join, extname } from "node:path";
-import { HookPlugin } from "./types.js";
+import {
+  HookPlugin,
+  UnifiedPlugin,
+  HOOK_EVENTS,
+  HookPriority,
+} from "./types.js";
 import { HookManager, HookLogger } from "./hook-manager.js";
 
 // ---------------------------------------------------------------------------
@@ -29,6 +34,63 @@ function isValidPlugin(obj: unknown): obj is HookPlugin {
     typeof meta.description === "string" &&
     typeof candidate.install === "function"
   );
+}
+
+function isUnifiedPlugin(obj: unknown): obj is UnifiedPlugin {
+  if (typeof obj !== "object" || obj === null) return false;
+  const candidate = obj as Record<string, unknown>;
+
+  return (
+    typeof candidate.name === "string" &&
+    typeof candidate.version === "string" &&
+    typeof candidate.description === "string" &&
+    typeof candidate.run === "function"
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Conversion
+// ---------------------------------------------------------------------------
+
+function convertUnifiedToLegacy(unified: UnifiedPlugin): HookPlugin {
+  return {
+    meta: {
+      name: unified.name,
+      version: unified.version,
+      description: unified.description,
+    },
+    install: async (tap) => {
+      // For unified plugins, tap into all possible events and delegate to run()
+      for (const event of HOOK_EVENTS) {
+        tap(
+          event,
+          async (ctx) => {
+            const result = await unified.run({
+              event: ctx.meta.event,
+              data: ctx.data,
+              parameters: unified.parameters || {},
+              meta: ctx.meta,
+            });
+
+            if (!result || result.outcome === "unchanged") {
+              return {};
+            }
+
+            if (result.outcome === "modified") {
+              return { data: result.data };
+            }
+
+            if (result.outcome === "blocked") {
+              return { bail: true, reason: result.reason };
+            }
+
+            return {};
+          },
+          HookPriority.NORMAL,
+        );
+      }
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -80,6 +142,7 @@ export class PluginLoader {
       return loaded;
     }
 
+    // First, load plugin files in the root directory
     const pluginFiles = entries.filter((f) => {
       const ext = extname(f);
       const base = f.slice(0, -ext.length);
@@ -89,14 +152,28 @@ export class PluginLoader {
       );
     });
 
-    this.logger.info(
-      `[PluginLoader] Found ${pluginFiles.length} plugin file(s) in ${directory}`,
-    );
-
     for (const file of pluginFiles) {
       const name = await this.loadPlugin(join(directory, file));
       if (name) loaded.push(name);
     }
+
+    // Then, recursively scan subdirectories
+    for (const entry of entries) {
+      const fullPath = join(directory, entry);
+      try {
+        const entryStat = await stat(fullPath);
+        if (entryStat.isDirectory()) {
+          const subLoaded = await this.loadFromDirectory(fullPath);
+          loaded.push(...subLoaded);
+        }
+      } catch {
+        // Skip entries that can't be stat'ed
+      }
+    }
+
+    this.logger.info(
+      `[PluginLoader] Found ${loaded.length} plugin(s) in ${directory}`,
+    );
 
     return loaded;
   }
@@ -106,19 +183,28 @@ export class PluginLoader {
       const mod = await import(filePath);
       const plugin: unknown = mod.default ?? mod.plugin ?? mod;
 
-      if (!isValidPlugin(plugin)) {
+      let hookPlugin: HookPlugin;
+
+      if (isValidPlugin(plugin)) {
+        hookPlugin = plugin;
+      } else if (isUnifiedPlugin(plugin)) {
+        this.logger.info(
+          `[PluginLoader] Converting unified plugin: ${plugin.name} from ${filePath}`,
+        );
+        hookPlugin = convertUnifiedToLegacy(plugin);
+      } else {
         this.logger.warn(
           `[PluginLoader] Invalid plugin export in ${filePath}. ` +
-            `Expected { meta: { name, version, description }, install() }.`,
+            `Expected legacy { meta: {...}, install() } or unified { name, version, description, run() }.`,
         );
         return null;
       }
 
-      await this.manager.register(plugin);
+      await this.manager.register(hookPlugin);
       this.logger.info(
-        `[PluginLoader] Loaded: ${plugin.meta.name} from ${filePath}`,
+        `[PluginLoader] Loaded: ${hookPlugin.meta.name} from ${filePath}`,
       );
-      return plugin.meta.name;
+      return hookPlugin.meta.name;
     } catch (err) {
       this.logger.error(`[PluginLoader] Failed to load ${filePath}:`, err);
       return null;
