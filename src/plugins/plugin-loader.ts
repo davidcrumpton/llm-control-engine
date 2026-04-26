@@ -180,8 +180,37 @@ export class PluginLoader {
 
   async loadPlugin(filePath: string): Promise<string | null> {
     try {
-      const mod = await import(filePath);
+      // Preprocess the plugin file to replace llmctrlx imports with file URLs
+      const pluginApiUrl = await import.meta
+        .resolve("llmctrlx/plugin-api/hooks");
+      const fs = await import("node:fs/promises");
+      const path = await import("node:path");
+      let content = await fs.readFile(filePath, "utf8");
+      content = content.replace(
+        /from ['"]llmctrlx\/plugin-api\/hooks['"]/g,
+        `from '${pluginApiUrl}'`,
+      );
+
+      // Also resolve relative imports
+      const pluginDir = path.dirname(filePath);
+      content = content.replace(
+        /from ['"](\.\/[^'"]*)['"]/g,
+        (match, relativePath) => {
+          const absolutePath = path.resolve(pluginDir, relativePath);
+          return `from 'file://${absolutePath}'`;
+        },
+      );
+
+      // Write to a temp file and import that
+      const tempDir = await import("node:os");
+      const tempPath = `${tempDir.tmpdir()}/llmctrlx-plugin-${Date.now()}-${Math.random()}.js`;
+      await fs.writeFile(tempPath, content);
+
+      const mod = await import(tempPath);
       const plugin: unknown = mod.default ?? mod.plugin ?? mod;
+
+      // Clean up temp file
+      await fs.unlink(tempPath);
 
       let hookPlugin: HookPlugin;
 
