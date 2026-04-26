@@ -6,27 +6,7 @@
  * understanding the hook execution flow.
  */
 
-// Hook events
-const HOOK_EVENTS = [
-  "engine:init",
-  "engine:shutdown",
-  "prompt:pre-process",
-  "prompt:post-process",
-  "inference:pre",
-  "inference:post",
-  "response:filter",
-  "response:complete",
-  "engine:error",
-];
-
-// Hook Priority levels
-const HookPriority = {
-  SYSTEM: 0,
-  HIGH: 100,
-  NORMAL: 500,
-  LOW: 900,
-  MONITOR: 1000,
-};
+import { HOOK_EVENTS, HookPriority } from 'llmctrlx/plugin-api/hooks';
 
 const loggerPlugin = {
   meta: {

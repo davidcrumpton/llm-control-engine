@@ -105,23 +105,44 @@ Handlers may return:
 - `{ data }` — modify event payload  
 - `{ bail: true, reason }` — stop the pipeline early  
 
+### Plugin Imports
+
+Plugins should import constants and types from the stable plugin API:
+
+```js
+import { HookPriority, HOOK_EVENTS } from 'llmctrlx/plugin-api/hooks';
+```
+
+This ensures plugins work regardless of their installation location.
+
 ### Hook Priorities
 
 ```js
-const HookPriority = {
-  SYSTEM: 0,
-  HIGH: 100,
-  NORMAL: 500,
-  LOW: 900,
-  MONITOR: 1000,
-};
+// Import instead of defining locally
+import { HookPriority } from 'llmctrlx/plugin-api/hooks';
+
+// HookPriority.SYSTEM  // 0 - Reserved for engine internals
+// HookPriority.HIGH    // 100 - High-priority plugins (security, auth)
+// HookPriority.NORMAL  // 500 - Default priority
+// HookPriority.LOW     // 900 - Low-priority plugins (analytics, logging)
+// HookPriority.MONITOR // 1000 - Monitor-only, runs last
 ```
 
-Higher priority runs earlier.
+### Plugin Portability
+
+Plugins using the stable import paths (`llmctrlx/plugin-api/*`) are **location-independent** and can be installed anywhere:
+
+- ✅ Works in repository development (`./plugins/`)
+- ✅ Works in user plugin directories (`~/.llmctrlx_plugins/`)
+- ✅ Works when distributed as separate packages
+
+**Avoid relative imports** like `../src/plugins/hooks.js` as they break when plugins are moved outside the repository.
 
 ### Example: Prompt Guard Plugin
 
 ```js
+import { HookPriority } from 'llmctrlx/plugin-api/hooks';
+
 const DEFAULT_CONFIG = {
   denyPatterns: [
     /ignore\s+(all\s+)?(previous\s+)?instructions/i,

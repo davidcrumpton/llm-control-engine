@@ -36,6 +36,12 @@
         "types": "./dist/plugins/index.d.ts",
         "default": "./dist/plugins/index.js"
       }
+    },
+    "./plugin-api/*": {
+      "import": {
+        "types": "./dist/plugin-api/*.d.ts",
+        "default": "./dist/plugin-api/*.js"
+      }
     }
   },
   "bin": {

@@ -1,5 +1,5 @@
 // plugins/output-formatter/output-formatter.plugin.js
-import { HookPriority } from '../src/plugins/hooks.js';
+import { HookPriority } from 'llmctrlx/plugin-api/hooks';
 import { detectFormat, applyFormat } from './utils.js';
 
 export default {
