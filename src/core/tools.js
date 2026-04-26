@@ -4,8 +4,16 @@
  */
 
 import path from 'path'
-import { readdirSync } from 'node:fs'
-import { extractJSON, validateArgs, validateTool } from './utils.js'
+import os from 'os'
+import { fileURLToPath } from 'url'
+import { extractJSON, validateArgs } from './utils.js'
+import { Registry } from './registry.js'
+import { loadPluginsFromDir } from './loader.js'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const BUILTIN_PLUGINS_DIR = path.resolve(__dirname, '../plugins')
+const PROJECT_PLUGINS_DIR = path.resolve(process.cwd(), 'plugins')
+const GLOBAL_PLUGINS_DIR = path.resolve(os.homedir(), '.llmctrlx/plugins')
 
 /**
  * Execute a tool with given arguments
@@ -35,11 +43,25 @@ export async function executeTool(tool, args) {
  * @returns {Promise<string>} - LLM response
  */
 export async function runWithoutTools(llm, model, messages) {
-  // should inject a system prompt that tells the model to tell the user that tools are not available
   const systemPrompt = 'You do not have access to any tools. Notify user that tools are not available. If user asks'
   messages.unshift({ role: 'system', content: systemPrompt })
   const res = await llm.chat({ model, messages })
   return res.message.content
+}
+
+async function applyPolicyPlugins(tool, args, policies = [], ctx = {}) {
+  for (const policy of policies) {
+    if (typeof policy.onBeforeToolRun !== 'function') {
+      continue
+    }
+
+    const result = await policy.onBeforeToolRun({ tool, args, ctx })
+    if (result && result.allow === false) {
+      return result
+    }
+  }
+
+  return null
 }
 
 /**
@@ -48,16 +70,16 @@ export async function runWithoutTools(llm, model, messages) {
  * @param {string} model - Model name to use
  * @param {Array} messages - Message history
  * @param {Array} tools - Available tools
+ * @param {Array} policies - Available policy plugins
  * @returns {Promise<string>} - Final LLM response after tool execution
  */
-export async function runWithTools(llm, model, messages, tools) {
+export async function runWithTools(llm, model, messages, tools, policies = []) {
   const toolHistory = []
   let loopCount = 0
   const MAX_LOOPS = 15
 
   while (true) {
     const res = await llm.chat({ model, messages })
-
     const content = res.message.content
 
     try {
@@ -80,6 +102,20 @@ export async function runWithTools(llm, model, messages, tools) {
           messages.push({
             role: 'assistant',
             content: `Error: ${err.message}`
+          })
+          continue
+        }
+
+        const policyResult = await applyPolicyPlugins(tool, parsed.arguments || {}, policies, {
+          tools,
+          messages,
+          model
+        })
+
+        if (policyResult) {
+          messages.push({
+            role: 'assistant',
+            content: `System Error: Policy violation. ${policyResult.message}`
           })
           continue
         }
@@ -153,40 +189,42 @@ export async function runWithTools(llm, model, messages, tools) {
 }
 
 /**
- * Load tools from a directory
- * @param {string} toolsDir - Directory containing tool files
+ * Create a plugin registry and load plugins from built-in, project, legacy, and global locations.
+ * @param {string} toolsDir - Primary tools directory or legacy tools path
+ * @returns {Promise<Registry>} - Plugin registry with loaded tools and policies
+ */
+export async function createPluginRegistry(toolsDir) {
+  const registry = new Registry()
+  const ctx = { toolsDir, projectDir: process.cwd() }
+
+  await loadPluginsFromDir(BUILTIN_PLUGINS_DIR, registry, ctx)
+  await loadPluginsFromDir(PROJECT_PLUGINS_DIR, registry, ctx)
+  if (toolsDir) {
+    await loadPluginsFromDir(toolsDir, registry, ctx)
+  }
+  await loadPluginsFromDir(GLOBAL_PLUGINS_DIR, registry, ctx)
+
+  return registry
+}
+
+/**
+ * Load tools from a directory using the plugin registry.
+ * @param {string} toolsDir - Directory containing tool files / plugin folders
  * @param {Array<string>|null} requestedTags - Optional tags to filter tools
- * @returns {Promise<Array>} - Array of loaded and validated tools
+ * @returns {Promise<Array>} - Array of loaded tool plugins
  */
 export async function loadTools(toolsDir, requestedTags = null) {
-  const files = readdirSync(toolsDir).filter(f => f.endsWith('.js'))
+  const registry = await createPluginRegistry(toolsDir)
+  let tools = registry.list('tool')
 
-  const toolMap = new Map()
-
-  for (const file of files) {
-    const fullPath = path.resolve(toolsDir, file)
-
-    try {
-      const mod = await import(fullPath)
-      const tool = validateTool(mod.default, fullPath)
-
-      if (requestedTags) {
-        const toolTags = tool.tags || []
-        const hasAlways = toolTags.includes('always')
-        const hasMatch = requestedTags.some(tag => toolTags.includes(tag))
-        if (!hasAlways && !hasMatch) {
-          continue
-        }
-      }
-
-      // last one wins (allows overrides)
-      toolMap.set(tool.name, tool)
-
-    } catch (err) {
-      console.error(`Skipping tool: ${file}`)
-      console.error(`  → ${err.message}`)
-    }
+  if (requestedTags) {
+    tools = tools.filter(tool => {
+      const toolTags = tool.tags || []
+      const hasAlways = toolTags.includes('always')
+      const hasMatch = requestedTags.some(tag => toolTags.includes(tag))
+      return hasAlways || hasMatch
+    })
   }
 
-  return Array.from(toolMap.values())
+  return tools
 }

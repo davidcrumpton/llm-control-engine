@@ -1,67 +1,141 @@
 /// tests/core/tool-loader.test.ts
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { vol } from "memfs";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+// @ts-ignore
+import { Registry } from "@/core/registry.js";
+// @ts-ignore
+import { loadPluginsFromDir } from "@/core/loader.js";
+// @ts-ignore
+import { validateTool } from "@/core/utils.js";
 
-// TODO: Update import path to match your actual tool loader module
-// import { ToolLoader } from '@/core/tool-loader';
+function createTempDirectory(): string {
+  return fs.mkdtempSync(path.join(os.tmpdir(), "llmctrlx-tool-loader-"));
+}
 
-vi.mock("node:fs");
-vi.mock("node:fs/promises");
+function writePluginFile(
+  baseDir: string,
+  filename: string,
+  content: string,
+): string {
+  const filePath = path.join(baseDir, filename);
+  fs.writeFileSync(filePath, content, "utf8");
+  return filePath;
+}
 
-describe("ToolLoader", () => {
+describe("Tool loader", () => {
+  let tempDir: string;
+
   beforeEach(() => {
-    vol.reset();
+    tempDir = createTempDirectory();
   });
 
-  describe("discovery", () => {
-    it("should discover tool files in the configured directory", async () => {
-      vol.fromJSON({
-        "/tools/search.ts": 'export default { name: "search" }',
-        "/tools/calculator.ts": 'export default { name: "calculator" }',
-        "/tools/README.md": "# Tools directory",
-      });
+  it("should discover tool files in the configured directory", async () => {
+    writePluginFile(
+      tempDir,
+      "search.js",
+      `export default {
+        type: 'tool',
+        name: 'search',
+        description: 'Search tool',
+        version: 'v1.0.0',
+        parameters: { type: 'object', properties: {} },
+        run: async () => 'search result'
+      }`,
+    );
 
-      // const loader = new ToolLoader({ directory: '/tools' });
-      // const discovered = await loader.discover();
-      // expect(discovered).toHaveLength(2);
-      // expect(discovered.map(t => t.name)).toEqual(
-      //   expect.arrayContaining(['search', 'calculator'])
-      // );
+    writePluginFile(
+      tempDir,
+      "calculator.js",
+      `export default {
+        type: 'tool',
+        name: 'calculator',
+        description: 'Calculator tool',
+        version: 'v1.0.0',
+        parameters: { type: 'object', properties: {} },
+        run: async () => '42'
+      }`,
+    );
 
-      const files = vol.readdirSync("/tools");
-      expect(files).toHaveLength(3);
-    });
+    fs.writeFileSync(
+      path.join(tempDir, "README.md"),
+      "# Tools directory",
+      "utf8",
+    );
 
-    it("should ignore non-TypeScript files", async () => {
-      vol.fromJSON({
-        "/tools/valid-tool.ts": "export default {}",
-        "/tools/notes.txt": "some notes",
-        "/tools/data.json": "{}",
-      });
+    const registry = new Registry();
+    await loadPluginsFromDir(tempDir, registry, {});
 
-      // const loader = new ToolLoader({ directory: '/tools' });
-      // const discovered = await loader.discover();
-      // expect(discovered).toHaveLength(1);
-      expect(true).toBe(true); // placeholder
-    });
+    const loaded = registry.list("tool").map((tool: any) => tool.name);
+    expect(loaded).toEqual(expect.arrayContaining(["search", "calculator"]));
+    expect(loaded).toHaveLength(2);
+  });
 
-    it("should handle empty tools directory", async () => {
-      vol.mkdirSync("/tools", { recursive: true });
+  it("should ignore non-JavaScript files while loading valid tools", async () => {
+    writePluginFile(
+      tempDir,
+      "valid-tool.js",
+      `export default {
+        type: 'tool',
+        name: 'valid-tool',
+        description: 'Valid tool',
+        version: 'v1.0.0',
+        parameters: { type: 'object', properties: {} },
+        run: async () => 'ok'
+      }`,
+    );
 
-      // const loader = new ToolLoader({ directory: '/tools' });
-      // const discovered = await loader.discover();
-      // expect(discovered).toHaveLength(0);
+    fs.writeFileSync(path.join(tempDir, "notes.txt"), "some notes", "utf8");
+    fs.writeFileSync(path.join(tempDir, "data.json"), "{}", "utf8");
 
-      const files = vol.readdirSync("/tools");
-      expect(files).toHaveLength(0);
-    });
+    const registry = new Registry();
+    await loadPluginsFromDir(tempDir, registry, {});
 
-    it("should throw if tools directory does not exist", async () => {
-      // const loader = new ToolLoader({ directory: '/nonexistent' });
-      // await expect(loader.discover())
-      //   .rejects.toThrow(/ENOENT|not found/i);
-      expect(true).toBe(true); // placeholder
-    });
+    const tools = registry.list("tool").map((tool: any) => tool.name);
+    expect(tools).toEqual(["valid-tool"]);
+  });
+
+  it("should handle an empty tools directory", async () => {
+    const registry = new Registry();
+    await loadPluginsFromDir(tempDir, registry, {});
+
+    expect(registry.list("tool")).toHaveLength(0);
+  });
+
+  it("should gracefully handle a missing tools directory", async () => {
+    const missingDir = path.join(tempDir, "missing");
+    const registry = new Registry();
+
+    await expect(
+      loadPluginsFromDir(missingDir, registry, {}),
+    ).resolves.toBeUndefined();
+    expect(registry.list("tool")).toHaveLength(0);
+  });
+
+  it("should load nested plugin directories recursively", async () => {
+    const nestedDir = path.join(tempDir, "nested");
+    fs.mkdirSync(nestedDir, { recursive: true });
+
+    writePluginFile(
+      nestedDir,
+      "nested-tool.js",
+      `export default {
+        type: 'tool',
+        name: 'nested-tool',
+        description: 'Nested tool',
+        version: 'v1.0.0',
+        parameters: { type: 'object', properties: {} },
+        run: async () => 'nested'
+      }`,
+    );
+
+    const registry = new Registry();
+    await loadPluginsFromDir(tempDir, registry, {});
+
+    expect(registry.list("tool").map((tool: any) => tool.name)).toEqual([
+      "nested-tool",
+    ]);
   });
 
   describe("validation", () => {
@@ -69,58 +143,78 @@ describe("ToolLoader", () => {
       const validTool = {
         name: "test-tool",
         description: "A test tool",
+        version: "v1.0.0",
         parameters: { type: "object", properties: {} },
-        execute: vi.fn(),
+        run: async () => "ok",
       };
 
-      // expect(ToolLoader.validate(validTool)).toBe(true);
-      expect(validTool.name).toBeDefined();
-      expect(validTool.execute).toBeDefined();
+      expect(() => validateTool(validTool, "source")).not.toThrow();
     });
 
     it("should reject a tool missing the name field", () => {
       const invalidTool = {
         description: "Missing name",
-        execute: vi.fn(),
+        version: "v1.0.0",
+        parameters: { type: "object", properties: {} },
+        run: async () => "err",
       };
 
-      // expect(ToolLoader.validate(invalidTool)).toBe(false);
-      expect(invalidTool).not.toHaveProperty("name");
+      expect(() => validateTool(invalidTool, "source")).toThrow(/name/);
     });
 
-    it("should reject a tool missing the execute function", () => {
+    it("should reject a tool missing the run function", () => {
       const invalidTool = {
-        name: "no-execute",
-        description: "Missing execute",
+        name: "no-run",
+        description: "Missing run",
+        version: "v1.0.0",
+        parameters: { type: "object", properties: {} },
       };
 
-      // expect(ToolLoader.validate(invalidTool)).toBe(false);
-      expect(invalidTool).not.toHaveProperty("execute");
+      expect(() => validateTool(invalidTool, "source")).toThrow(/run\(\)/);
     });
   });
 
   describe("loading", () => {
     it("should dynamically import and register valid tools", async () => {
-      // Scaffold: use vi.mock to mock dynamic import()
-      // const loader = new ToolLoader({ directory: '/tools' });
-      // await loader.loadAll();
-      // expect(loader.getRegisteredTools()).toHaveLength(expectedCount);
-      expect(true).toBe(true); // placeholder
+      writePluginFile(
+        tempDir,
+        "dynamic-tool.js",
+        `export default {
+          type: 'tool',
+          name: 'dynamic-tool',
+          description: 'Dynamic tool',
+          version: 'v1.0.0',
+          parameters: { type: 'object', properties: {} },
+          run: async () => 'dynamic'
+        }`,
+      );
+
+      const registry = new Registry();
+      await loadPluginsFromDir(tempDir, registry, {});
+
+      expect(registry.has("tool", "dynamic-tool")).toBe(true);
     });
 
-    it("should skip invalid tools and log a warning", async () => {
-      const warnSpy = vi.spyOn(console, "warn");
-      // const loader = new ToolLoader({ directory: '/tools' });
-      // await loader.loadAll(); // includes invalid-tool fixture
-      // expect(warnSpy).toHaveBeenCalledWith(
-      //   expect.stringContaining('Skipping invalid tool')
-      // );
-      expect(warnSpy).toBeDefined();
-    });
+    it("should skip invalid tools and log an error", async () => {
+      writePluginFile(
+        tempDir,
+        "invalid-tool.js",
+        `export default {
+          type: 'tool',
+          name: 'invalid-tool',
+          description: 'Invalid tool'
+        }`,
+      );
 
-    it("should support hot-reload of a changed tool", async () => {
-      // Scaffold for file-watcher-based reload
-      expect(true).toBe(true); // placeholder
+      const registry = new Registry();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      await loadPluginsFromDir(tempDir, registry, {});
+
+      expect(registry.list("tool")).toHaveLength(0);
+      expect(errorSpy).toHaveBeenCalled();
+
+      errorSpy.mockRestore();
     });
   });
 });
