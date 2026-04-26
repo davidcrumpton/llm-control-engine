@@ -17,7 +17,7 @@ import {
   HookRegistration,
   HookPlugin,
   TapFunction,
-} from './types.js';
+} from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Logger interface (dependency-free)
@@ -76,13 +76,17 @@ export class HookManager {
 
     await plugin.install(tap);
     this.plugins.set(name, plugin);
-    this.logger.info(`[HookManager] Registered plugin: ${name} v${plugin.meta.version}`);
+    this.logger.info(
+      `[HookManager] Registered plugin: ${name} v${plugin.meta.version}`,
+    );
   }
 
   async unregister(name: string): Promise<void> {
     const plugin = this.plugins.get(name);
     if (!plugin) {
-      this.logger.warn(`[HookManager] Cannot unregister unknown plugin: ${name}`);
+      this.logger.warn(
+        `[HookManager] Cannot unregister unknown plugin: ${name}`,
+      );
       return;
     }
 
@@ -105,7 +109,10 @@ export class HookManager {
 
   // -- Execution modes -----------------------------------------------------
 
-  async waterfall<T>(event: HookEvent, context: HookContext<T>): Promise<HookContext<T>> {
+  async waterfall<T>(
+    event: HookEvent,
+    context: HookContext<T>,
+  ): Promise<HookContext<T>> {
     const handlers = this.getHandlers(event);
     let current = { ...context };
 
@@ -116,14 +123,20 @@ export class HookManager {
           current = { ...current, data: result.data };
         }
       } catch (err) {
-        this.logger.error(`[HookManager] Error in ${reg.id} during "${event}":`, err);
+        this.logger.error(
+          `[HookManager] Error in ${reg.id} during "${event}":`,
+          err,
+        );
       }
     }
 
     return current;
   }
 
-  async bail<T>(event: HookEvent, context: HookContext<T>): Promise<HookResult<T> | null> {
+  async bail<T>(
+    event: HookEvent,
+    context: HookContext<T>,
+  ): Promise<HookResult<T> | null> {
     const handlers = this.getHandlers(event);
 
     for (const reg of handlers) {
@@ -131,12 +144,15 @@ export class HookManager {
         const result = await (reg.handler as HookHandler<T>)(context);
         if (result?.bail) {
           this.logger.info(
-            `[HookManager] Bail triggered by ${reg.id}: ${result.reason ?? 'no reason'}`,
+            `[HookManager] Bail triggered by ${reg.id}: ${result.reason ?? "no reason"}`,
           );
           return result;
         }
       } catch (err) {
-        this.logger.error(`[HookManager] Error in ${reg.id} during "${event}":`, err);
+        this.logger.error(
+          `[HookManager] Error in ${reg.id} during "${event}":`,
+          err,
+        );
       }
     }
 
@@ -150,7 +166,10 @@ export class HookManager {
       try {
         await (reg.handler as HookHandler<T>)(context);
       } catch (err) {
-        this.logger.error(`[HookManager] Error in ${reg.id} during "${event}":`, err);
+        this.logger.error(
+          `[HookManager] Error in ${reg.id} during "${event}":`,
+          err,
+        );
       }
     });
 

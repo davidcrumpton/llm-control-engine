@@ -32,7 +32,7 @@ await engine.complete(requestId, final);
 ## Hook Events
 
 | Event | Mode | Description |
-|---|---|---|
+| ------- | ------ | --------- |
 | `engine:init` | Parallel | Engine startup and plugin initialization |
 | `engine:shutdown` | Parallel | Graceful shutdown notification |
 | `prompt:pre-process` | Waterfall | Transform raw user prompt |
@@ -46,15 +46,18 @@ await engine.complete(requestId, final);
 ## Execution Modes
 
 ### Waterfall
+
 Each handler receives the previous handler's output. Return `{ data }`
 to pass a modified payload downstream. Omit `data` to pass through
 unchanged.
 
 ### Bail
+
 Handlers run sequentially. Return `{ bail: true, reason: '...' }` to
 short-circuit. If no handler bails, the operation proceeds.
 
 ### Parallel
+
 All handlers fire concurrently via `Promise.allSettled`. Used for
 side-effects (logging, metrics). Return values are ignored.
 
@@ -88,7 +91,7 @@ Files must end with `.plugin.ts` or `.plugin.js`.
 ### Priority Levels
 
 | Level | Value | Use Case |
-|---|---|---|
+| ------- | ------ | --------- |
 | `SYSTEM` | 0 | Engine internals only |
 | `HIGH` | 100 | Security, auth, guards |
 | `NORMAL` | 500 | General-purpose plugins |
@@ -100,7 +103,7 @@ Files must end with `.plugin.ts` or `.plugin.js`.
 ### HookManager
 
 | Method | Description |
-|---|---|
+| ------- | ------ | --------- |
 | `register(plugin)` | Register and install a plugin |
 | `unregister(name)` | Teardown and remove a plugin |
 | `listPlugins()` | List registered plugin names |
@@ -111,14 +114,14 @@ Files must end with `.plugin.ts` or `.plugin.js`.
 ### PluginLoader
 
 | Method | Description |
-|---|---|
+| ------- | ------ | --------- |
 | `loadFromDirectory(dir)` | Discover and load plugins from dir |
 | `loadPlugin(path)` | Load a single plugin file |
 
 ### EngineHookIntegration
 
 | Method | Description |
-|---|---|
+| ------- | ------ | --------- |
 | `init()` | Fire `engine:init` |
 | `shutdown()` | Fire `engine:shutdown` |
 | `preProcessPrompt(id, raw)` | Waterfall `prompt:pre-process` |
@@ -141,10 +144,12 @@ Plugins are error-isolated. If a handler throws:
 ## Example Plugins
 
 ### `logger.plugin.ts`
+
 Subscribes to all events at MONITOR priority. Logs timing and metadata
 for every hook invocation. Great for debugging execution order.
 
 ### `prompt-guard.plugin.ts`
+
 Demonstrates the bail pattern. Blocks inference when the prompt matches
 configurable regex deny-patterns (prompt injection). Runs at HIGH priority.
 

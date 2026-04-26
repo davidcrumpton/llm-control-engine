@@ -13,15 +13,15 @@
 // ---------------------------------------------------------------------------
 
 export const HOOK_EVENTS = [
-  'engine:init',
-  'engine:shutdown',
-  'prompt:pre-process',
-  'prompt:post-process',
-  'inference:pre',
-  'inference:post',
-  'response:filter',
-  'response:complete',
-  'engine:error',
+  "engine:init",
+  "engine:shutdown",
+  "prompt:pre-process",
+  "prompt:post-process",
+  "inference:pre",
+  "inference:post",
+  "response:filter",
+  "response:complete",
+  "engine:error",
 ] as const;
 
 export type HookEvent = (typeof HOOK_EVENTS)[number];

@@ -6,27 +6,28 @@
  * their exports, and registers them with the HookManager.
  */
 
-import { readdir } from 'node:fs/promises';
-import { join, extname } from 'node:path';
-import { HookPlugin } from './types.js';
-import { HookManager, HookLogger } from './hook-manager.js';
+import { readdir } from "node:fs/promises";
+import { join, extname } from "node:path";
+import { HookPlugin } from "./types.js";
+import { HookManager, HookLogger } from "./hook-manager.js";
 
 // ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
 
 function isValidPlugin(obj: unknown): obj is HookPlugin {
-  if (typeof obj !== 'object' || obj === null) return false;
+  if (typeof obj !== "object" || obj === null) return false;
   const candidate = obj as Record<string, unknown>;
 
-  if (typeof candidate.meta !== 'object' || candidate.meta === null) return false;
+  if (typeof candidate.meta !== "object" || candidate.meta === null)
+    return false;
   const meta = candidate.meta as Record<string, unknown>;
 
   return (
-    typeof meta.name === 'string' &&
-    typeof meta.version === 'string' &&
-    typeof meta.description === 'string' &&
-    typeof candidate.install === 'function'
+    typeof meta.name === "string" &&
+    typeof meta.version === "string" &&
+    typeof meta.description === "string" &&
+    typeof candidate.install === "function"
   );
 }
 
@@ -40,8 +41,8 @@ export interface LoaderOptions {
 }
 
 const DEFAULT_OPTIONS: Required<LoaderOptions> = {
-  extensions: ['.ts', '.js'],
-  suffix: '.plugin',
+  extensions: [".ts", ".js"],
+  suffix: ".plugin",
 };
 
 export class PluginLoader {
@@ -49,9 +50,18 @@ export class PluginLoader {
   private logger: HookLogger;
   private options: Required<LoaderOptions>;
 
-  constructor(manager: HookManager, logger?: HookLogger, options?: LoaderOptions) {
+  constructor(
+    manager: HookManager,
+    logger?: HookLogger,
+    options?: LoaderOptions,
+  ) {
     this.manager = manager;
-    this.logger = logger ?? { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
+    this.logger = logger ?? {
+      debug: () => {},
+      info: () => {},
+      warn: () => {},
+      error: () => {},
+    };
     this.options = { ...DEFAULT_OPTIONS, ...options };
   }
 
@@ -73,7 +83,10 @@ export class PluginLoader {
     const pluginFiles = entries.filter((f) => {
       const ext = extname(f);
       const base = f.slice(0, -ext.length);
-      return this.options.extensions.includes(ext) && base.endsWith(this.options.suffix);
+      return (
+        this.options.extensions.includes(ext) &&
+        base.endsWith(this.options.suffix)
+      );
     });
 
     this.logger.info(
@@ -102,7 +115,9 @@ export class PluginLoader {
       }
 
       await this.manager.register(plugin);
-      this.logger.info(`[PluginLoader] Loaded: ${plugin.meta.name} from ${filePath}`);
+      this.logger.info(
+        `[PluginLoader] Loaded: ${plugin.meta.name} from ${filePath}`,
+      );
       return plugin.meta.name;
     } catch (err) {
       this.logger.error(`[PluginLoader] Failed to load ${filePath}:`, err);

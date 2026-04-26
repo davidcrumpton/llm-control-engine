@@ -11,9 +11,9 @@
  *   await hooks.complete(requestId, final);
  */
 
-import { HookManager } from './hook-manager.js';
-import { HookContext, HookMeta } from './types.js';
-import { randomUUID } from 'node:crypto';
+import { HookManager } from "./hook-manager.js";
+import { HookContext, HookMeta } from "./types.js";
+import { randomUUID } from "node:crypto";
 
 // ---------------------------------------------------------------------------
 // Payload types
@@ -52,7 +52,7 @@ export interface ErrorPayload {
 export class EngineHookIntegration {
   constructor(private hooks: HookManager) {}
 
-  private makeMeta(event: HookMeta['event'], requestId?: string): HookMeta {
+  private makeMeta(event: HookMeta["event"], requestId?: string): HookMeta {
     return {
       requestId: requestId ?? randomUUID(),
       timestamp: new Date().toISOString(),
@@ -60,34 +60,44 @@ export class EngineHookIntegration {
     };
   }
 
-  private ctx<T>(event: HookMeta['event'], data: T, requestId?: string): HookContext<T> {
+  private ctx<T>(
+    event: HookMeta["event"],
+    data: T,
+    requestId?: string,
+  ): HookContext<T> {
     return { data, meta: this.makeMeta(event, requestId) };
   }
 
   // -- Lifecycle methods ---------------------------------------------------
 
   async init(): Promise<void> {
-    await this.hooks.parallel('engine:init', this.ctx('engine:init', {}));
+    await this.hooks.parallel("engine:init", this.ctx("engine:init", {}));
   }
 
   async shutdown(): Promise<void> {
-    await this.hooks.parallel('engine:shutdown', this.ctx('engine:shutdown', {}));
+    await this.hooks.parallel(
+      "engine:shutdown",
+      this.ctx("engine:shutdown", {}),
+    );
   }
 
   async preProcessPrompt(requestId: string, raw: string): Promise<string> {
     const payload: PromptPayload = { raw, processed: raw };
     const result = await this.hooks.waterfall(
-      'prompt:pre-process',
-      this.ctx('prompt:pre-process', payload, requestId),
+      "prompt:pre-process",
+      this.ctx("prompt:pre-process", payload, requestId),
     );
     return result.data.processed;
   }
 
-  async postProcessPrompt(requestId: string, assembled: string): Promise<string> {
+  async postProcessPrompt(
+    requestId: string,
+    assembled: string,
+  ): Promise<string> {
     const payload: PromptPayload = { raw: assembled, processed: assembled };
     const result = await this.hooks.waterfall(
-      'prompt:post-process',
-      this.ctx('prompt:post-process', payload, requestId),
+      "prompt:post-process",
+      this.ctx("prompt:post-process", payload, requestId),
     );
     return result.data.processed;
   }
@@ -97,8 +107,8 @@ export class EngineHookIntegration {
     prompt: string,
   ): Promise<{ allowed: boolean; reason?: string }> {
     const bailed = await this.hooks.bail(
-      'inference:pre',
-      this.ctx('inference:pre', { prompt }, requestId),
+      "inference:pre",
+      this.ctx("inference:pre", { prompt }, requestId),
     );
 
     if (bailed?.bail) {
@@ -112,33 +122,36 @@ export class EngineHookIntegration {
     inferenceResult: InferencePayload,
   ): Promise<InferencePayload> {
     const result = await this.hooks.waterfall(
-      'inference:post',
-      this.ctx('inference:post', inferenceResult, requestId),
+      "inference:post",
+      this.ctx("inference:post", inferenceResult, requestId),
     );
     return result.data;
   }
 
-  async filterResponse(requestId: string, content: string): Promise<ResponsePayload> {
+  async filterResponse(
+    requestId: string,
+    content: string,
+  ): Promise<ResponsePayload> {
     const payload: ResponsePayload = { content, filtered: false };
     const result = await this.hooks.waterfall(
-      'response:filter',
-      this.ctx('response:filter', payload, requestId),
+      "response:filter",
+      this.ctx("response:filter", payload, requestId),
     );
     return result.data;
   }
 
   async complete(requestId: string, response: ResponsePayload): Promise<void> {
     await this.hooks.parallel(
-      'response:complete',
-      this.ctx('response:complete', response, requestId),
+      "response:complete",
+      this.ctx("response:complete", response, requestId),
     );
   }
 
   async onError(requestId: string, error: Error, phase: string): Promise<void> {
     const payload: ErrorPayload = { error, phase, requestId };
     await this.hooks.parallel(
-      'engine:error',
-      this.ctx('engine:error', payload, requestId),
+      "engine:error",
+      this.ctx("engine:error", payload, requestId),
     );
   }
 }
