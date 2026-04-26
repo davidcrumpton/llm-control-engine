@@ -102,8 +102,8 @@ Files must end with `.plugin.ts` or `.plugin.js`.
 
 ### HookManager
 
-| Method  | Description |
-| ------- | ------ | --------- |
+| Method | Description |
+| ------ | ----------- |
 | `register(plugin)` | Register and install a plugin |
 | `unregister(name)` | Teardown and remove a plugin |
 | `listPlugins()` | List registered plugin names |
