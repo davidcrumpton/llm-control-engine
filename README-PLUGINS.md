@@ -159,3 +159,30 @@ configurable regex deny-patterns (prompt injection). Runs at HIGH priority.
 2. Implement the `HookPlugin` interface
 3. Test with logger enabled to verify hook ordering
 4. Submit a merge request with your plugin and tests
+
+## Example Run
+
+```sh
+llmctrlx run -u 'doas ls'
+```
+
+```text
+[PluginLoader] Found 2 plugin file(s) in /Users/bear/.llmctrlx_plugins
+[HookManager] Tapped "engine:init" by lifecycle-logger (priority 1000)
+[HookManager] Tapped "engine:shutdown" by lifecycle-logger (priority 1000)
+[HookManager] Tapped "prompt:pre-process" by lifecycle-logger (priority 1000)
+[HookManager] Tapped "prompt:post-process" by lifecycle-logger (priority 1000)
+[HookManager] Tapped "inference:pre" by lifecycle-logger (priority 1000)
+[HookManager] Tapped "inference:post" by lifecycle-logger (priority 1000)
+[HookManager] Tapped "response:filter" by lifecycle-logger (priority 1000)
+[HookManager] Tapped "response:complete" by lifecycle-logger (priority 1000)
+[HookManager] Tapped "engine:error" by lifecycle-logger (priority 1000)
+[HookManager] Registered plugin: lifecycle-logger v1.0.0
+[PluginLoader] Loaded: lifecycle-logger from /Users/bear/.llmctrlx_plugins/logger.plugin.js
+[HookManager] Tapped "inference:pre" by prompt-guard (priority 100)
+[HookManager] Tapped "prompt:pre-process" by prompt-guard (priority 100)
+[HookManager] Registered plugin: prompt-guard v1.0.0
+[PluginLoader] Loaded: prompt-guard from /Users/bear/.llmctrlx_plugins/prompt-guard.plugin.js
+[HookManager] Bail triggered by prompt-guard::inference:pre::10: Request blocked by prompt-guard: potential security risk detected. (matched: \b(sudo|doas|su)\b)
+Command blocked: Request blocked by prompt-guard: potential security risk detected. (matched: \b(sudo|doas|su)\b)
+```
