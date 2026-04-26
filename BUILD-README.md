@@ -43,3 +43,14 @@ GitLab Container Registry — enabled on your project for Docker image pushes
 Run `npm test` to verify the scaffold compiles and all placeholder assertions pass.
 Run `npm run` test:coverage to check that your source modules meet the 80/75/80/80 coverage thresholds.
 Run `npm run` test:ui for the interactive Vitest dashboard in your browser.
+
+## Installing
+
+Installation can vary by operating system but this works on some things.
+
+```sh
+   make install
+   make build
+   # use su/sudo/doas in case you don't have system permission
+   npm link
+```
