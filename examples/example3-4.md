@@ -5,13 +5,13 @@ Use the `-k` flag to save the chat session to a file. This allows you to continu
 ## Example 1: Analyze Zsh Configuration
 
 ```bash
-./llmctrlx.js chat -f ~/.zshrc  -u 'How can I improve my zsh setup?' -m gemma4:26b -k zshrc
+llmctrlx.js chat -f ~/.zshrc  -u 'How can I improve my zsh setup?' -m gemma4:26b -k zshrc
 ```
 
 ## Example 2: Continue session
 
 ```bash
-./llmctrlx.js chat -f ~/.zshrc  -u 'output a new zsh file with those recommendations' -m gemma4:26b -k zshrc
+llmctrlx.js chat -f ~/.zshrc  -u 'output a new zsh file with those recommendations' -m gemma4:26b -k zshrc
 ```
 
 Your current `.zshrc` is a very clean, standard "out-of-the-box" Oh My Zsh configuration. It isn't "bad," but it isn't leveraging the true power of Zsh. Since you are already using LLM integration (`LLMCTRLX`), you clearly value automation and modern workflows.
@@ -111,7 +111,7 @@ plugins=(
 
 **One final tip:** Since you are using `vim`/`vi` (implied by your `VISUAL` settings), ensure your `.zshrc` also includes `export EDITOR='vi'`. This ensures that every time a tool (like `git commit`) needs an editor, it uses your preferred one.
 bear@openbsd in llm-control-engine on main
-$ ./llmctrlx.js chat -f ~/.zshrc  -u 'output a new zsh file with those recommendations' -m gemma4:26b
+$ llmctrlx.js chat -f ~/.zshrc  -u 'output a new zsh file with those recommendations' -m gemma4:26b
 To use this new file, you **must** first install the new plugins. If you don't, Zsh will throw errors on startup.
 
 ### **Step 1: Run these commands in your terminal first**

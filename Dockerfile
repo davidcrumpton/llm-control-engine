@@ -84,4 +84,4 @@ USER engine
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD node -e "process.exit(0)"
 
-ENTRYPOINT ["dumb-init", "node", "dist/cli/index.js"]
+CMD ["llmctrlx"]

@@ -1,5 +1,5 @@
 {
-  "name": "@llm-engine/control",
+  "name": "llmctrlx",
   "version": "0.1.0",
   "description": "A modular LLM control engine with dynamic tool loading and multi-provider support",
   "type": "module",
@@ -33,10 +33,13 @@
     }
   },
   "bin": {
-    "llm-engine": "./dist/cli/index.js"
+    "llmctrlx": "llmctrlx.js"
   },
   "files": [
     "dist",
+    "llmctrlx.js",
+    "src",
+    "tools",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"
@@ -66,6 +69,9 @@
   "dependencies": {
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
+    "getopts": "^2.3.0",
+    "node-fetch": "^3.3.2",
+    "ollama": "^0.6.3",
     "zod": "^3.23.0"
   },
   "devDependencies": {

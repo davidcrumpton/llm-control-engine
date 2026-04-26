@@ -8,6 +8,22 @@ A command-line interface for interacting with large language models, built with 
 - Ollama or LM Studio running locally (or accessible remotely)
 - `ollama`, `node-fetch`, `getopts` and `uuid` packages installed (e.g., `npm install`)
 
+## Installation
+
+Install project dependencies:
+
+```bash
+npm install
+```
+
+Install the CLI globally for local development:
+
+```bash
+npm install -g .
+```
+
+This creates the `llmctrlx` executable in your global npm bin path.
+
 ## Environment Variables
 
 You can configure the default behavior using environment variables:
@@ -24,7 +40,7 @@ You can configure the default behavior using environment variables:
 ## Usage
 
 ```bash
-node llmctrlx.js <command> [options]
+llmctrlx <command> [options]
 ```
 
 ### Global Options
@@ -67,35 +83,35 @@ You can restrict which tools are loaded by using the `--tags` flag. When tags ar
 
 ```bash
 # Basic chat
-node llmctrlx.js chat -u "Why is the sky blue?"
+llmctrlx chat -u "Why is the sky blue?"
 
 # Chat without tools
-node llmctrlx.js chat -u "Tell me a joke." -W -m gemma4:e2b
+llmctrlx chat -u "Tell me a joke." -W -m gemma4:e2b
 
 # Chat with tools (default)
 # Use a model that supports tools (e.g. gemma4:e2b)
-node llmctrlx.js chat -u "What time is it?" -m gemma4:e2b
+llmctrlx chat -u "What time is it?" -m gemma4:e2b
 
 # Chat with custom tools directory  
-node llmctrlx.js chat -u "What time is it?" -T "~/my-tools" -m gemma4:e2b
+llmctrlx chat -u "What time is it?" -T "~/my-tools" -m gemma4:e2b
 
 # Chat with specific tool tags
-node llmctrlx.js chat -u "Check my IP" --tags network -m gemma4:e2b
+llmctrlx chat -u "Check my IP" --tags network -m gemma4:e2b
 
 # Chat with tools and session
-node llmctrlx.js chat -u "What time is it?" -k "my-session" -m gemma4:e2b
+llmctrlx chat -u "What time is it?" -k "my-session" -m gemma4:e2b
 
 # Chat with tools, session and stream output
-node llmctrlx.js chat -u "What time is it?" -k "my-session" --stream -m gemma4:e2b
+llmctrlx chat -u "What time is it?" -k "my-session" --stream -m gemma4:e2b
 
 # Read from stdin
-cat examples/prompt.txt | node llmctrlx.js chat
+cat examples/prompt.txt | llmctrlx chat
 
 # Attach files
-node llmctrlx.js chat -u "Summarize these files." -f "examples/attachment1.txt" -f "examples/attachment2.txt"
+llmctrlx chat -u "Summarize these files." -f "examples/attachment1.txt" -f "examples/attachment2.txt"
 
 # Attach images
-node llmctrlx.js chat -u "What is this image of?" -f "examples/png.png" -m gemma4:e26b
+llmctrlx chat -u "What is this image of?" -f "examples/png.png" -m gemma4:e26b
 ```
 
 ## Ollama
@@ -111,7 +127,7 @@ npm run chat -u "Why is the sky blue?"
 ### Using LMStudio as provider
 
 ```bash
-node ./llmctrlx.js chat -P lmstudio -u "Are you working, AI?" -m gemma-4-e4b -h http://127.0.0.1:1234/v1
+llmctrlx chat -P lmstudio -u "Are you working, AI?" -m gemma-4-e4b -h http://127.0.0.1:1234/v1
 ```
 
 #### 2. `model`
@@ -128,10 +144,10 @@ Manage your LLM models.
 **Examples:**
 
 ```bash
-node llmctrlx.js model --list
-node llmctrlx.js model --pull -m llama3
-node llmctrlx.js model --show -m llama3
-node llmctrlx.js model --delete -m llama3
+llmctrlx model --list
+llmctrlx model --pull -m llama3
+llmctrlx model --show -m llama3
+llmctrlx model --delete -m llama3
 ```
 
 #### 3. `embed`
@@ -145,7 +161,7 @@ Generate embeddings for files.
 **Examples:**
 
 ```bash
-node llmctrlx.js embed -f README.md -m mistral:latest
+llmctrlx embed -f README.md -m mistral:latest
 ```
 
 #### 4. `bench`
@@ -160,7 +176,7 @@ Benchmark one or multiple models to compare their speed (response time and token
 **Examples:**
 
 ```bash
-node llmctrlx.js bench -m llama3,gemma:7b,mistral -u "Write a short poem."
+llmctrlx bench -m llama3,gemma:7b,mistral -u "Write a short poem."
 ```
 
 #### 5. `run`
@@ -174,8 +190,8 @@ Execute a shell command and pass its standard output to an LLM for analysis.
 **Examples:**
 
 ```bash
-node llmctrlx.js run -u "df -h" -m llama3
-node llmctrlx.js run -u "ls -la" -m llama3
+llmctrlx run -u "df -h" -m llama3
+llmctrlx run -u "ls -la" -m llama3
 ```
 
 #### 6. `tools`
@@ -191,10 +207,10 @@ List and inspect available LLM tools.
 
 ```bash
 # List all tools, showing their tags and parameters
-node llmctrlx.js tools
+llmctrlx tools
 
 # List only network and web related tools
-node llmctrlx.js tools --tags network,web
+llmctrlx tools --tags network,web
 ```
 
 #### 7. History Command
@@ -211,16 +227,16 @@ Manage chat history, allowing listing, detailed viewing, and examination of all 
 
 ```bash
 # Show current session history
-./llmctrlx.js history 
+llmctrlx history 
 
 # Show all sessions
-./llmctrlx.js history --all
+llmctrlx history --all
 
 # List available sessions
-./llmctrlx.js history --list
+llmctrlx history --list
 
 # Show history for a specific session
-./llmctrlx.js history --show -k my-session
+llmctrlx history --show -k my-session
 ```
 
 ## Session Usage Example
@@ -250,33 +266,33 @@ In short, you define your long options in the `longopts` array, and they can be 
 
 ```bash
 # Start a chat session
-./llmctrlx.js chat -u "hello"
+llmctrlx chat -u "hello"
 
 # Start another chat session
-./llmctrlx.js chat -u "hello" -k "another-session"
+llmctrlx chat -u "hello" -k "another-session"
 ```
 
 ### Example 3: Using attachments and custom tools
 
 ```bash
 # Attach a file to the prompt
-./llmctrlx.js chat -f ~/.zshrc  -u 'How can I improve my zsh setup?' -m gemma4:26b -k zshrc
+llmctrlx chat -f ~/.zshrc  -u 'How can I improve my zsh setup?' -m gemma4:26b -k zshrc
 ```
 
 ### Example 4: Continue session
 
 ```bash
-./llmctrlx.js chat -f ~/.zshrc  -u 'output a new zsh file with those recommendations' -m gemma4:26b -k zshrc
+llmctrlx chat -f ~/.zshrc  -u 'output a new zsh file with those recommendations' -m gemma4:26b -k zshrc
 ```
 
 ### Example 5: Review a configuration file
 
 ```bash
-./llmctrlx.js chat -f /etc/doas.conf -u 'How secure is my doas.conf file?' -m gemma4:26b -k doas.conf
+llmctrlx chat -f /etc/doas.conf -u 'How secure is my doas.conf file?' -m gemma4:26b -k doas.conf
 ```
 
 ### Example 6: Use streaming
 
 ```bash
-./llmctrlx.js chat -u 'write a poem about the sea' -m gemma4:26b --stream
+llmctrlx chat -u 'write a poem about the sea' -m gemma4:26b --stream
 ```

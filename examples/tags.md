@@ -1,7 +1,7 @@
 # tags example
 
 ```bash
-./llmctrlx.js chat -u 'Tell me what tools the agent presents to you' -m gemma4:e2b --tags os
+llmctrlx.js chat -u 'Tell me what tools the agent presents to you' -m gemma4:e2b --tags os
 ```
 
 I have access to the following tools:
@@ -19,7 +19,7 @@ I have access to the following tools:
 * **wikipedia_summary**: Get a summary of a topic from Wikipedia
 
 ```bash
-./llmctrlx.js chat -u 'Tell me what tools the agent presents to you' -m gemma4:e2b --tags web
+llmctrlx.js chat -u 'Tell me what tools the agent presents to you' -m gemma4:e2b --tags web
 ```
 
 I have access to the following tools:
@@ -29,7 +29,7 @@ I have access to the following tools:
 * **wikipedia_summary**: Get a summary of a topic from Wikipedia.
 
 ```bash
-./llmctrlx.js chat -u 'What can you do?' -m gemma4:e2b --tags web
+llmctrlx.js chat -u 'What can you do?' -m gemma4:e2b --tags web
 ```
 
 I am a Large Language Model, and I can perform a wide variety of tasks based on text input, including:

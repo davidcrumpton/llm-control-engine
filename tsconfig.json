@@ -17,11 +17,12 @@
     "paths": {
       "@/*": ["src/*"]
     },
+    "outDir": "dist",
 
     /* Vitest */
     "types": ["vitest/globals", "node"]
   },
 
-  "include": ["src/**/*.ts", "tests/**/*.ts"],
+  "include": ["src/**/*","src/**/*.ts", "tests/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
