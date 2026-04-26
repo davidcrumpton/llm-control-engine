@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "ignoreDeprecations": "6.0",
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
@@ -14,7 +13,6 @@
     "skipLibCheck": true,
     "strict": true,
 
-    "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
     },
