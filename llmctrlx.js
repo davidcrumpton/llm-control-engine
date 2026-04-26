@@ -21,7 +21,7 @@ const __dirname = dirname(__filename)
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.4.00'
+const APP_VERSION = '0.4.10'
 const DEFAULT_HOST = process.env.LLMCTRLX_HOST || 'http://127.0.0.1:11434'
 const DEFAULT_MODEL = process.env.LLMCTRLX_MODEL || 'gemma4:e4b'
 const DEFAULT_HISTORY = process.env.LLMCTRLX_HISTORY || path.join(os.homedir(), '.llmctrlx_history.json')
@@ -34,6 +34,11 @@ const DEFAULT_SESSION = process.env.LLMCTRLX_SESSION || 'default'
 // Tools Directory
 // --------------------
 const DEFAULT_TOOLS_DIR = process.env.LLMCTRLX_TOOLS_DIR || join(__dirname, 'tools')
+
+// --------------------
+// Plugins Directory
+// --------------------
+const DEFAULT_PLUGINS_DIR = process.env.LLMCTRLX_PLUGINS_DIR || join(__dirname, 'src/plugins')
  
 // --------------------
 // CLI parsing
@@ -93,7 +98,8 @@ async function main() {
     cmdBench,
     cmdRun,
     cmdTools,
-    cmdHistory
+    cmdHistory,
+    cmdPlugins
   } = await import(cliPath)
 
   // Initialize LLM provider
@@ -124,6 +130,9 @@ async function main() {
     case 'tools':
       await cmdTools(options, toolsDir)
       break
+    case 'plugins':
+      await cmdPlugins(options, DEFAULT_PLUGINS_DIR)
+      break
     case 'history':
       cmdHistory(options, DEFAULT_HISTORY)
       break
@@ -137,21 +146,24 @@ async function main() {
       console.log(`${APP_NAME} v${APP_VERSION}`)
       console.log(`
 Usage:
-  chat     Run chat session
-  model    Manage models (--list, --show, --pull, --delete)
-  embed    Generate embeddings
-  bench    Benchmark models
-  run      Execute command + analyze
-  tools    Manage tools (--list, --show, --pull, --delete)
-  history  Show chat history (--show or --list --all) 
+  chat       Run chat session
+  model      Manage models (--list, --show, --pull, --delete)
+  embed      Generate embeddings
+  bench      Benchmark models
+  run        Execute command + analyze
+  tools      Manage tools (--list, --show, --pull, --delete)
+  plugins    Manage plugins (--list, --show)
+  history    Show chat history (--show or --list --all) 
   completion Generate shell completion script
-  version  Show version
+  version    Show version
 
 Examples:
   chat -u "hello"
   cat file.txt | chat -u "analyze this" --stdin
   model --list
   embed -f file.txt
+  plugins --list
+  plugins --show logger
   bench -m mistral,gemma -u "test"
   run -u "df -h"
   completion --shell bash
@@ -196,10 +208,10 @@ _llmctrlx_completions() {
   cmd="\${COMP_WORDS[1]}"
 
   # Main commands
-  cmds="chat model embed bench run tools history completion version"
+  cmds="chat model embed bench run tools plugins history completion version"
 
   # Global options
-  global_opts="-h --host -m --model -u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags --json --stream --all --list"
+  global_opts="-h --host -m --model -u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags --json --stream --all --list --show"
 
   case \${cmd} in
     chat)
@@ -219,6 +231,9 @@ _llmctrlx_completions() {
       ;;
     tools)
       opts="--list --show --pull --delete"
+      ;;
+    plugins)
+      opts="--list --show --json"
       ;;
     history)
       opts="--show --list --all -k --session"
@@ -272,6 +287,7 @@ _llmctrlx() {
     'bench:Benchmark models'
     'run:Execute command + analyze'
     'tools:Manage tools'
+    'plugins:Manage plugins'
     'history:Show chat history'
     'completion:Generate shell completion script'
     'version:Show version'
@@ -350,6 +366,12 @@ _llmctrlx() {
             '--pull' \\
             '--delete'
           ;;
+        plugins)
+          _arguments \\
+            '--list' \\
+            '--show' \\
+            '--json'
+          ;;
         history)
           _arguments \\
             '--show' \\
@@ -382,6 +404,7 @@ complete -c llmctrlx -n '__fish_use_subcommand' -a 'embed' -d 'Generate embeddin
 complete -c llmctrlx -n '__fish_use_subcommand' -a 'bench' -d 'Benchmark models'
 complete -c llmctrlx -n '__fish_use_subcommand' -a 'run' -d 'Execute command + analyze'
 complete -c llmctrlx -n '__fish_use_subcommand' -a 'tools' -d 'Manage tools'
+complete -c llmctrlx -n '__fish_use_subcommand' -a 'plugins' -d 'Manage plugins'
 complete -c llmctrlx -n '__fish_use_subcommand' -a 'history' -d 'Show chat history'
 complete -c llmctrlx -n '__fish_use_subcommand' -a 'completion' -d 'Generate shell completion script'
 complete -c llmctrlx -n '__fish_use_subcommand' -a 'version' -d 'Show version'
@@ -461,6 +484,11 @@ complete -c llmctrlx -n '__fish_seen_subcommand_from tools' -l list -d 'List too
 complete -c llmctrlx -n '__fish_seen_subcommand_from tools' -l show -d 'Show tool'
 complete -c llmctrlx -n '__fish_seen_subcommand_from tools' -l pull -d 'Pull tool'
 complete -c llmctrlx -n '__fish_seen_subcommand_from tools' -l delete -d 'Delete tool'
+
+# Plugins command options
+complete -c llmctrlx -n '__fish_seen_subcommand_from plugins' -l list -d 'List plugins'
+complete -c llmctrlx -n '__fish_seen_subcommand_from plugins' -l show -d 'Show plugin'
+complete -c llmctrlx -n '__fish_seen_subcommand_from plugins' -l json -d 'JSON output'
 
 # History command options
 complete -c llmctrlx -n '__fish_seen_subcommand_from history' -l show -d 'Show history'
