@@ -30,6 +30,12 @@
         "types": "./dist/providers/index.d.ts",
         "default": "./dist/providers/index.js"
       }
+    },
+    "./plugins": {
+      "import": {
+        "types": "./dist/plugins/index.d.ts",
+        "default": "./dist/plugins/index.js"
+      }
     }
   },
   "bin": {

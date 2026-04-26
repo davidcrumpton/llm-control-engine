@@ -1,108 +1,156 @@
-# llmctrlx Plugin Architecture
+# Plugin System — LLM Control Engine
 
-This document explains how `llmctrlx` loads and executes plugins, what plugin types are supported, and how to build a minimal working plugin.
+Event-based hook architecture for extending the LLM Control Engine
+without modifying core code.
 
-## What is a plugin?
+## Quick Start
 
-A plugin is a JavaScript module that exports an object describing a tool, policy, provider, or hook. Plugins are loaded dynamically from one or more directories, then registered in the runtime so the `chat` command can use tools and enforce policy plugins.
+```typescript
+import { HookManager, PluginLoader, EngineHookIntegration } from './src/plugins';
 
-## Supported plugin types
+// 1. Create the manager
+const manager = new HookManager(console);
 
-`llmctrlx` supports the following plugin types:
+// 2. Load plugins from a directory
+const loader = new PluginLoader(manager, console);
+await loader.loadFromDirectory('./plugins');
 
-- `tool`: A callable utility that the LLM can invoke during a chat session.
-- `policy`: A runtime policy that can inspect tool execution attempts and block or allow them.
-- `provider`: A custom LLM provider implementation.
-- `hook`: A generic extension point for future behavior.
+// 3. Wire into the engine lifecycle
+const engine = new EngineHookIntegration(manager);
+await engine.init();
 
-Most plugin authors will start with `tool` and `policy` plugins.
+// 4. Use in your request cycle
+const prompt  = await engine.preProcessPrompt(requestId, userInput);
+const gate    = await engine.gateInference(requestId, prompt);
+if (!gate.allowed) throw new Error(gate.reason);
+// ... run inference ...
+const output  = await engine.postProcessInference(requestId, result);
+const final   = await engine.filterResponse(requestId, output.output);
+await engine.complete(requestId, final);
+```
 
-## How plugins are loaded
+## Hook Events
 
-Plugins are loaded from these locations in order:
+| Event | Mode | Description |
+|---|---|---|
+| `engine:init` | Parallel | Engine startup and plugin initialization |
+| `engine:shutdown` | Parallel | Graceful shutdown notification |
+| `prompt:pre-process` | Waterfall | Transform raw user prompt |
+| `prompt:post-process` | Waterfall | Transform assembled prompt |
+| `inference:pre` | Bail | Gate: block or allow inference |
+| `inference:post` | Waterfall | Transform model output |
+| `response:filter` | Waterfall | Content filtering |
+| `response:complete` | Parallel | Observe completed cycle |
+| `engine:error` | Parallel | Error notification |
 
-1. Built-in plugins shipped with the project
-2. Project plugins in `./plugins`
-3. A custom tools directory passed via `--tools-dir` or `-T`
-4. Global plugins in `~/.llmctrlx/plugins`
+## Execution Modes
 
-The default chat command loads plugins automatically from the built-in plugin folder and any configured project/global plugin directories.
+### Waterfall
+Each handler receives the previous handler's output. Return `{ data }`
+to pass a modified payload downstream. Omit `data` to pass through
+unchanged.
 
-## Minimal plugin structure
+### Bail
+Handlers run sequentially. Return `{ bail: true, reason: '...' }` to
+short-circuit. If no handler bails, the operation proceeds.
 
-A tool plugin is a JavaScript file exporting an object with:
+### Parallel
+All handlers fire concurrently via `Promise.allSettled`. Used for
+side-effects (logging, metrics). Return values are ignored.
 
-- `type`: `'tool'`
-- `name`: unique string identifier
-- `description`: human-readable description
-- `version`: semantic version string like `v1.0.0`
-- `tags`: optional array of strings to filter tools
-- `parameters`: JSON-style schema for tool arguments
-- `run(args)`: async function that executes the tool
+## Writing a Plugin
 
-Example shape:
+```typescript
+import { HookPlugin, HookPriority } from './src/plugins';
 
-```js
-export default {
-  type: 'tool',
-  name: 'example-tool',
-  description: 'A simple example plugin',
-  version: 'v1.0.0',
-  tags: ['example'],
-  parameters: {
-    type: 'object',
-    properties: {
-      name: { type: 'string', description: 'Name to greet' }
-    }
+const myPlugin: HookPlugin = {
+  meta: {
+    name: 'my-plugin',
+    version: '0.1.0',
+    description: 'Does something useful.',
   },
-  run: async ({ name }) => {
-    return `Hello${name ? `, ${name}` : ''}!`
-  }
-}
+
+  install(tap) {
+    tap('prompt:pre-process', async (ctx) => {
+      const modified = ctx.data.processed.trim();
+      return { data: { ...ctx.data, processed: modified } };
+    }, HookPriority.NORMAL);
+  },
+};
+
+export default myPlugin;
 ```
 
-## How to use a plugin with `chat`
+### File Naming
 
-Load your plugin directory with `--tools-dir`:
+Files must end with `.plugin.ts` or `.plugin.js`.
 
-```bash
-llmctrlx chat -u "Greet the user" -T examples -m gemma4:e2b
-```
+### Priority Levels
 
-If your plugin directory includes a tool named `hello-world`, the model may choose it when appropriate. The runtime validates tool arguments, executes the tool, and feeds the result back to the chat.
+| Level | Value | Use Case |
+|---|---|---|
+| `SYSTEM` | 0 | Engine internals only |
+| `HIGH` | 100 | Security, auth, guards |
+| `NORMAL` | 500 | General-purpose plugins |
+| `LOW` | 900 | Analytics, logging |
+| `MONITOR` | 1000 | Read-only observers |
 
-## Tags and filtering
+## API Reference
 
-Tool plugins can include a `tags` array. When `--tags` is passed, only tools with one of the requested tags or the special `always` tag are loaded.
+### HookManager
 
-Example:
+| Method | Description |
+|---|---|
+| `register(plugin)` | Register and install a plugin |
+| `unregister(name)` | Teardown and remove a plugin |
+| `listPlugins()` | List registered plugin names |
+| `waterfall(event, ctx)` | Run waterfall execution |
+| `bail(event, ctx)` | Run bail execution |
+| `parallel(event, ctx)` | Run parallel execution |
 
-```bash
-llmctrlx chat --tags example -T examples -u "Show me a greeting"
-```
+### PluginLoader
 
-## Policy plugins
+| Method | Description |
+|---|---|
+| `loadFromDirectory(dir)` | Discover and load plugins from dir |
+| `loadPlugin(path)` | Load a single plugin file |
 
-Policy plugins let you intercept tool execution.
+### EngineHookIntegration
 
-A policy plugin typically exports:
+| Method | Description |
+|---|---|
+| `init()` | Fire `engine:init` |
+| `shutdown()` | Fire `engine:shutdown` |
+| `preProcessPrompt(id, raw)` | Waterfall `prompt:pre-process` |
+| `postProcessPrompt(id, assembled)` | Waterfall `prompt:post-process` |
+| `gateInference(id, prompt)` | Bail `inference:pre` |
+| `postProcessInference(id, result)` | Waterfall `inference:post` |
+| `filterResponse(id, content)` | Waterfall `response:filter` |
+| `complete(id, response)` | Parallel `response:complete` |
+| `onError(id, error, phase)` | Parallel `engine:error` |
 
-- `type`: `'policy'`
-- `name`: unique string
-- `onBeforeToolRun({ tool, args, ctx })`: optional async callback
+## Error Handling
 
-If `onBeforeToolRun` returns an object with `allow: false`, the tool call is blocked and the model is notified.
+Plugins are error-isolated. If a handler throws:
 
-## Example plugin file
+- The error is caught and logged via `HookLogger`.
+- Remaining handlers continue executing.
+- The engine never crashes due to a plugin failure.
+- In waterfall mode, the previous output passes forward unchanged.
 
-A minimal, useful plugin can live in `examples/hello-world-plugin.js`.
+## Example Plugins
 
-It is a real tool plugin that returns a friendly greeting, the current workspace path, and the current timestamp.
+### `logger.plugin.ts`
+Subscribes to all events at MONITOR priority. Logs timing and metadata
+for every hook invocation. Great for debugging execution order.
 
-## Notes
+### `prompt-guard.plugin.ts`
+Demonstrates the bail pattern. Blocks inference when the prompt matches
+configurable regex deny-patterns (prompt injection). Runs at HIGH priority.
 
-- Plugin files are discovered recursively in directories.
-- Only `.js`, `.mjs`, and `.cjs` files are considered.
-- The plugin loader supports both `run` and legacy aliases like `handler` or `execute`.
-- Tool validation checks that `name`, `description`, `version`, `parameters`, and `run()` are present.
-- Plugins may implement an optional `init(ctx)` method to receive runtime context.
+## Contributing
+
+1. Create `plugins/my-plugin.plugin.ts`
+2. Implement the `HookPlugin` interface
+3. Test with logger enabled to verify hook ordering
+4. Submit a merge request with your plugin and tests
