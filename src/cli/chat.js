@@ -5,7 +5,7 @@
 import fs from 'fs'
 import { loadHistory, saveHistory, getSession } from '../core/history.js'
 import { buildOptions, isImage, validateFileSize, buildToolPrompt } from '../core/utils.js'
-import { loadTools, runWithTools, runWithoutTools } from '../core/tools.js'
+import { createPluginRegistry, runWithTools, runWithoutTools } from '../core/tools.js'
 
 /**
  * Handle chat command
@@ -95,14 +95,25 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
   } else {
     if (!options.no_tools) {
       const requestedTags = options.tags ? options.tags.split(',').map(t => t.trim()) : null
-      const tools = await loadTools(toolsDir, requestedTags)
+      const registry = await createPluginRegistry(toolsDir)
+      let tools = registry.list('tool')
+
+      if (requestedTags) {
+        tools = tools.filter(tool => {
+          const toolTags = tool.tags || []
+          const hasAlways = toolTags.includes('always')
+          const hasMatch = requestedTags.some(tag => toolTags.includes(tag))
+          return hasAlways || hasMatch
+        })
+      }
 
       messages.unshift({
         role: 'system',
         content: buildToolPrompt(tools)
       })
 
-      const res = await runWithTools(llm, options.model, messages, tools)
+      const policyPlugins = registry.list('policy')
+      const res = await runWithTools(llm, options.model, messages, tools, policyPlugins)
       console.log(res)
 
       session.messages.push({ role: 'user', content: userInput })
