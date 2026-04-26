@@ -318,6 +318,37 @@ llmctrlx completion --shell zsh
 llmctrlx completion --shell fish
 ```
 
+#### 9. Binary Building
+
+- Added `pkg` as a dev dependency for creating standalone executables
+- Added `build:bin` script that creates Linux and macOS binaries in dist
+
+## Package Building
+
+- Added `build:deb` and `build:rpm` scripts using `fpm` (effing package management)
+- Added `build:packages` script to build all packages after binaries
+- Created a Homebrew formula in llmctrlx.rb for macOS installation
+
+## Build Usage
+
+1. **Install dependencies**: `npm install` (already done)
+2. **Build binaries**: `npm run build:bin` (tested, creates `llmctrlx-linux` and `llmctrlx-macos` in dist)
+3. **Build packages** (requires `fpm` installed):
+   - On macOS: `brew install fpm`
+   - On Linux: `gem install fpm`
+   - Then: `npm run build:packages`
+
+## Notes
+
+- The binaries are created successfully despite some ES module warnings from `pkg`
+- For Homebrew, the formula installs via npm. You can submit it to homebrew-core or use it locally with `brew install --build-from-source ./homebrew/llmctrlx.rb`
+- For DEB/RPM, the packages install the Linux binary to llmctrlx
+- Update the SHA256 in the Homebrew formula when publishing releases
+
+The binaries work as standalone executables without requiring Node.js to be installed on the target system.
+
+Made changes.
+
 ## Session Usage Example
 
 ### Example 1: Analyze a man page and ask a question about it
