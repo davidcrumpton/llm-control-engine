@@ -44,4 +44,4 @@ Additionally, I have access to specific tools that allow me to perform external 
 
 * **Getting the current date and time** using the `datetime` tool.
 * **Fetching information from the internet** by fetching URLs using the `http_get` tool.
-* **Getting summaries of topics** from Wikipedia using the `wikipedia_summary` tool.
+* **Getting summaries of topics** from Wikipedia using the `wikipedia_summary` tool
