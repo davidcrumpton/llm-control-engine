@@ -118,10 +118,11 @@ Run a chat session with an LLM. It maintains conversational history in `.chat_hi
 
 **Options:**
 
-- `-u, --user <text>`: The user prompt. If omitted and piping from stdin, it reads from stdin.
+- `-u, --user <text>`: The user prompt. Can be combined with --stdin.
 - `-s, --system <text>`: A system prompt to prepend.
 - `-f, --files <path>`: Attach files to the prompt. Can be specified multiple times.
 - `-k, --session <name>`: Session key to use for continuing a conversation. Default: `default`.
+- `--stdin`: Read content from stdin. Can be combined with -u.
 - `--json`: Force JSON output.
 - `--stream`: Stream the output as it's generated.
 - `-t, --temperature <float>`: Set the generation temperature.
@@ -164,6 +165,9 @@ llmctrlx chat -u "What time is it?" -k "my-session" --stream -m gemma4:e2b
 
 # Read from stdin
 cat examples/prompt.txt | llmctrlx chat
+
+# Chat with stdin and user prompt
+cat Makefile | llmctrlx chat -u "examine my Makefile" --stdin
 
 # Attach files
 llmctrlx chat -u "Summarize these files." -f "examples/attachment1.txt" -f "examples/attachment2.txt"

@@ -29,11 +29,26 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
 
   let userInput = options.user
 
-  if (!userInput && !process.stdin.isTTY) {
+  let stdinContent = null
+
+  if (options.stdin) {
+    if (!process.stdin.isTTY) {
+      stdinContent = fs.readFileSync(0, 'utf8')
+    } else {
+      console.error('--stdin specified but no stdin input detected')
+      process.exit(1)
+    }
+  } else if (!userInput && !process.stdin.isTTY) {
     userInput = fs.readFileSync(0, 'utf8')
   }
 
-  if (!userInput) {
+  let userContent = userInput || ''
+  if (stdinContent) {
+    if (userContent) userContent += '\n\n'
+    userContent += `Stdin content:\n${stdinContent}`
+  }
+
+  if (!userContent) {
     console.error('No input provided')
     process.exit(1)
   }
@@ -69,8 +84,8 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
     }
   }
 
-  if (userInput) {
-    messages.push({ role: 'user', content: userInput })
+  if (userContent) {
+    messages.push({ role: 'user', content: userContent })
   }
 
   const chatOptions = buildOptions(options)
@@ -90,7 +105,7 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
       full += chunk.message.content
     }
 
-    session.messages.push({ role: 'user', content: userInput })
+    session.messages.push({ role: 'user', content: userContent })
     session.messages.push({ role: 'assistant', content: full })
   } else {
     if (!options.no_tools) {
@@ -116,13 +131,13 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
       const res = await runWithTools(llm, options.model, messages, tools, policyPlugins)
       console.log(res)
 
-      session.messages.push({ role: 'user', content: userInput })
+      session.messages.push({ role: 'user', content: userContent })
       session.messages.push({ role: 'assistant', content: res })
     } else {
       const res = await runWithoutTools(llm, options.model, messages)
       console.log(res)
 
-      session.messages.push({ role: 'user', content: userInput })
+      session.messages.push({ role: 'user', content: userContent })
       session.messages.push({ role: 'assistant', content: res })
     }
   }

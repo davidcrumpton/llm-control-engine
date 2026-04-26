@@ -21,7 +21,7 @@ const __dirname = dirname(__filename)
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.3.11'
+const APP_VERSION = '0.3.16'
 const DEFAULT_HOST = process.env.LLMCTRLX_HOST || 'http://127.0.0.1:11434'
 const DEFAULT_MODEL = process.env.LLMCTRLX_MODEL || 'gemma4:e4b'
 const DEFAULT_HISTORY = process.env.LLMCTRLX_HISTORY || path.join(os.homedir(), '.llmctrlx_history.json')
@@ -65,7 +65,7 @@ const options = getopts(argv.slice(1), {
     api_key: DEFAULT_API_KEY,
     provider: DEFAULT_PROVIDER,
   },
-  boolean: ['json', 'stream', 'no_tools', 'all', 'list'],
+  boolean: ['json', 'stream', 'no_tools', 'all', 'list', 'stdin'],
   string: ['user', 'system', 'files', 'tools_dir', 'provider', 'show', 'tags', 'shell']
 })
 
@@ -149,6 +149,7 @@ Usage:
 
 Examples:
   chat -u "hello"
+  cat file.txt | chat -u "analyze this" --stdin
   model --list
   embed -f file.txt
   bench -m mistral,gemma -u "test"
@@ -202,7 +203,7 @@ _llmctrlx_completions() {
 
   case \${cmd} in
     chat)
-      opts="-u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags --json --stream"
+      opts="-u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags --json --stream --stdin"
       ;;
     model)
       opts="--list --show --pull --delete -m --model"
@@ -300,7 +301,8 @@ _llmctrlx() {
             '-K[api_key]:api_key:' \\
             '-g[tags]:tags:' \\
             '--json' \\
-            '--stream'
+            '--stream' \\
+            '--stdin'
           ;;
         model)
           _arguments \\
@@ -417,6 +419,7 @@ complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s K -l api_key -d 'A
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s g -l tags -d 'Tags' -x
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -l json -d 'JSON output'
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -l stream -d 'Stream output'
+complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -l stdin -d 'Read from stdin'
 
 # Model command options
 complete -c llmctrlx -n '__fish_seen_subcommand_from model' -l list -d 'List models'
