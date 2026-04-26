@@ -10,6 +10,16 @@ import { HookPriority } from 'llmctrlx/plugin-api/hooks';
 
 // Configuration
 const DEFAULT_CONFIG = {
+  denyPatterns: [
+    /ignore\s+(all\s+)?(previous\s+)?instructions/i,
+    /system\s*prompt/i,
+    /\bDAN\b/,
+    /do\s+anything\s+now/i,
+    /\b(sudo|doas|su)\b/i,
+    /chmod\s+.*[0-7]{3,4}/i,
+  ],
+  blockMessage: 'Request blocked by prompt-guard: potential security risk detected.',
+};
 
 const promptGuardPlugin = {
   meta: {
@@ -35,15 +45,18 @@ const promptGuardPlugin = {
             };
           }
         }
-
         return {};
       },
-      HookPriority.HIGH,
+      HookPriority.HIGH
     );
 
-    tap('prompt:pre-process', async (ctx) => {
-      return { data: ctx.data };
-    }, HookPriority.HIGH);
+    tap(
+      'prompt:pre-process',
+      async (ctx) => {
+        return { data: ctx.data };
+      },
+      HookPriority.HIGH
+    );
   },
 };
 

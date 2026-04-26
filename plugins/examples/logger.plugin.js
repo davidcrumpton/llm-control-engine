@@ -30,19 +30,15 @@ const loggerPlugin = {
           }
 
           const elapsed = startTimes.has(ctx.meta.requestId)
-            ? `+${Date.now() - startTimes.get(ctx.meta.requestId)}ms`
-            : '';
+            ? Date.now() - startTimes.get(ctx.meta.requestId)
+            : 0;
 
-          console.log(
-            `[logger] ${ctx.meta.timestamp} | ${event.padEnd(22)} | ` +
-              `req:${ctx.meta.requestId.slice(0, 8)} | ${elapsed}`,
-          );
+          console.log(`[logger] ${event} (${elapsed}ms):`, {
+            requestId: ctx.meta.requestId,
+            data: ctx.data,
+          });
 
-          if (event === 'response:complete' || event === 'engine:error') {
-            startTimes.delete(ctx.meta.requestId);
-          }
-
-          return undefined;
+          return {};
         },
         HookPriority.MONITOR,
       );
