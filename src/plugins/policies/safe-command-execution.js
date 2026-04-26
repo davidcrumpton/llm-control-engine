@@ -10,7 +10,7 @@ export default {
 
   init() {
     this.dangerPatterns = [
-      /(^|\s)(sudo|rm|shutdown|reboot|mkfs|dd|chmod|chown|passwd|chsh|mount|umount|iptables|netcat|nc|curl|wget)\b/i,
+      /(^|\s)(sudo|doas|rm|shutdown|reboot|mkfs|dd|chmod|chown|passwd|chsh|mount|umount|iptables|netcat|nc|curl|wget)\b/i,
       /(;|\|\||&&|`|\$\(|>>|<<|>|<|\|)/
     ]
   },
