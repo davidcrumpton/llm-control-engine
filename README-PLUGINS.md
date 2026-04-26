@@ -163,7 +163,7 @@ configurable regex deny-patterns (prompt injection). Runs at HIGH priority.
 ## Example Run
 
 ```sh
-llmctrlx run -u 'doas ls'
+llmctrlx run -u 'doas ls' -v
 ```
 
 ```text

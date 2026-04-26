@@ -61,6 +61,7 @@ const options = getopts(argv.slice(1), {
     W: 'no_tools',
     K: 'api_key',
     g: 'tags',
+    v: 'verbose',
   },
   default: {
     host: DEFAULT_HOST,
@@ -70,7 +71,7 @@ const options = getopts(argv.slice(1), {
     api_key: DEFAULT_API_KEY,
     provider: DEFAULT_PROVIDER,
   },
-  boolean: ['json', 'stream', 'no_tools', 'all', 'list', 'stdin'],
+  boolean: ['json', 'stream', 'no_tools', 'all', 'list', 'stdin', 'verbose'],
   string: ['user', 'system', 'files', 'tools_dir', 'provider', 'show', 'tags', 'shell']
 })
 
@@ -114,8 +115,9 @@ async function main() {
   }
 
   // Initialize plugin system
-  const hookManager = new HookManager(console)
-  const pluginLoader = new PluginLoader(hookManager, console)
+  const logger = options.verbose ? console : undefined
+  const hookManager = new HookManager(logger)
+  const pluginLoader = new PluginLoader(hookManager, logger)
   await pluginLoader.loadFromDirectory(DEFAULT_PLUGINS_DIR)
   const engineHooks = new EngineHookIntegration(hookManager)
 
@@ -219,7 +221,7 @@ _llmctrlx_completions() {
   cmds="chat model embed bench run tools plugins history completion version"
 
   # Global options
-  global_opts="-h --host -m --model -u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags --json --stream --all --list --show"
+  global_opts="-h --host -m --model -u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags -v --verbose --json --stream --all --list --show"
 
   case \${cmd} in
     chat)
@@ -324,6 +326,7 @@ _llmctrlx() {
             '-W[no_tools]' \\
             '-K[api_key]:api_key:' \\
             '-g[tags]:tags:' \\
+            '-v[verbose]' \\
             '--json' \\
             '--stream' \\
             '--stdin'
@@ -334,7 +337,8 @@ _llmctrlx() {
             '--show' \\
             '--pull' \\
             '--delete' \\
-            '-m[model]:model:'
+            '-m[model]:model:' \\
+            '-v[verbose]'
           ;;
         embed)
           _arguments \\
@@ -342,6 +346,7 @@ _llmctrlx() {
             '-m[model]:model:' \\
             '-P[provider]:provider:(ollama lmstudio)' \\
             '-K[api_key]:api_key:' \\
+            '-v[verbose]' \\
             '--json'
           ;;
         bench)
@@ -353,6 +358,7 @@ _llmctrlx() {
             '-p[top_p]:top_p:' \\
             '-P[provider]:provider:(ollama lmstudio)' \\
             '-K[api_key]:api_key:' \\
+            '-v[verbose]' \\
             '--json'
           ;;
         run)
@@ -365,6 +371,7 @@ _llmctrlx() {
             '-T[tools_dir]:directory:_directories' \\
             '-W[no_tools]' \\
             '-K[api_key]:api_key:' \\
+            '-v[verbose]' \\
             '--json'
           ;;
         tools)
@@ -372,12 +379,14 @@ _llmctrlx() {
             '--list' \\
             '--show' \\
             '--pull' \\
-            '--delete'
+            '--delete' \\
+            '-v[verbose]'
           ;;
         plugins)
           _arguments \\
             '--list' \\
             '--show' \\
+            '-v[verbose]' \\
             '--json'
           ;;
         history)
@@ -385,11 +394,13 @@ _llmctrlx() {
             '--show' \\
             '--list' \\
             '--all' \\
-            '-k[session]:session:'
+            '-k[session]:session:' \\
+            '-v[verbose]'
           ;;
         completion)
           _arguments \\
-            '--shell:shell:(bash zsh fish)'
+            '--shell:shell:(bash zsh fish)' \\
+            '-v[verbose]'
           ;;
       esac
       ;;
@@ -431,6 +442,7 @@ complete -c llmctrlx -s T -l tools_dir -d 'Tools directory' -F
 complete -c llmctrlx -s W -l no_tools -d 'No tools'
 complete -c llmctrlx -s K -l api_key -d 'API key' -x
 complete -c llmctrlx -s g -l tags -d 'Tags' -x
+complete -c llmctrlx -s v -l verbose -d 'Verbose output'
 complete -c llmctrlx -l json -d 'JSON output'
 complete -c llmctrlx -l stream -d 'Stream output'
 complete -c llmctrlx -l all -d 'All'
