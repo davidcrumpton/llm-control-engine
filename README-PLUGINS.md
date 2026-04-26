@@ -102,7 +102,7 @@ Files must end with `.plugin.ts` or `.plugin.js`.
 
 ### HookManager
 
-| Method | Description |
+| Method  | Description |
 | ------- | ------ | --------- |
 | `register(plugin)` | Register and install a plugin |
 | `unregister(name)` | Teardown and remove a plugin |
@@ -114,14 +114,14 @@ Files must end with `.plugin.ts` or `.plugin.js`.
 ### PluginLoader
 
 | Method | Description |
-| ------- | ------ | --------- |
+| ------ | ----------- |
 | `loadFromDirectory(dir)` | Discover and load plugins from dir |
 | `loadPlugin(path)` | Load a single plugin file |
 
 ### EngineHookIntegration
 
 | Method | Description |
-| ------- | ------ | --------- |
+| ------ | ----------- |
 | `init()` | Fire `engine:init` |
 | `shutdown()` | Fire `engine:shutdown` |
 | `preProcessPrompt(id, raw)` | Waterfall `prompt:pre-process` |
