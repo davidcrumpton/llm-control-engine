@@ -46,6 +46,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "build:clean": "rm -rf dist && npm run build",
     "build:bin": "pkg llmctrlx.js --targets node18-linux-x64,node18-macos-x64 --out-path dist/",
     "build:deb": "fpm -s dir -t deb -n llmctrlx -v $(node -p \"require('./package.json').version\") dist/llmctrlx-linux-x64=/usr/local/bin/llmctrlx",
     "build:rpm": "fpm -s dir -t rpm -n llmctrlx -v $(node -p \"require('./package.json').version\") dist/llmctrlx-linux-x64=/usr/local/bin/llmctrlx",
