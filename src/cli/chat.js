@@ -42,10 +42,13 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
     userInput = fs.readFileSync(0, 'utf8')
   }
 
-  let userContent = userInput || ''
+  let userContent = ''
+  if (userInput) {
+    userContent = `Instruction: ${userInput}`
+  }
   if (stdinContent) {
     if (userContent) userContent += '\n\n'
-    userContent += `Stdin content:\n${stdinContent}`
+    userContent += `Input data:\n${stdinContent}`
   }
 
   if (!userContent) {

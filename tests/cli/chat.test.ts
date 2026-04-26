@@ -82,7 +82,7 @@ describe("cmdChat integration", () => {
 
     const historyData = JSON.parse(fs.readFileSync(historyFile, "utf8"));
     expect(historyData.default.messages).toEqual([
-      { role: "user", content: "user prompt" },
+      { role: "user", content: "Instruction: user prompt" },
       { role: "assistant", content: "final chat answer" },
     ]);
 
@@ -151,7 +151,7 @@ describe("cmdChat integration", () => {
 
     const historyData = JSON.parse(fs.readFileSync(historyFile, "utf8"));
     expect(historyData.default.messages).toEqual([
-      { role: "user", content: "please run this command" },
+      { role: "user", content: "Instruction: please run this command" },
       { role: "assistant", content: "safe final answer" },
     ]);
 

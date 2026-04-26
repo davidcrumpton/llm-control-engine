@@ -12,7 +12,6 @@ import { loadPluginsFromDir } from './loader.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const BUILTIN_PLUGINS_DIR = path.resolve(__dirname, '../plugins')
-const PROJECT_PLUGINS_DIR = path.resolve(process.cwd(), 'plugins')
 const GLOBAL_PLUGINS_DIR = path.resolve(os.homedir(), '.llmctrlx/plugins')
 
 /**
@@ -198,7 +197,7 @@ export async function createPluginRegistry(toolsDir) {
   const ctx = { toolsDir, projectDir: process.cwd() }
 
   await loadPluginsFromDir(BUILTIN_PLUGINS_DIR, registry, ctx)
-  await loadPluginsFromDir(PROJECT_PLUGINS_DIR, registry, ctx)
+  // Removed PROJECT_PLUGINS_DIR to prevent loading dev plugins
   if (toolsDir) {
     await loadPluginsFromDir(toolsDir, registry, ctx)
   }

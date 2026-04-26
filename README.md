@@ -163,8 +163,8 @@ llmctrlx chat -u "What time is it?" -k "my-session" -m gemma4:e2b
 # Chat with tools, session and stream output
 llmctrlx chat -u "What time is it?" -k "my-session" --stream -m gemma4:e2b
 
-# Read from stdin
-cat examples/prompt.txt | llmctrlx chat
+# Read prompt from stdin and set system message
+cat examples/prompt.txt | llmctrlx chat -s 'You are a helpfule assistant'
 
 # Chat with stdin and user prompt
 cat Makefile | llmctrlx chat -u "examine my Makefile" --stdin
@@ -362,7 +362,7 @@ Made changes.
 # into its history. The next call uses the history to answer the 
 # question.
 
-man -T ascii getopt_long | col -b | llmctrlx.js chat
+man -T ascii getopt_long | col -b | llmctrlx chat -u 'Summarize man page' --stdin
 llmctrlx.js chat -u 'does getopt_long allow long options without a short equivalent'
 ```
 
