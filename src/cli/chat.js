@@ -102,6 +102,7 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
 
   const chatOptions = buildOptions(options)
 
+  // fix streaming to error if lmstudio is the provider and stream is true, since lmstudio does not support streaming
   if (options.stream) {
     const stream = await llm.chat({
       model: options.model,
