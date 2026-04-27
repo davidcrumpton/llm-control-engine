@@ -15,6 +15,7 @@ This plugin listens on the `prompt:pre-process` hook and performs several saniti
 ## Security Features
 
 Blocks common jailbreak attempts including:
+
 - "ignore all previous instructions"
 - "system prompt"
 - DAN mode
@@ -24,6 +25,7 @@ Blocks common jailbreak attempts including:
 ## Configuration
 
 The unified version allows customization of:
+
 - Jailbreak patterns
 - Filler words to remove
 - Whether to expand shorthand

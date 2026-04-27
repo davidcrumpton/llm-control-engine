@@ -14,6 +14,7 @@ This plugin uses `inference:pre` and `response:filter` hooks to control Chain-of
 ## Detection
 
 Automatically detects CoT preferences from prompts:
+
 - "show your work" → visible
 - "answer directly" → suppressed
 - "structured reasoning" → structured

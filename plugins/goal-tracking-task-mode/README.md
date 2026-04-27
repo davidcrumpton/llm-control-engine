@@ -21,6 +21,7 @@ This plugin uses `prompt:pre-process` and `response:filter` hooks to maintain ta
 ## Goal Extraction
 
 Detects goals from patterns like:
+
 - "Goal: implement feature X"
 - "Task: fix bug Y"  
 - "I want to learn Z"

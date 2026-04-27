@@ -16,6 +16,7 @@ This plugin listens on the `inference:post` hook and adds self-critique feedback
 ## How it works
 
 After inference completes, the plugin:
+
 1. Analyzes the output for common issues
 2. Generates a critique comment
 3. Optionally applies simple refinements

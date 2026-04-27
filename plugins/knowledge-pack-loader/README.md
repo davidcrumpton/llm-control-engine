@@ -9,6 +9,7 @@ This plugin listens on the `prompt:pre-process` hook and detects when prompts me
 ## Knowledge Packs
 
 Currently includes packs for:
+
 - **JavaScript**: Core concepts, ES6+ features, popular frameworks
 - **Python**: Language features, popular libraries, use cases  
 - **Git**: Version control concepts, commands, best practices
@@ -17,6 +18,7 @@ Currently includes packs for:
 ## Detection
 
 Detects domains by:
+
 - Direct mentions ("JavaScript", "Python", etc.)
 - Related terms ("React" → JavaScript, "pandas" → Python, etc.)
 

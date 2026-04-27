@@ -20,12 +20,14 @@ This plugin uses `prompt:pre-process` and `response:filter` hooks to:
 ## Fact Extraction
 
 The plugin looks for sentences containing:
+
 - "is", "are", "was", "were", "has", "have", "had"
 - Words like "fact", "remember", "note"
 
 ## Memory Injection
 
 When processing a prompt, the plugin:
+
 - Finds memories with overlapping words (minimum 2 words)
 - Injects up to 3 relevant memories as context
 - Prepends context to the original prompt
