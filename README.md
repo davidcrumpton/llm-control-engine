@@ -192,6 +192,18 @@ npm run chat -u "Why is the sky blue?"
 llmctrlx chat -P lmstudio -u "Are you working, AI?" -m gemma-4-e4b -h http://127.0.0.1:1234/v1
 ```
 
+Using environment variables lessens the need to specify the host, model, and provider on every command. You can set them in your shell profile:
+
+```bash
+# Should call Wikipedia tool and return a summary of the Battle of Pontvallain
+
+export LLMCTRLX_HOST="http://127.0.0.1:1234/v1"
+export LLMCTRLX_MODEL=gemma-4-e2b
+export LLMCTRLX_PROVIDER=lmstudio
+
+llmctrlx chat  -u 'tell me about the Battle of Pontvallain'
+```
+
 #### 2. `model`
 
 Manage your LLM models.
