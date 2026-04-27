@@ -51,5 +51,11 @@ export async function cmdModel(llm, options) {
     return
   }
 
-  console.log('model commands: --list, --pull, --delete')
+  if(options.provider === 'ollama') {
+    console.log('model commands: --list, --show <model>, --pull <model>, --delete <model>')
+  } else if (options.provider === 'lmstudio') {
+    console.log('model commands: --list')
+  } else {
+    console.log('Unknown provider, no model commands available')
+  }
 }
