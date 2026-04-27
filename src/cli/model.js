@@ -21,20 +21,35 @@ export async function cmdModel(llm, options) {
   }
 
   if (options.show) {
+    // unsuppoted for lmstudio, but supported for ollama, so we just pass through to the provider and let it handle it.
+    if (options.provider === 'lmstudio') {
+      console.error('Show command is not supported for LMStudio provider')
+      return
+    }
     const res = await llm.show({ model: options.model })
     console.log(JSON.stringify(res, null, 2))
     return
   }
 
   if (options.pull) {
+    // unsuppoted for lmstudio, but supported for ollama, so we just pass through to the provider and let it handle it.
+    if (options.provider === 'lmstudio') {
+      console.error('Pull command is not supported for LMStudio provider')
+      return
+    }
     await llm.pull({ model: options.model })
     return
   }
 
   if (options.delete) {
+    // unsuppoted for lmstudio, but supported for ollama, so we just pass through to the provider and let it handle it.
+    if (options.provider === 'lmstudio') {
+      console.error('Delete command is not supported for LMStudio provider')
+      return
+    }
     await llm.delete({ model: options.model })
     return
   }
 
-  console.log('model commands: --list, --show, --pull, --delete')
+  console.log('model commands: --list, --pull, --delete')
 }
