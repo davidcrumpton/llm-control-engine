@@ -10,7 +10,13 @@
 export async function cmdModel(llm, options) {
   if (options.list) {
     const res = await llm.list()
-    res.models.forEach(m => console.log(m.name))
+    if (options.provider === 'ollama' && res.models) {
+      res.models.forEach(m => console.log(m.name))  // m.name is the model name for ollama.
+    } else if (res.models) {
+      res.models.forEach(m => console.log(m.id))  // m.id is the model name for LMstudio
+    } else {
+      console.log('No models found')
+    }
     return
   }
 
