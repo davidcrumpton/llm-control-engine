@@ -13,24 +13,39 @@ export async function cmdTools(options, toolsDir) {
   const requestedTags = options.tags ? options.tags.split(',').map(t => t.trim()) : null
   const tools = await loadTools(toolsDir, requestedTags)
 
+  if (tools.length === 0) {
+    console.log('No tools found')
+    return
+  }    
+  
+  if(options.json) {
+    console.log(JSON.stringify(tools, null, 2))
+    return
+  }
+
+  if (options.list) {
+    if (tools.length === 0) {
+      console.log('No tools found')
+      return
+    }
+    tools.forEach(tool => console.log(tool.name))
+    return
+  }
+
+  if (options.show) {
+    const tool = tools.find(t => t.name === options.show)
+    if (!tool) {
+      console.error(`Tool not found: ${options.show}`)
+      return
+    }
+    console.log(JSON.stringify(tool, null, 2))
+    return
+  }
+
   if (options.json) {
     console.log(JSON.stringify(tools, null, 2))
     return
   }
 
-  for (const tool of tools) {
-    console.log(`\n${tool.name}`)
-    console.log(`  ${tool.description}`)
-
-    if (tool.tags) {
-      console.log(`  tags: ${JSON.stringify(tool.tags)}`)
-    }
-
-    if (tool.parameters && Object.keys(tool.parameters).length) {
-      console.log(`  params:`)
-      for (const [key, val] of Object.entries(tool.parameters)) {
-        console.log(`    - ${key}: ${JSON.stringify(val)}`)
-      }
-    }
-  }
+  console.log('tools commands: --list, --show <tool>, --json')
 }

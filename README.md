@@ -1,6 +1,6 @@
 # LLM Control Engine - llmctrlx
 
-A command-line interface for interacting with large language models, built with Node.js. It features a persistent chat history, support for multiple chat sessions, LLM tool execution, model management, benchmarking, and shell command analysis.
+A local LLM orchestration and execution CLI with tool and plugin support, built with Node.js. It features a persistent chat history, support for multiple chat sessions, LLM tool execution, model management, benchmarking, and shell command analysis.
 
 ## Prerequisites
 

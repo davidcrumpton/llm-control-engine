@@ -10,6 +10,7 @@ import path from 'path'
 import { fileURLToPath, pathToFileURL } from 'url'
 import { dirname, join } from 'path'
 import os from 'os'
+import { int } from 'zod/v4'
 
 // --------------------
 // Setup paths relative to script location
@@ -21,7 +22,9 @@ const __dirname = dirname(__filename)
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.4.35'
+const APP_VERSION = '0.4.37'
+const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
+const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_HOST = process.env.LLMCTRLX_HOST || 'http://127.0.0.1:11434'
 const DEFAULT_MODEL = process.env.LLMCTRLX_MODEL || 'gemma4:e4b'
 const DEFAULT_HISTORY = process.env.LLMCTRLX_HISTORY || path.join(os.homedir(), '.llmctrlx_history.json')
@@ -29,6 +32,7 @@ const DEFAULT_API_KEY = process.env.LLMCTRLX_API_KEY || ''
 const DEFAULT_MAX_UPLOAD_FILE_SIZE = process.env.LLMCTRLX_MAX_UPLOAD_FILE_SIZE || 1024 * 1024 * 10 // 10 MB
 const DEFAULT_PROVIDER = process.env.LLMCTRLX_PROVIDER || 'ollama'
 const DEFAULT_SESSION = process.env.LLMCTRLX_SESSION || 'default'
+const DEFAULT_TOOLS_HISTORY_LENGTH = 5
 
 // --------------------
 // Tools Directory
@@ -62,6 +66,7 @@ const options = getopts(argv.slice(1), {
     K: 'api_key',
     g: 'tags',
     v: 'verbose',
+    L: 'history_length',
   },
   default: {
     host: DEFAULT_HOST,
@@ -70,8 +75,9 @@ const options = getopts(argv.slice(1), {
     no_tools: false,
     api_key: DEFAULT_API_KEY,
     provider: DEFAULT_PROVIDER,
+    history_length: DEFAULT_TOOLS_HISTORY_LENGTH,
   },
-  boolean: ['json', 'stream', 'no_tools', 'all', 'list', 'stdin', 'verbose'],
+  boolean: ['json', 'stream', 'no_tools', 'all', 'list', 'stdin', 'verbose','purge'],
   string: ['user', 'system', 'files', 'tools_dir', 'provider', 'show', 'tags', 'shell']
 })
 
@@ -150,7 +156,12 @@ async function main() {
       cmdCompletion(options.shell || process.env.SHELL)
       break
     case 'version':
-      console.log(`${APP_NAME} v${APP_VERSION}`)
+      if(options.verbose) {
+        console.log(`${APP_NAME} v${APP_VERSION} - ${APP_TAGLINE}`)
+        console.log(`${APP_DESCRIPTION}`)
+      } else {
+        console.log(`${APP_NAME} v${APP_VERSION}`)
+      }
       break
     default:
       console.log(`${APP_NAME} v${APP_VERSION}`)
@@ -163,7 +174,7 @@ Usage:
   run        Execute command + analyze
   tools      Manage tools (--list, --show, --pull, --delete)
   plugins    Manage plugins (--list, --show)
-  history    Show chat history (--show or --list --all) 
+  history    Show chat history (--show or --list --all, --delete, --purge) 
   completion Generate shell completion script
   version    Show version
 
@@ -225,7 +236,7 @@ _llmctrlx_completions() {
 
   case \${cmd} in
     chat)
-      opts="-u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags --json --stream --stdin"
+      opts="-u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags --json --stream --stdin --history_length"
       ;;
     model)
       opts="--list --show --pull --delete -m --model"
@@ -246,7 +257,7 @@ _llmctrlx_completions() {
       opts="--list --show --json"
       ;;
     history)
-      opts="--show --list --all -k --session"
+      opts="--show --list --all -k --session --delete --purge"
       ;;
     completion)
       opts="--shell"
@@ -330,6 +341,7 @@ _llmctrlx() {
             '--json' \\
             '--stream' \\
             '--stdin'
+            '--history_length[Number of previous messages to include in context, 0 for all]:history_length:'
           ;;
         model)
           _arguments \\
@@ -378,8 +390,7 @@ _llmctrlx() {
           _arguments \\
             '--list' \\
             '--show' \\
-            '--pull' \\
-            '--delete' \\
+            '--json' \\
             '-v[verbose]'
           ;;
         plugins)
@@ -502,8 +513,7 @@ complete -c llmctrlx -n '__fish_seen_subcommand_from run' -l json -d 'JSON outpu
 # Tools command options
 complete -c llmctrlx -n '__fish_seen_subcommand_from tools' -l list -d 'List tools'
 complete -c llmctrlx -n '__fish_seen_subcommand_from tools' -l show -d 'Show tool'
-complete -c llmctrlx -n '__fish_seen_subcommand_from tools' -l pull -d 'Pull tool'
-complete -c llmctrlx -n '__fish_seen_subcommand_from tools' -l delete -d 'Delete tool'
+complete -c llmctrlx -n '__fish_seen_subcommand_from tools' -l json -d 'JSON output'
 
 # Plugins command options
 complete -c llmctrlx -n '__fish_seen_subcommand_from plugins' -l list -d 'List plugins'
@@ -514,6 +524,8 @@ complete -c llmctrlx -n '__fish_seen_subcommand_from plugins' -l json -d 'JSON o
 complete -c llmctrlx -n '__fish_seen_subcommand_from history' -l show -d 'Show history'
 complete -c llmctrlx -n '__fish_seen_subcommand_from history' -l list -d 'List history'
 complete -c llmctrlx -n '__fish_seen_subcommand_from history' -l all -d 'All history'
+complete -c llmctrlx -n '__fish_seen_subcommand_from history' -l delete -d 'Delete history'
+complete -c llmctrlx -n '__fish_seen_subcommand_from history' -l purge -d 'Purge history'
 complete -c llmctrlx -n '__fish_seen_subcommand_from history' -s k -l session -d 'Session' -x
 
 # Completion command options

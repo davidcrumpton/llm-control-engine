@@ -33,8 +33,15 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
   if (options.system) {
     messages.push({ role: 'system', content: options.system })
   }
+  // Use number of message in opyions.history_length with 0 as all, default to 5 if not specified
+   const history_length = Number.isNaN(parseInt(options.history_length)) ? 5 : Math.max(0, parseInt(options.history_length))
 
-  messages.push(...session.messages)
+   if (history_length > 0 && session.messages && session.messages.length > 0) {
+     const recentMessages = session.messages.slice(-history_length)
+      messages.push(...recentMessages)
+    } else if (history_length === 0 && session.messages && session.messages.length > 0) {
+      messages.push(...session.messages)
+    }
 
   let userInput = options.user
 
