@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-let cmdTools;
-let loadToolsSpy;
-let logSpy;
+let cmdTools: any;
+let loadToolsSpy: any;
+let logSpy: any;
 
 describe("src/cli/tools.js", () => {
   beforeEach(async () => {
@@ -10,10 +10,12 @@ describe("src/cli/tools.js", () => {
     vi.clearAllMocks();
     await vi.resetModules();
 
+    // @ts-ignore
     const coreTools = await import("../../src/core/tools.js");
     loadToolsSpy = vi.spyOn(coreTools, "loadTools");
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
+    // @ts-ignore
     const cliTools = await import("../../src/cli/tools.js");
     cmdTools = cliTools.cmdTools;
   });
