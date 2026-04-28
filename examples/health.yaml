@@ -7,9 +7,9 @@ vars:
 
 steps:
   - name: disk
-    exec: ssh {{server}} df -h
+    exec: ssh {{USER}}@{{server}} df -h
 
-prompt: Analyze the {{env}} host.
+prompt: Analyze the {{env}} host for the user {{USER}} and name the title {{USER}} Storage Report
 
 model: gemma4:e2b
 system: You are a senior Linux sysadmin.

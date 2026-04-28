@@ -74,16 +74,12 @@ function parseCliVars(options) {
   return vars
 }
 
-function mergeVars(planVars, cliVars) {
-  if (!planVars) {
-    return { ...cliVars }
-  }
-
-  if (typeof planVars !== 'object' || Array.isArray(planVars)) {
+function mergeVars(planVars, cliVars, envVars = {}) {
+  if (planVars && (typeof planVars !== 'object' || Array.isArray(planVars))) {
     throw new Error('Plan vars must be a mapping of key/value pairs')
   }
 
-  return { ...planVars, ...cliVars }
+  return { ...envVars, ...(planVars || {}), ...cliVars }
 }
 
 function interpolateString(str, vars) {
@@ -95,9 +91,6 @@ function interpolateString(str, vars) {
   const value = str.replace(/{{\s*([A-Za-z0-9_]+)\s*}}/g, (match, name) => {
     if (Object.prototype.hasOwnProperty.call(vars, name)) {
       return String(vars[name])
-    }
-    if (process.env[name] !== undefined) {
-      return process.env[name]
     }
     missing.add(name)
     return match
@@ -213,7 +206,7 @@ export async function cmdPlan(llm, options) {
   let vars
   try {
     const cliVars = parseCliVars(options)
-    vars = mergeVars(plan.vars, cliVars)
+    vars = mergeVars(plan.vars, cliVars, process.env)
     plan = interpolatePlan(plan, vars)
   } catch (err) {
     console.error(err.message)
