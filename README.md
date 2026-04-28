@@ -422,3 +422,24 @@ llmctrlx chat -f /etc/doas.conf -u 'How secure is my doas.conf file?' -m gemma4:
 ```bash
 llmctrlx chat -u 'write a poem about the sea' -m gemma4:26b --stream
 ```
+
+### Example 7: Automation
+
+This could be used in a script to automatically check configuration files for issues. For example, you could set up a cron job that runs the following command every day to check your `doas.conf` file for potential security issues:
+
+```bash
+llmctrlx chat -u 'Evaluate my doas.conf file and output true if there are immediate issues to fix or false if none' -f /etc/doas.conf -s 'You are part of an automated security processing analysis system'
+true
+```
+
+The nightly BSD Security email included by default doesn't analyze for this type of thing, but if it did, you could have it automatically check your `doas.conf` file for potential security issues. In this case, it complained about the following in the doas.conf file and the output was `true` which could have alerted me to the issue without needing to check manually via a webhook or email notification:
+
+```text
+# /etc/doas.conf: doas configuration file
+**3. Redundant `wheel` logic**
+You have:
+1. `permit keepenv persist :wheel`
+2. `permit nopass ... root as root` (The dangerous line)
+The first line allows members of the `wheel` group to execute commands with `doas` while keeping their environment and persisting credentials. This is generally fine for trusted users.
+The second line allows anyone to execute commands as root without a password, which is a critical security
+```
