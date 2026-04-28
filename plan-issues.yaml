@@ -1,0 +1,15 @@
+---
+variables:
+  - the engine should provide variables to the yaml
+  - How many variables should the yaml be able to override, like model?
+    examples:
+      - instead of hard coding Linux in the health.yaml, we could expose some variables to the yaml
+      - should the yaml set more options in options object?  Pros/Cons?
+attachments:
+  - Some autmations create PDFs, so it should support attaching images
+  - data could be in an image -- A Dashboard outage map with red, green, yellow indicators
+  - text files can be attached via cat <filename> but then the model doesn't know the filename?
+    examples:
+      - attach a corporate policy doc to help the model respond
+      - attach a diagram of the network to help it troubleshoot
+   

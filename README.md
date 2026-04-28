@@ -268,7 +268,25 @@ llmctrlx run -u "df -h" -m llama3
 llmctrlx run -u "ls -la" -m llama3
 ```
 
-#### 6. `tools`
+#### 7. `plan`
+
+Execute a YAML-defined multi-step workflow, run each step command in order, capture stdout/stderr, and analyze the combined plan output with an LLM.
+
+**Options:**
+
+- `-m, --model <name>`: Model to use, or override the plan's configured model.
+- `-s, --system <text>`: Optional system prompt to override the plan's system prompt.
+- `--dry-run`: Show the ordered steps without executing any commands.
+
+**Examples:**
+
+```bash
+llmctrlx plan examples/health.yaml
+llmctrlx plan examples/health.yaml -m llama3
+llmctrlx plan examples/health.yaml --dry-run
+```
+
+#### 8. `tools`
 
 List and inspect available LLM tools.
 
@@ -287,7 +305,7 @@ llmctrlx tools
 llmctrlx tools --tags network,web
 ```
 
-#### 7. History Command
+#### 9. History Command
 
 Manage chat history, allowing listing, detailed viewing, and examination of all sessions.
 
@@ -313,7 +331,7 @@ llmctrlx history --list
 llmctrlx history --show -k my-session
 ```
 
-#### 8. `completion`
+#### 10. `completion`
 
 Generate shell completion scripts for bash, zsh, and fish.
 
@@ -334,7 +352,7 @@ llmctrlx completion --shell zsh
 llmctrlx completion --shell fish
 ```
 
-#### 9. Binary Building
+#### 11. Binary Building
 
 - Added `pkg` as a dev dependency for creating standalone executables
 - Added `build:bin` script that creates Linux and macOS binaries in dist

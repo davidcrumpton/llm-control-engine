@@ -1,0 +1,16 @@
+version: 1
+name: Linux Health Check
+model: gemma4:e2b
+system: You are a senior Linux sysadmin.
+prompt: Analyze system health and summarize any immediate issues.
+
+steps:
+  - name: uptime
+    exec: uptime
+
+  - name: disk
+    exec: df -h
+
+output:
+  format: markdown
+  save: report.md

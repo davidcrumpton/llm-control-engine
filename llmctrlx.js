@@ -22,7 +22,7 @@ const __dirname = dirname(__filename)
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.4.37'
+const APP_VERSION = '0.5.00'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_HOST = process.env.LLMCTRLX_HOST || 'http://127.0.0.1:11434'
@@ -77,7 +77,7 @@ const options = getopts(argv.slice(1), {
     provider: DEFAULT_PROVIDER,
     history_length: DEFAULT_TOOLS_HISTORY_LENGTH,
   },
-  boolean: ['json', 'stream', 'no_tools', 'all', 'list', 'stdin', 'verbose','purge'],
+  boolean: ['json', 'stream', 'no_tools', 'all', 'list', 'stdin', 'verbose','purge', 'dry-run'],
   string: ['user', 'system', 'files', 'tools_dir', 'provider', 'show', 'tags', 'shell']
 })
 
@@ -105,6 +105,7 @@ async function main() {
     cmdEmbed,
     cmdBench,
     cmdRun,
+    cmdPlan,
     cmdTools,
     cmdHistory,
     cmdPlugins
@@ -143,6 +144,9 @@ async function main() {
     case 'run':
       await cmdRun(llm, options, engineHooks)
       break
+    case 'plan':
+      await cmdPlan(llm, options, engineHooks)
+      break
     case 'tools':
       await cmdTools(options, toolsDir)
       break
@@ -172,6 +176,7 @@ Usage:
   embed      Generate embeddings
   bench      Benchmark models
   run        Execute command + analyze
+  plan       Execute YAML-defined plan
   tools      Manage tools (--list, --show, --pull, --delete)
   plugins    Manage plugins (--list, --show)
   history    Show chat history (--show or --list --all, --delete, --purge) 
@@ -229,7 +234,7 @@ _llmctrlx_completions() {
   cmd="\${COMP_WORDS[1]}"
 
   # Main commands
-  cmds="chat model embed bench run tools plugins history completion version"
+  cmds="chat model embed bench run plan tools plugins history completion version"
 
   # Global options
   global_opts="-h --host -m --model -u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags -v --verbose --json --stream --all --list --show"
@@ -249,6 +254,9 @@ _llmctrlx_completions() {
       ;;
     run)
       opts="-u --user -s --system -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key --json"
+      ;;
+    plan)
+      opts="-m --model -s --system -P --provider -K --api_key -v --verbose --dry-run"
       ;;
     tools)
       opts="--list --show --pull --delete"
@@ -307,6 +315,7 @@ _llmctrlx() {
     'embed:Generate embeddings'
     'bench:Benchmark models'
     'run:Execute command + analyze'
+    'plan:Execute YAML-defined plan'
     'tools:Manage tools'
     'plugins:Manage plugins'
     'history:Show chat history'
@@ -386,6 +395,15 @@ _llmctrlx() {
             '-v[verbose]' \\
             '--json'
           ;;
+        plan)
+          _arguments \\
+            '-m[model]:model:' \\
+            '-s[system message]:message:' \\
+            '-P[provider]:provider:(ollama lmstudio)' \\
+            '-K[api_key]:api_key:' \\
+            '-v[verbose]' \\
+            '--dry-run'
+          ;;
         tools)
           _arguments \\
             '--list' \\
@@ -433,6 +451,7 @@ complete -c llmctrlx -n '__fish_use_subcommand' -a 'model' -d 'Manage models'
 complete -c llmctrlx -n '__fish_use_subcommand' -a 'embed' -d 'Generate embeddings'
 complete -c llmctrlx -n '__fish_use_subcommand' -a 'bench' -d 'Benchmark models'
 complete -c llmctrlx -n '__fish_use_subcommand' -a 'run' -d 'Execute command + analyze'
+complete -c llmctrlx -n '__fish_use_subcommand' -a 'plan' -d 'Execute YAML-defined plan'
 complete -c llmctrlx -n '__fish_use_subcommand' -a 'tools' -d 'Manage tools'
 complete -c llmctrlx -n '__fish_use_subcommand' -a 'plugins' -d 'Manage plugins'
 complete -c llmctrlx -n '__fish_use_subcommand' -a 'history' -d 'Show chat history'
@@ -509,6 +528,12 @@ complete -c llmctrlx -n '__fish_seen_subcommand_from run' -s T -l tools_dir -d '
 complete -c llmctrlx -n '__fish_seen_subcommand_from run' -s W -l no_tools -d 'No tools'
 complete -c llmctrlx -n '__fish_seen_subcommand_from run' -s K -l api_key -d 'API key' -x
 complete -c llmctrlx -n '__fish_seen_subcommand_from run' -l json -d 'JSON output'
+complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -s m -l model -d 'Model' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -s s -l system -d 'System message' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -s P -l provider -d 'Provider' -a 'ollama lmstudio' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -s K -l api_key -d 'API key' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -l dry-run -d 'Dry run plan'
+complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -l verbose -d 'Verbose output'
 
 # Tools command options
 complete -c llmctrlx -n '__fish_seen_subcommand_from tools' -l list -d 'List tools'
