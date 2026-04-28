@@ -272,10 +272,30 @@ llmctrlx run -u "ls -la" -m llama3
 
 Execute a YAML-defined multi-step workflow, run each step command in order, capture stdout/stderr, and analyze the combined plan output with an LLM.
 
+Plans may include reusable variables via a top-level `vars:` mapping, and those values can be overridden on the command line.
+
+Example plan YAML:
+
+```yaml
+version: 1
+name: Host Health Check
+
+vars:
+  host: localhost
+  env: dev
+
+steps:
+  - name: disk
+    exec: ssh {{host}} df -h
+
+prompt: Analyze the {{env}} host.
+```
+
 **Options:**
 
 - `-m, --model <name>`: Model to use, or override the plan's configured model.
 - `-s, --system <text>`: Optional system prompt to override the plan's system prompt.
+- `--var <key=value>`: Set or override a plan variable; can be repeated.
 - `--dry-run`: Show the ordered steps without executing any commands.
 
 **Examples:**
@@ -284,6 +304,7 @@ Execute a YAML-defined multi-step workflow, run each step command in order, capt
 llmctrlx plan examples/health.yaml
 llmctrlx plan examples/health.yaml -m llama3
 llmctrlx plan examples/health.yaml --dry-run
+llmctrlx plan examples/health.yaml --var server=proxmox1 --var env=prod
 ```
 
 #### 8. `tools`

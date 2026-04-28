@@ -1,15 +1,18 @@
 version: 1
-name: Linux Health Check
-model: gemma4:e2b
-system: You are a senior Linux sysadmin.
-prompt: Analyze system health and summarize any immediate issues.
+name: Host Health Check
+
+vars:
+  server: localhost
+  env: dev
 
 steps:
-  - name: uptime
-    exec: uptime
-
   - name: disk
-    exec: df -h
+    exec: ssh {{server}} df -h
+
+prompt: Analyze the {{env}} host.
+
+model: gemma4:e2b
+system: You are a senior Linux sysadmin.
 
 output:
   format: markdown

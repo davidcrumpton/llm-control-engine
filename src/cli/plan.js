@@ -49,6 +49,98 @@ function validatePlan(plan, planFile) {
   }
 }
 
+function parseCliVars(options) {
+  const rawVars = options.var
+  if (!rawVars) {
+    return {}
+  }
+
+  const entries = Array.isArray(rawVars) ? rawVars : [rawVars]
+  const vars = {}
+
+  for (const entry of entries) {
+    if (typeof entry !== 'string' || !entry.includes('=')) {
+      throw new Error(`Invalid --var value: ${entry}. Expected key=value.`)
+    }
+
+    const [key, ...rest] = entry.split('=')
+    if (!key) {
+      throw new Error(`Invalid --var value: ${entry}. Expected key=value.`)
+    }
+
+    vars[key] = rest.join('=')
+  }
+
+  return vars
+}
+
+function mergeVars(planVars, cliVars) {
+  if (!planVars) {
+    return { ...cliVars }
+  }
+
+  if (typeof planVars !== 'object' || Array.isArray(planVars)) {
+    throw new Error('Plan vars must be a mapping of key/value pairs')
+  }
+
+  return { ...planVars, ...cliVars }
+}
+
+function interpolateString(str, vars) {
+  if (typeof str !== 'string') {
+    return str
+  }
+
+  const missing = new Set()
+  const value = str.replace(/{{\s*([A-Za-z0-9_]+)\s*}}/g, (match, name) => {
+    if (Object.prototype.hasOwnProperty.call(vars, name)) {
+      return String(vars[name])
+    }
+    if (process.env[name] !== undefined) {
+      return process.env[name]
+    }
+    missing.add(name)
+    return match
+  })
+
+  if (missing.size > 0) {
+    const next = Array.from(missing)[0]
+    throw new Error(`Unknown variable: {{${next}}}`)
+  }
+
+  return value
+}
+
+function interpolatePlan(plan, vars) {
+  const interpolated = { ...plan }
+
+  if (typeof interpolated.name === 'string') {
+    interpolated.name = interpolateString(interpolated.name, vars)
+  }
+  if (typeof interpolated.prompt === 'string') {
+    interpolated.prompt = interpolateString(interpolated.prompt, vars)
+  }
+  if (typeof interpolated.system === 'string') {
+    interpolated.system = interpolateString(interpolated.system, vars)
+  }
+  if (interpolated.output && typeof interpolated.output.save === 'string') {
+    interpolated.output = { ...interpolated.output, save: interpolateString(interpolated.output.save, vars) }
+  }
+
+  interpolated.steps = plan.steps.map((step) => {
+    const nextStep = { ...step }
+    if (typeof nextStep.name === 'string') {
+      nextStep.name = interpolateString(nextStep.name, vars)
+    }
+    if (typeof nextStep.exec === 'string') {
+      nextStep.exec = interpolateString(nextStep.exec, vars)
+    }
+    return nextStep
+  })
+
+  return interpolated
+}
+
 function buildPlanPrompt(plan, results) {
   const promptParts = []
   promptParts.push(`Plan: ${plan.name || 'Unnamed Plan'}`)
@@ -113,6 +205,16 @@ export async function cmdPlan(llm, options) {
 
   try {
     validatePlan(plan, planFile)
+  } catch (err) {
+    console.error(err.message)
+    process.exit(1)
+  }
+
+  let vars
+  try {
+    const cliVars = parseCliVars(options)
+    vars = mergeVars(plan.vars, cliVars)
+    plan = interpolatePlan(plan, vars)
   } catch (err) {
     console.error(err.message)
     process.exit(1)

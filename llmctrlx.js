@@ -22,7 +22,7 @@ const __dirname = dirname(__filename)
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.5.00'
+const APP_VERSION = '0.5.10'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_HOST = process.env.LLMCTRLX_HOST || 'http://127.0.0.1:11434'
@@ -78,7 +78,8 @@ const options = getopts(argv.slice(1), {
     history_length: DEFAULT_TOOLS_HISTORY_LENGTH,
   },
   boolean: ['json', 'stream', 'no_tools', 'all', 'list', 'stdin', 'verbose','purge', 'dry-run'],
-  string: ['user', 'system', 'files', 'tools_dir', 'provider', 'show', 'tags', 'shell']
+  string: ['user', 'system', 'files', 'tools_dir', 'provider', 'show', 'tags', 'shell', 'var'],
+  array: ['var']
 })
 
 // abort if -W and -T is given
@@ -256,7 +257,7 @@ _llmctrlx_completions() {
       opts="-u --user -s --system -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key --json"
       ;;
     plan)
-      opts="-m --model -s --system -P --provider -K --api_key -v --verbose --dry-run"
+      opts="-m --model -s --system -P --provider -K --api_key -v --verbose --dry-run --var"
       ;;
     tools)
       opts="--list --show --pull --delete"
@@ -402,6 +403,7 @@ _llmctrlx() {
             '-P[provider]:provider:(ollama lmstudio)' \\
             '-K[api_key]:api_key:' \\
             '-v[verbose]' \\
+            '--var[template variable assignment]:key=value:' \\
             '--dry-run'
           ;;
         tools)
@@ -531,8 +533,7 @@ complete -c llmctrlx -n '__fish_seen_subcommand_from run' -l json -d 'JSON outpu
 complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -s m -l model -d 'Model' -x
 complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -s s -l system -d 'System message' -x
 complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -s P -l provider -d 'Provider' -a 'ollama lmstudio' -x
-complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -s K -l api_key -d 'API key' -x
-complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -l dry-run -d 'Dry run plan'
+complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -s K -l api_key -d 'API key' -xcomplete -c llmctrlx -n '__fish_seen_subcommand_from plan' -l var -d 'Template variable assignment' -xcomplete -c llmctrlx -n '__fish_seen_subcommand_from plan' -l dry-run -d 'Dry run plan'
 complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -l verbose -d 'Verbose output'
 
 # Tools command options
