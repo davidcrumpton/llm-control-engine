@@ -3,6 +3,7 @@
  */
 
 import fs from 'fs'
+import path from 'path'
 import { loadHistory, saveHistory, getSession } from '../core/history.js'
 import { buildOptions, isImage, validateFileSize, buildToolPrompt } from '../core/utils.js'
 import { createPluginRegistry, runWithTools, runWithoutTools } from '../core/tools.js'
@@ -86,12 +87,25 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
 
     if (isImage(file)) {
       const img = fs.readFileSync(file).toString('base64')
+      const provider = (options.provider || 'ollama').toLowerCase()
 
-      messages.push({
-        role: 'user',
-        content: 'Describe this image',
-        images: [img]
-      })
+      if (provider === 'lmstudio') {
+        const ext = path.extname(file).slice(1).toLowerCase()
+        const mimeType = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`
+        messages.push({
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: `data:${mimeType};base64,${img}` } },
+            { type: 'text', text: `Attached image: ${path.basename(file)}` }
+          ]
+        })
+      } else {
+        messages.push({
+          role: 'user',
+          content: 'Describe this image',
+          images: [img]
+        })
+      }
 
     } else {
       const content = fs.readFileSync(file, 'utf8')

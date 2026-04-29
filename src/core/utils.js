@@ -198,3 +198,20 @@ ${tools.map(t => `
 `).join('\n')}
 `
 }
+
+// // core/utils.js
+// export function buildImageMessage(filePath, imgData, provider) {
+//   const label = `Attached image: ${path.basename(filePath)}`
+//   if (provider === 'lmstudio') {
+//     const ext = path.extname(filePath).slice(1).toLowerCase()
+//     const mimeType = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`
+//     return {
+//       role: 'user',
+//       content: [
+//         { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imgData}` } },
+//         { type: 'text', text: label }
+//       ]
+//     }
+//   }
+//   return { role: 'user', content: label, images: [imgData] }
+// }
