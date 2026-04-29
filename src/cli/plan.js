@@ -2,10 +2,9 @@ import fs from 'fs/promises'
 import fsSync from 'fs'
 import { exec } from 'child_process'
 import { promisify } from 'util'
-import path from 'path'
 import jsYaml from 'js-yaml'
 import { runWithoutTools } from '../core/tools.js'
-import { isImage, validateFileSize } from '../core/utils.js'
+import { isImage, validateFileSize, buildImageMessage } from '../core/utils.js'
 
 const execAsync = promisify(exec)
 
@@ -197,36 +196,6 @@ function buildPlanPrompt(plan, results) {
 }
 
 /**
- * Build an image message in the correct format for the active provider.
- *
- * Ollama native API  → { role, content: string, images: [base64] }
- * LMStudio / OpenAI → { role, content: [{type:'image_url', image_url:{url:'data:…'}}, {type:'text',…}] }
- *
- * @param {string} filePath
- * @param {string} provider - 'lmstudio' | 'ollama' (default)
- * @returns {Object}
- */
-function buildImageMessage(filePath, provider) {
-  const imgData = fsSync.readFileSync(filePath).toString('base64')
-  const label = `Attached image: ${path.basename(filePath)}`
-
-  if (provider === 'lmstudio') {
-    const ext = path.extname(filePath).slice(1).toLowerCase()
-    const mimeType = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`
-    return {
-      role: 'user',
-      content: [
-        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imgData}` } },
-        { type: 'text', text: label }
-      ]
-    }
-  }
-
-  // Ollama default
-  return { role: 'user', content: label, images: [imgData] }
-}
-
-/**
  * Build message objects for plan-level attachments (images and text files).
  * @param {string[]} attachments - Array of file paths from the plan YAML
  * @param {number} maxUploadFileSize - Maximum allowed file size in bytes
@@ -245,7 +214,8 @@ async function buildAttachmentMessages(attachments, maxUploadFileSize, provider)
     }
 
     if (isImage(filePath)) {
-      attachmentMessages.push(buildImageMessage(filePath, provider))
+      const imgData = fsSync.readFileSync(filePath).toString('base64')
+      attachmentMessages.push(buildImageMessage(filePath, imgData, provider))
     } else {
       const content = await fs.readFile(filePath, 'utf8')
       attachmentMessages.push({

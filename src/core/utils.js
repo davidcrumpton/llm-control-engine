@@ -199,19 +199,32 @@ ${tools.map(t => `
 `
 }
 
-// // core/utils.js
-// export function buildImageMessage(filePath, imgData, provider) {
-//   const label = `Attached image: ${path.basename(filePath)}`
-//   if (provider === 'lmstudio') {
-//     const ext = path.extname(filePath).slice(1).toLowerCase()
-//     const mimeType = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`
-//     return {
-//       role: 'user',
-//       content: [
-//         { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imgData}` } },
-//         { type: 'text', text: label }
-//       ]
-//     }
-//   }
-//   return { role: 'user', content: label, images: [imgData] }
-// }
+/**
+ * Build an image message in the correct format for the active provider.
+ *
+ * Ollama native API  → { role, content: string, images: [base64] }
+ * LMStudio / OpenAI → { role, content: [{type:'image_url', image_url:{url:'data:…'}}, {type:'text',…}] }
+ *
+ * @param {string} filePath - Path to the image file (used for label and mime type)
+ * @param {string} imgData - Base64-encoded image data
+ * @param {string} provider - 'lmstudio' | 'ollama' (default)
+ * @returns {Object} LLM message object
+ */
+export function buildImageMessage(filePath, imgData, provider) {
+  const label = `Attached image: ${path.basename(filePath)}`
+
+  if (provider === 'lmstudio') {
+    const ext = path.extname(filePath).slice(1).toLowerCase()
+    const mimeType = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`
+    return {
+      role: 'user',
+      content: [
+        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imgData}` } },
+        { type: 'text', text: label }
+      ]
+    }
+  }
+
+  // Ollama default
+  return { role: 'user', content: label, images: [imgData] }
+}
