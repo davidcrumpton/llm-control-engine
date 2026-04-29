@@ -1,6 +1,9 @@
 version: 1
 name: Host Health Check
-
+attachments:
+   - ./examples/network-diagram.png
+   - ./examples/curl-command.txt
+   - "{{ ESCALATION_CONTACTS }}"
 vars:
   server: localhost
   env: dev
@@ -9,7 +12,7 @@ steps:
   - name: disk
     exec: ssh {{USER}}@{{server}} df -h
 
-prompt: Analyze the {{env}} host set the title {{USER}} Storage Report
+prompt: Analyze the step data and the attachments to diagnose the network issue
 
 model: gemma4:e2b
 system: You are a senior Linux sysadmin.
@@ -17,3 +20,5 @@ system: You are a senior Linux sysadmin.
 output:
   format: markdown
   save: report.md
+
+# ~/Downloads/network-diagram.png ~/Downloads/curl-command.txt ~/Downloads/escalation-contacts.txt 

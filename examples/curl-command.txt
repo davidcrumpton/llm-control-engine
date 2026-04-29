@@ -1,0 +1,26 @@
+# Health-check + auth probe used in plan steps
+# Run against staging before promoting to prod
+
+curl -X POST https://api.internal.example.com/v2/health \
+  -H "Authorization: Bearer ${API_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -H "X-Request-ID: $(uuidgen)" \
+  -d '{
+    "checks": ["db", "cache", "queue"],
+    "verbose": true
+  }' \
+  --max-time 10 \
+  --retry 3 \
+  --retry-delay 2 \
+  -w "\n\nHTTP Status : %{http_code}\nTotal Time  : %{time_total}s\nDNS Lookup  : %{time_namelookup}s\nConnect     : %{time_connect}s\n"
+
+# Expected response shape:
+# {
+#   "status": "ok",
+#   "checks": {
+#     "db":    { "status": "ok", "latency_ms": 4 },
+#     "cache": { "status": "ok", "latency_ms": 1 },
+#     "queue": { "status": "ok", "latency_ms": 12 }
+#   },
+#   "version": "2.4.1"
+# }

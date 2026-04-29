@@ -1,8 +1,11 @@
 import fs from 'fs/promises'
+import fsSync from 'fs'
 import { exec } from 'child_process'
 import { promisify } from 'util'
+import path from 'path'
 import jsYaml from 'js-yaml'
 import { runWithoutTools } from '../core/tools.js'
+import { isImage, validateFileSize } from '../core/utils.js'
 
 const execAsync = promisify(exec)
 
@@ -35,6 +38,17 @@ function validatePlan(plan, planFile) {
 
   if (!Array.isArray(plan.steps) || plan.steps.length === 0) {
     throw new Error(`Missing required field 'steps' in plan: ${planFile}`)
+  }
+
+  if (plan.attachments !== undefined) {
+    if (!Array.isArray(plan.attachments)) {
+      throw new Error(`'attachments' must be an array of file paths in plan: ${planFile}`)
+    }
+    for (const [i, attachment] of plan.attachments.entries()) {
+      if (typeof attachment !== 'string' || !attachment.trim()) {
+        throw new Error(`attachments[${i}] must be a non-empty file path string in plan: ${planFile}`)
+      }
+    }
   }
 
   for (const [index, step] of plan.steps.entries()) {
@@ -130,6 +144,12 @@ function interpolatePlan(plan, vars) {
     interpolated.output = { ...interpolated.output, save: interpolateString(interpolated.output.save, vars) }
   }
 
+  if (Array.isArray(interpolated.attachments)) {
+    interpolated.attachments = interpolated.attachments.map((filePath) =>
+      interpolateString(filePath, vars)
+    )
+  }
+
   interpolated.steps = plan.steps.map((step) => {
     const nextStep = { ...step }
     if (typeof nextStep.name === 'string') {
@@ -177,11 +197,74 @@ function buildPlanPrompt(plan, results) {
 }
 
 /**
+ * Build an image message in the correct format for the active provider.
+ *
+ * Ollama native API  → { role, content: string, images: [base64] }
+ * LMStudio / OpenAI → { role, content: [{type:'image_url', image_url:{url:'data:…'}}, {type:'text',…}] }
+ *
+ * @param {string} filePath
+ * @param {string} provider - 'lmstudio' | 'ollama' (default)
+ * @returns {Object}
+ */
+function buildImageMessage(filePath, provider) {
+  const imgData = fsSync.readFileSync(filePath).toString('base64')
+  const label = `Attached image: ${path.basename(filePath)}`
+
+  if (provider === 'lmstudio') {
+    const ext = path.extname(filePath).slice(1).toLowerCase()
+    const mimeType = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`
+    return {
+      role: 'user',
+      content: [
+        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imgData}` } },
+        { type: 'text', text: label }
+      ]
+    }
+  }
+
+  // Ollama default
+  return { role: 'user', content: label, images: [imgData] }
+}
+
+/**
+ * Build message objects for plan-level attachments (images and text files).
+ * @param {string[]} attachments - Array of file paths from the plan YAML
+ * @param {number} maxUploadFileSize - Maximum allowed file size in bytes
+ * @param {string} provider - 'lmstudio' | 'ollama'
+ * @returns {Promise<Object[]>} Array of LLM message objects ready to prepend to the request
+ */
+async function buildAttachmentMessages(attachments, maxUploadFileSize, provider) {
+  const attachmentMessages = []
+
+  for (const filePath of attachments) {
+    try {
+      validateFileSize(filePath, maxUploadFileSize)
+    } catch (e) {
+      console.error(`Skipping attachment '${filePath}' due to size error: ${e.message}`)
+      continue
+    }
+
+    if (isImage(filePath)) {
+      attachmentMessages.push(buildImageMessage(filePath, provider))
+    } else {
+      const content = await fs.readFile(filePath, 'utf8')
+      attachmentMessages.push({
+        role: 'user',
+        content: `Attached file: ${filePath}\n${content}`
+      })
+    }
+  }
+
+  return attachmentMessages
+}
+
+/**
  * Handle plan command
  * @param {Object} llm
  * @param {Object} options
+ * @param {number} [maxUploadFileSize=10485760] - Maximum attachment file size in bytes (default 10 MB)
  */
-export async function cmdPlan(llm, options) {
+export async function cmdPlan(llm, options, maxUploadFileSize = 10 * 1024 * 1024) {
   const positional = options._ || []
   const planFile = positional[0]
 
@@ -254,6 +337,15 @@ export async function cmdPlan(llm, options) {
   if (systemPrompt) {
     messages.push({ role: 'system', content: systemPrompt })
   }
+
+  // Prepend any plan-level attachments so the model sees them before the step outputs
+  const provider = (options.provider || 'ollama').toLowerCase()
+
+  if (Array.isArray(plan.attachments) && plan.attachments.length > 0) {
+    const attachmentMessages = await buildAttachmentMessages(plan.attachments, maxUploadFileSize, provider)
+    messages.push(...attachmentMessages)
+  }
+
   messages.push({ role: 'user', content: prompt })
 
   const analysis = await runWithoutTools(llm, model, messages)

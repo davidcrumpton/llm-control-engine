@@ -1,0 +1,33 @@
+# Escalation Contacts — On-Call Roster
+# This file is referenced via the ESCALATION_CONTACTS plan variable.
+# Update before each release window.
+
+[L1 - First Responder]
+name:  Jamie Okafor
+role:  Site Reliability Engineer
+email: jamie.okafor@example.com
+slack: @jamie-o
+phone: +1-555-0142
+hours: 24/7 on-call (rotating)
+
+[L2 - Service Owner]
+name:  Priya Nambiar
+role:  Platform Engineering Lead
+email: priya.nambiar@example.com
+slack: @priya-n
+phone: +1-555-0198
+hours: Business hours; PagerDuty after-hours
+
+[L3 - Incident Commander]
+name:  Derek Sousa
+role:  VP Engineering
+email: derek.sousa@example.com
+slack: @derek-s
+phone: +1-555-0231
+hours: Sev-1 only
+
+[Vendor Support]
+provider: Acme Cloud
+portal:   https://support.acmecloud.example.com
+contract: ENT-88412
+sla:      4-hour response (P1), 8-hour (P2)
