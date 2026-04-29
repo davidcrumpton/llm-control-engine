@@ -62,7 +62,25 @@ test:unit:
   extends: .node-base
   stage: test
   script:
-    - npm run test:ci
+    - |
+      set -e
+      echo "=== CI DEBUG: start test:unit ==="
+      node -v
+      npm -v
+      pwd
+      ls -la
+      npm run test:ci || TEST_EXIT=$?
+      TEST_EXIT=${TEST_EXIT:-0}
+      echo "=== CI DEBUG: test:ci exit=${TEST_EXIT} ==="
+      echo "=== CI DEBUG: reports dir ==="
+      ls -la reports || true
+      echo "=== CI DEBUG: coverage dir ==="
+      ls -la coverage || true
+      if [ -f reports/junit.xml ]; then
+        echo "=== CI DEBUG: junit head ==="
+        head -n 40 reports/junit.xml
+      fi
+      exit ${TEST_EXIT}
   artifacts:
     when: always
     paths:
