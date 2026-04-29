@@ -74,12 +74,22 @@ function parseCliVars(options) {
   return vars
 }
 
+function filterPrivateVars(vars) {
+  return Object.fromEntries(
+    Object.entries(vars).filter(([key]) => !key.startsWith('__LLMCTRLX_'))
+  )
+}
+
 function mergeVars(planVars, cliVars, envVars = {}) {
   if (planVars && (typeof planVars !== 'object' || Array.isArray(planVars))) {
     throw new Error('Plan vars must be a mapping of key/value pairs')
   }
 
-  return { ...envVars, ...(planVars || {}), ...cliVars }
+  return {
+    ...filterPrivateVars(envVars),
+    ...filterPrivateVars(planVars || {}),
+    ...filterPrivateVars(cliVars),
+  }
 }
 
 function interpolateString(str, vars) {
