@@ -95,8 +95,8 @@ steps:
   });
 
   it("interpolates plan vars and respects CLI overrides", async () => {
-    const originalUser = process.env.USER
-    process.env.USER = "ci-test-user"
+    const originalUser = process.env.USER;
+    process.env.USER = "ci-test-user";
 
     try {
       const planPath = path.join(tempDir, "plan-vars.yaml");
@@ -138,9 +138,9 @@ output:
       expect(fs.readFileSync(savePath, "utf8")).toBe("Host OK");
     } finally {
       if (originalUser === undefined) {
-        delete process.env.USER
+        delete process.env.USER;
       } else {
-        process.env.USER = originalUser
+        process.env.USER = originalUser;
       }
     }
   });
