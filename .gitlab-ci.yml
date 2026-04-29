@@ -67,12 +67,8 @@ test:unit:
     when: always
     paths:
       - reports/junit.xml
-      - coverage/
     reports:
       junit: reports/junit.xml
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage/cobertura-coverage.xml
   coverage: '/All files[^|]*\|[^|]*\|\s*([\d.]+)/'
 
 # =============================================================================

@@ -22,7 +22,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'cobertura'],
-      reportsDirectory: './coverage',
+      reportsDirectory: 'coverage',
       lines: 80,
       functions: 80,
       branches: 75,
