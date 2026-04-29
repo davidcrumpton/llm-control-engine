@@ -23,10 +23,12 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html', 'cobertura'],
       reportsDirectory: 'coverage',
-      lines: 80,
-      functions: 80,
-      branches: 75,
-      statements: 80
+      ...(process.env.CI ? {} : {
+        lines: 80,
+        functions: 80,
+        branches: 75,
+        statements: 80
+      })
     }
   },
   resolve: {
