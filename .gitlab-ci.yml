@@ -77,8 +77,12 @@ test:unit:
       echo "=== CI DEBUG: coverage dir ==="
       ls -la coverage || true
       if [ -f reports/junit.xml ]; then
-        echo "=== CI DEBUG: junit head ==="
-        head -n 40 reports/junit.xml
+        echo "=== CI DEBUG: junit summary ==="
+        grep -nE 'failures|errors' reports/junit.xml || true
+        echo "=== CI DEBUG: junit failure details ==="
+        grep -n '<failure\|<error' reports/junit.xml || true
+        echo "=== CI DEBUG: junit tail ==="
+        tail -n 80 reports/junit.xml
       fi
       exit ${TEST_EXIT}
   artifacts:
