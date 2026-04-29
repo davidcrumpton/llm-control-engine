@@ -95,9 +95,13 @@ steps:
   });
 
   it("interpolates plan vars and respects CLI overrides", async () => {
-    const planPath = path.join(tempDir, "plan-vars.yaml");
-    const savePath = path.join(tempDir, "vars-report.md");
-    const planYaml = `version: 1
+    const originalUser = process.env.USER
+    process.env.USER = "ci-test-user"
+
+    try {
+      const planPath = path.join(tempDir, "plan-vars.yaml");
+      const savePath = path.join(tempDir, "vars-report.md");
+      const planYaml = `version: 1
 name: Host Health Check
 model: test-model
 prompt: Analyze the {{env}} host.
@@ -112,25 +116,32 @@ output:
   save: ${savePath}
 `;
 
-    fs.writeFileSync(planPath, planYaml, "utf8");
+      fs.writeFileSync(planPath, planYaml, "utf8");
 
-    const llm = {
-      chat: vi.fn().mockResolvedValue({ message: { content: "Host OK" } }),
-    };
+      const llm = {
+        chat: vi.fn().mockResolvedValue({ message: { content: "Host OK" } }),
+      };
 
-    const options = {
-      _: [planPath],
-      model: undefined,
-      "dry-run": false,
-      dryRun: false,
-      system: undefined,
-      var: ["host=proxmox1", "env=prod"],
-    };
+      const options = {
+        _: [planPath],
+        model: undefined,
+        "dry-run": false,
+        dryRun: false,
+        system: undefined,
+        var: ["host=proxmox1", "env=prod"],
+      };
 
-    await cmdPlan(llm, options);
+      await cmdPlan(llm, options);
 
-    expect(llm.chat).toHaveBeenCalledTimes(1);
-    expect(logSpy).toHaveBeenCalledWith("Host OK");
-    expect(fs.readFileSync(savePath, "utf8")).toBe("Host OK");
+      expect(llm.chat).toHaveBeenCalledTimes(1);
+      expect(logSpy).toHaveBeenCalledWith("Host OK");
+      expect(fs.readFileSync(savePath, "utf8")).toBe("Host OK");
+    } finally {
+      if (originalUser === undefined) {
+        delete process.env.USER
+      } else {
+        process.env.USER = originalUser
+      }
+    }
   });
 });
