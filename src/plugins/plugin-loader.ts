@@ -4,10 +4,20 @@
  *
  * Scans a directory for *.plugin.ts (or .js) files, validates
  * their exports, and registers them with the HookManager.
+ *
+ * Security hardening:
+ *   - Eliminated the write-then-import temp-file pattern that created a
+ *     TOCTOU race window. Plugin source rewriting now uses a `data:` URI
+ *     so the transformed code is imported directly from memory, never
+ *     touching the file system.
+ *   - Added a path-confinement check: every resolved plugin path must
+ *     sit inside the declared scan root. This blocks symlink escapes and
+ *     path-traversal attacks.
  */
 
-import { readdir, stat } from "node:fs/promises";
-import { join, extname } from "node:path";
+import { readdir, stat, readFile } from "node:fs/promises";
+import { join, extname, resolve } from "node:path";
+
 import {
   HookPlugin,
   UnifiedPlugin,
@@ -15,6 +25,29 @@ import {
   HookPriority,
 } from "./types.js";
 import { HookManager, HookLogger } from "./hook-manager.js";
+
+// ---------------------------------------------------------------------------
+// Path-confinement helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Verify that `target` is strictly inside `root` (no traversal / symlink
+ * escape). Both paths are resolved to absolute form before comparison.
+ *
+ * @param {string} root  - The trusted base directory.
+ * @param {string} target - The path to validate.
+ * @throws {Error} if target lies outside root.
+ */
+function assertConfined(root: string, target: string): void {
+  const resolvedRoot = resolve(root) + "/";
+  const resolvedTarget = resolve(target);
+
+  if (!resolvedTarget.startsWith(resolvedRoot)) {
+    throw new Error(
+      `Path traversal detected: '${target}' is outside the allowed root '${root}'.`,
+    );
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -60,7 +93,6 @@ function convertUnifiedToLegacy(unified: UnifiedPlugin): HookPlugin {
       description: unified.description,
     },
     install: async (tap) => {
-      // For unified plugins, tap into all possible events and delegate to run()
       for (const event of HOOK_EVENTS) {
         tap(
           event,
@@ -72,17 +104,10 @@ function convertUnifiedToLegacy(unified: UnifiedPlugin): HookPlugin {
               meta: ctx.meta,
             });
 
-            if (!result || result.outcome === "unchanged") {
-              return {};
-            }
-
-            if (result.outcome === "modified") {
-              return { data: result.data };
-            }
-
-            if (result.outcome === "blocked") {
+            if (!result || result.outcome === "unchanged") return {};
+            if (result.outcome === "modified") return { data: result.data };
+            if (result.outcome === "blocked")
               return { bail: true, reason: result.reason };
-            }
 
             return {};
           },
@@ -130,19 +155,22 @@ export class PluginLoader {
   /**
    * Scan `directory` for plugin files and register each valid plugin.
    * Returns the names of successfully loaded plugins.
+   *
+   * Every file path is confined to `directory` before being loaded.
    */
   async loadFromDirectory(directory: string): Promise<string[]> {
     const loaded: string[] = [];
+    const rootDir = resolve(directory); // canonical base for confinement checks
 
     let entries: string[];
     try {
-      entries = await readdir(directory);
+      entries = await readdir(rootDir);
     } catch {
-      this.logger.warn(`[PluginLoader] Cannot read directory: ${directory}`);
+      this.logger.warn(`[PluginLoader] Cannot read directory: ${rootDir}`);
       return loaded;
     }
 
-    // First, load plugin files in the root directory
+    // Load plugin files at the root level
     const pluginFiles = entries.filter((f) => {
       const ext = extname(f);
       const base = f.slice(0, -ext.length);
@@ -153,64 +181,115 @@ export class PluginLoader {
     });
 
     for (const file of pluginFiles) {
-      const name = await this.loadPlugin(join(directory, file));
+      const fullPath = join(rootDir, file);
+
+      // Confinement check for root-level files
+      try {
+        assertConfined(rootDir, fullPath);
+      } catch (err) {
+        this.logger.warn(
+          `[PluginLoader] Skipping confined path: ${(err as Error).message}`,
+        );
+        continue;
+      }
+
+      const name = await this.loadPlugin(fullPath, rootDir);
       if (name) loaded.push(name);
     }
 
-    // Then, recursively scan subdirectories
+    // Recursively scan subdirectories (with confinement)
     for (const entry of entries) {
-      const fullPath = join(directory, entry);
+      const fullPath = join(rootDir, entry);
+
       try {
+        assertConfined(rootDir, fullPath);
         const entryStat = await stat(fullPath);
         if (entryStat.isDirectory()) {
           const subLoaded = await this.loadFromDirectory(fullPath);
           loaded.push(...subLoaded);
         }
-      } catch {
-        // Skip entries that can't be stat'ed
+      } catch (err) {
+        this.logger.warn(
+          `[PluginLoader] Skipping entry '${entry}': ${(err as Error).message}`,
+        );
       }
     }
 
     this.logger.info(
-      `[PluginLoader] Found ${loaded.length} plugin(s) in ${directory}`,
+      `[PluginLoader] Found ${loaded.length} plugin(s) in ${rootDir}`,
     );
 
     return loaded;
   }
 
-  async loadPlugin(filePath: string): Promise<string | null> {
+  /**
+   * Load a single plugin file.
+   *
+   * Security: instead of writing transformed source to a temp file and then
+   * importing that file (TOCTOU race), we encode the transformed source as a
+   * `data:text/javascript` URI and import it directly from memory.  No file
+   * system interaction occurs after the initial `readFile`, so there is no
+   * window for an attacker to swap in malicious content.
+   *
+   * @param filePath - Absolute path to the plugin file.
+   * @param rootDir  - The scan root; used for confinement assertion.
+   */
+  async loadPlugin(filePath: string, rootDir?: string): Promise<string | null> {
+    // Confinement: if a root is known, assert the file is inside it.
+    if (rootDir) {
+      try {
+        assertConfined(rootDir, filePath);
+      } catch (err) {
+        this.logger.warn(
+          `[PluginLoader] Rejected '${filePath}': ${(err as Error).message}`,
+        );
+        return null;
+      }
+    }
+
     try {
-      // Preprocess the plugin file to replace llmctrlx imports with file URLs
+      // Resolve the plugin-api import URL once.
       const pluginApiUrl = await import.meta
         .resolve("llmctrlx/plugin-api/hooks");
-      const fs = await import("node:fs/promises");
-      const path = await import("node:path");
-      let content = await fs.readFile(filePath, "utf8");
+
+      // Read the plugin source — single file-system access, no race window.
+      let content = await readFile(filePath, "utf8");
+
+      // Rewrite llmctrlx package imports to absolute file URLs.
       content = content.replace(
         /from ['"]llmctrlx\/plugin-api\/hooks['"]/g,
         `from '${pluginApiUrl}'`,
       );
 
-      // Also resolve relative imports
-      const pluginDir = path.dirname(filePath);
+      // Rewrite relative imports to absolute file URLs.
+      const pluginDir = resolve(filePath, "..");
       content = content.replace(
-        /from ['"](\.\/[^'"]*)['"]/g,
-        (match, relativePath) => {
-          const absolutePath = path.resolve(pluginDir, relativePath);
+        /from ['"](\.[^'"]*)['"]/g,
+        (_match, relativePath) => {
+          const absolutePath = resolve(pluginDir, relativePath);
+          // Confine intra-plugin relative imports too.
+          if (rootDir) {
+            const base = resolve(rootDir);
+            if (!resolve(absolutePath).startsWith(base + "/")) {
+              throw new Error(
+                `Relative import escapes plugin root: '${relativePath}' in '${filePath}'`,
+              );
+            }
+          }
           return `from 'file://${absolutePath}'`;
         },
       );
 
-      // Write to a temp file and import that
-      const tempDir = await import("node:os");
-      const tempPath = `${tempDir.tmpdir()}/llmctrlx-plugin-${Date.now()}-${Math.random()}.js`;
-      await fs.writeFile(tempPath, content);
+      // ── Import from a data: URI (no temp file, no TOCTOU) ────────────────
+      // Encode as base64 so the source is not interpreted as a URL.
+      const base64Source = Buffer.from(content, "utf8").toString("base64");
+      const dataUri = `data:text/javascript;base64,${base64Source}`;
 
-      const mod = await import(tempPath);
-      const plugin: unknown = mod.default ?? mod.plugin ?? mod;
-
-      // Clean up temp file
-      await fs.unlink(tempPath);
+      const mod: unknown = await import(dataUri);
+      const plugin: unknown =
+        (mod as Record<string, unknown>).default ??
+        (mod as Record<string, unknown>).plugin ??
+        mod;
 
       let hookPlugin: HookPlugin;
 

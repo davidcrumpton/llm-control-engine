@@ -1,5 +1,5 @@
 version: 1
-name: Host Health Check
+name: Network Health Diagnostic
 attachments:
    - ./examples/network-diagram.png
    - ./examples/curl-command.txt
@@ -20,5 +20,3 @@ system: You are a senior Linux sysadmin.
 output:
   format: markdown
   save: report.md
-
-# ~/Downloads/network-diagram.png ~/Downloads/curl-command.txt ~/Downloads/escalation-contacts.txt 

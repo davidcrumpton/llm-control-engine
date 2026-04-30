@@ -90,7 +90,7 @@ You can configure the default behavior using environment variables:
 - `LLMCTRLX_MODEL`: The default model to use. Default: `gemma4:e4b`
 - `LLMCTRLX_HISTORY`: The default history file to use. Default: `~/.chat_history.json`
 - `LLMCTRLX_TOOLS_DIR`: The default tools folder file to use. Default: `${INSTALL_PATH}/tools`
-- `LLMCTRLX_API_KEY`: The API key for the cloud provider. Default: `''`
+- `__LLMCTRLX_OLLAMA_API_KEY`: The API key for the Ollama cloud provider. Default: `''`
 - `LLMCTRLX_PROVIDER`: The default provider to use. Default: `ollama`. Options: `ollama`, `lmstudio`
 - `LLMCTRLX_MAX_UPLOAD_FILE_SIZE`: The maximum file size to upload. Default: `1024 * 1024 * 10` (10 MB)
 - `LLMCTRLX_SESSION`: The default session to use. Default: `default`
@@ -301,10 +301,10 @@ prompt: Analyze the {{env}} host.
 **Examples:**
 
 ```bash
-llmctrlx plan examples/health.yaml
-llmctrlx plan examples/health.yaml -m llama3
-llmctrlx plan examples/health.yaml --dry-run
-llmctrlx plan examples/health.yaml --var server=proxmox1 --var env=prod
+llmctrlx plan examples/plans/host-health.yaml
+llmctrlx plan examples/plans/host-health.yaml -m llama3
+llmctrlx plan examples/plans/host-health.yaml --dry-run
+llmctrlx plan examples/plans/host-health.yaml --var server=proxmox1 --var env=prod
 ```
 
 #### 8. `tools`
@@ -481,4 +481,13 @@ You have:
 2. `permit nopass ... root as root` (The dangerous line)
 The first line allows members of the `wheel` group to execute commands with `doas` while keeping their environment and persisting credentials. This is generally fine for trusted users.
 The second line allows anyone to execute commands as root without a password, which is a critical security
+```
+
+### Example 8: Security Analysis
+
+This example shows how you can use plan to diagnose a network issue. You could have a YAML plan that runs a series of diagnostic commands and then analyzes the combined output to provide insights or next steps. You can also use the `--var` option to pass in dynamic values like escalation contacts for the plan to use in its analysis.  This example provides escalation contacts to the plan which it could use to recommend who to contact if it identifies a critical issue during the network diagnosis.
+
+```bash
+llmctrlx plan examples/plans/network-diag.yaml --var ESCALATION_CONTACTS=examples/plan-data/escalation-contacts.txt
+Executing step 1/1: disk
 ```
