@@ -122,6 +122,7 @@ Run a chat session with an LLM. It maintains conversational history in `.chat_hi
 - `-s, --system <text>`: A system prompt to prepend.
 - `-f, --files <path>`: Attach files to the prompt. Can be specified multiple times.
 - `-k, --session <name>`: Session key to use for continuing a conversation. Default: `default`.
+- `-c, --context-length <number>`: Number of messages to include in the conversation history. Default: `5`.
 - `--stdin`: Read content from stdin. Can be combined with -u.
 - `--json`: Force JSON output.
 - `--stream`: Stream the output as it's generated.

@@ -6,6 +6,9 @@
  * Validates the global plan policy before execution.
  * Checks model allow/deny lists defined under `policy.model`.
  *
+ * Model policy is deny-by-default: if an allow list is present, the model
+ * must match at least one entry or execution is refused.
+ *
  * @param {Object} plan - The parsed plan YAML object
  */
 export function validatePolicy(plan) {
@@ -15,7 +18,7 @@ export function validatePolicy(plan) {
     const { allow, deny } = policy.model
     const model = plan.model && plan.model.name ? plan.model.name : plan.model
 
-    // Check if model is allowed
+    // Deny by default: model must appear in the allow list if one is defined
     if (model && allow && Array.isArray(allow)) {
       const matchedPattern = allow.find(pattern => matchPattern(model, pattern))
       if (!matchedPattern) {
@@ -25,7 +28,7 @@ export function validatePolicy(plan) {
       }
     }
 
-    // Check if model is denied
+    // Explicit deny always wins, even if the model was also matched by allow
     if (model && deny && Array.isArray(deny)) {
       const matchedPattern = deny.find(pattern => matchPattern(model, pattern))
       if (matchedPattern) {
@@ -39,7 +42,13 @@ export function validatePolicy(plan) {
 
 /**
  * Validates a single step against the policy.
- * Handles 'tool' steps (policy.tools) and 'exec' steps (policy.exec).
+ *
+ * Tool policy is deny-by-default: if an allow list is present, the tool
+ * must match at least one entry or the step is refused.
+ *
+ * Exec policy is allow-by-default: the runtime ALLOWED_STEP_EXECUTABLES gate
+ * is the primary safety net. Plan-level policy only needs to express explicit
+ * denials (e.g. "this plan must never call rm or curl").
  *
  * @param {Object} step   - The step object
  * @param {Object} policy - The plan policy object
@@ -49,6 +58,7 @@ export function validateStep(step, policy = {}) {
     const toolName = step.tool
     const toolPolicy = policy.tools || {}
 
+    // Deny by default: tool must appear in the allow list if one is defined
     if (toolPolicy.allow && Array.isArray(toolPolicy.allow)) {
       const matchedPattern = toolPolicy.allow.find(pattern => matchPattern(toolName, pattern))
       if (!matchedPattern) {
@@ -58,6 +68,7 @@ export function validateStep(step, policy = {}) {
       }
     }
 
+    // Explicit deny always wins
     if (toolPolicy.deny && Array.isArray(toolPolicy.deny)) {
       const matchedPattern = toolPolicy.deny.find(pattern => matchPattern(toolName, pattern))
       if (matchedPattern) {
@@ -71,19 +82,12 @@ export function validateStep(step, policy = {}) {
   if (step.exec) {
     // Extract just the executable name (first token) for policy matching.
     // Full shell-metacharacter and allow-list checks still happen at runtime
-    // in executeStep(); this enforces the plan-level policy on top of that.
+    // in executeStep(); this enforces plan-level constraints on top of that.
     const executable = step.exec.trim().split(/\s+/)[0]
     const execPolicy = policy.exec || {}
 
-    if (execPolicy.allow && Array.isArray(execPolicy.allow)) {
-      const matchedPattern = execPolicy.allow.find(pattern => matchPattern(executable, pattern))
-      if (!matchedPattern) {
-        throw new Error(
-          `Policy violation: Executable '${executable}' is not allowed in step '${step.id}' (policy.exec.allow: [${execPolicy.allow.join(', ')}]).`
-        )
-      }
-    }
-
+    // Allow by default: no allow list concept for exec.
+    // Plans only need to express what is explicitly forbidden.
     if (execPolicy.deny && Array.isArray(execPolicy.deny)) {
       const matchedPattern = execPolicy.deny.find(pattern => matchPattern(executable, pattern))
       if (matchedPattern) {

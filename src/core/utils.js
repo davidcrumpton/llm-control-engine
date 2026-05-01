@@ -28,6 +28,7 @@ export function buildOptions(opts) {
   if (opts.json)        out.json        = true
   if (opts.temperature) out.temperature = opts.temperature
   if (opts.top_p)       out.top_p       = opts.top_p
+  if (opts.num_ctx)     out.num_ctx     = parseInt(opts.num_ctx, 10)
   return out
 }
 

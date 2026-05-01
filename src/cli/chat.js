@@ -46,16 +46,26 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
   let userInput = options.user
 
   let stdinContent = null
+  // Using async events from process.stdin to ensure we don't throw EAGAIN
+  // if the pipe is not immediately ready on certain platforms
 
   if (options.stdin) {
     if (!process.stdin.isTTY) {
-      stdinContent = fs.readFileSync(0, 'utf8')
+      stdinContent = await new Promise((resolve) => {
+        let data = ''
+        process.stdin.on('data', chunk => data += chunk)
+        process.stdin.on('end', () => resolve(data))
+      })
     } else {
       console.error('--stdin specified but no stdin input detected')
       process.exit(1)
     }
   } else if (!userInput && !process.stdin.isTTY) {
-    userInput = fs.readFileSync(0, 'utf8')
+    userInput = await new Promise((resolve) => {
+      let data = ''
+      process.stdin.on('data', chunk => data += chunk)
+      process.stdin.on('end', () => resolve(data))
+    })
   }
 
   let userContent = ''
@@ -146,14 +156,14 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
       })
 
       const policyPlugins = registry.list('policy')
-      const res = await runWithTools(llm, options.model, messages, tools, policyPlugins)
+      const res = await runWithTools(llm, options.model, messages, tools, policyPlugins, chatOptions)
       const filtered = await filterResponse(res);
       console.log(filtered)
 
       session.messages.push({ role: 'user', content: userContent })
       session.messages.push({ role: 'assistant', content: filtered })
     } else {
-      const res = await runWithoutTools(llm, options.model, messages)
+      const res = await runWithoutTools(llm, options.model, messages, chatOptions)
       const filtered = await filterResponse(res);
       console.log(filtered)
 

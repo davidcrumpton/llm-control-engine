@@ -22,7 +22,7 @@ const __dirname = dirname(__filename)
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.6.00'
+const APP_VERSION = '0.6.09'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_HOST = process.env.LLMCTRLX_HOST || 'http://127.0.0.1:11434'
@@ -67,6 +67,7 @@ const options = getopts(argv.slice(1), {
     g: 'tags',
     v: 'verbose',
     L: 'history_length',
+    c: 'num_ctx',
   },
   default: {
     host: DEFAULT_HOST,
@@ -78,7 +79,7 @@ const options = getopts(argv.slice(1), {
     history_length: DEFAULT_TOOLS_HISTORY_LENGTH,
   },
   boolean: ['json', 'stream', 'no_tools', 'all', 'list', 'stdin', 'verbose','purge', 'dry-run'],
-  string: ['user', 'system', 'files', 'tools_dir', 'provider', 'show', 'tags', 'shell', 'var'],
+  string: ['user', 'system', 'files', 'tools_dir', 'provider', 'show', 'tags', 'shell', 'var', 'num_ctx'],
   array: ['var']
 })
 
@@ -131,36 +132,49 @@ async function main() {
 
   switch (command) {
     case 'chat':
+    case 'c':
       await cmdChat(llm, options, DEFAULT_HISTORY, toolsDir, DEFAULT_MAX_UPLOAD_FILE_SIZE, engineHooks)
       break
     case 'model':
+    case 'models':
+    case 'm':
       await cmdModel(llm, options)
       break
     case 'embed':
+    case 'e':
       await cmdEmbed(llm, options)
       break
     case 'bench':
+    case 'b':
       await cmdBench(llm, options)
       break
     case 'run':
+    case 'r':
       await cmdRun(llm, options, engineHooks)
       break
     case 'plan':
+    case 'p':
       await cmdPlan(llm, options, engineHooks)
       break
     case 'tools':
+    case 't':
       await cmdTools(options, toolsDir)
       break
     case 'plugins':
+    case 'pl':
       await cmdPlugins(options, DEFAULT_PLUGINS_DIR)
       break
     case 'history':
+    case 'hist':
+    case 'h':
       cmdHistory(options, DEFAULT_HISTORY)
       break
     case 'completion':
+    case 'comp':
       cmdCompletion(options.shell || process.env.SHELL)
       break
     case 'version':
+    case 'v':
       if(options.verbose) {
         console.log(`${APP_NAME} v${APP_VERSION} - ${APP_TAGLINE}`)
         console.log(`${APP_DESCRIPTION}`)
@@ -170,6 +184,7 @@ async function main() {
       break
     default:
       console.log(`${APP_NAME} v${APP_VERSION}`)
+      // Never document shortcuts in usage string to avoid making ugly output
       console.log(`
 Usage:
   chat       Run chat session
@@ -238,11 +253,11 @@ _llmctrlx_completions() {
   cmds="chat model embed bench run plan tools plugins history completion version"
 
   # Global options
-  global_opts="-h --host -m --model -u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags -v --verbose --json --stream --all --list --show"
+  global_opts="-h --host -m --model -u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags -v --verbose -c --num_ctx --json --stream --all --list --show"
 
   case \${cmd} in
     chat)
-      opts="-u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags --json --stream --stdin --history_length"
+      opts="-u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags -c --num_ctx --json --stream --stdin --history_length"
       ;;
     model)
       opts="--list --show --pull --delete -m --model"
@@ -347,6 +362,7 @@ _llmctrlx() {
             '-W[no_tools]' \\
             '-K[api_key]:api_key:' \\
             '-g[tags]:tags:' \\
+            '-c[num_ctx]:num_ctx:' \\
             '-v[verbose]' \\
             '--json' \\
             '--stream' \\
@@ -475,6 +491,7 @@ complete -c llmctrlx -s T -l tools_dir -d 'Tools directory' -F
 complete -c llmctrlx -s W -l no_tools -d 'No tools'
 complete -c llmctrlx -s K -l api_key -d 'API key' -x
 complete -c llmctrlx -s g -l tags -d 'Tags' -x
+complete -c llmctrlx -s c -l num_ctx -d 'Context Window' -x
 complete -c llmctrlx -s v -l verbose -d 'Verbose output'
 complete -c llmctrlx -l json -d 'JSON output'
 complete -c llmctrlx -l stream -d 'Stream output'
@@ -493,6 +510,7 @@ complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s T -l tools_dir -d 
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s W -l no_tools -d 'No tools'
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s K -l api_key -d 'API key' -x
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s g -l tags -d 'Tags' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s c -l num_ctx -d 'Context Window' -x
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -l json -d 'JSON output'
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -l stream -d 'Stream output'
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -l stdin -d 'Read from stdin'

@@ -41,10 +41,10 @@ export async function executeTool(tool, args) {
  * @param {Array} messages - Message history
  * @returns {Promise<string>} - LLM response
  */
-export async function runWithoutTools(llm, model, messages) {
+export async function runWithoutTools(llm, model, messages, chatOptions = {}) {
   const systemPrompt = 'You do not have access to any tools. Notify user that tools are not available. If user asks'
   messages.unshift({ role: 'system', content: systemPrompt })
-  const res = await llm.chat({ model, messages })
+  const res = await llm.chat({ model, messages, options: chatOptions })
   return res.message.content
 }
 
@@ -72,13 +72,13 @@ async function applyPolicyPlugins(tool, args, policies = [], ctx = {}) {
  * @param {Array} policies - Available policy plugins
  * @returns {Promise<string>} - Final LLM response after tool execution
  */
-export async function runWithTools(llm, model, messages, tools, policies = []) {
+export async function runWithTools(llm, model, messages, tools, policies = [], chatOptions = {}) {
   const toolHistory = []
   let loopCount = 0
   const MAX_LOOPS = 15
 
   while (true) {
-    const res = await llm.chat({ model, messages })
+    const res = await llm.chat({ model, messages, options: chatOptions })
     const content = res.message.content
 
     try {
