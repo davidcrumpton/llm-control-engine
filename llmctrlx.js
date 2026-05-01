@@ -22,7 +22,7 @@ const __dirname = dirname(__filename)
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.5.31'
+const APP_VERSION = '0.5.33'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_HOST = process.env.LLMCTRLX_HOST || 'http://127.0.0.1:11434'
@@ -174,7 +174,7 @@ async function main() {
 Usage:
   chat       Run chat session
   model      Manage models (--list, --show, --pull, --delete)
-  embed      Generate embeddings
+  embed      Generate embeddings (-f or --stdin required)
   bench      Benchmark models
   run        Execute command + analyze
   plan       Execute YAML-defined plan
@@ -248,10 +248,10 @@ _llmctrlx_completions() {
       opts="--list --show --pull --delete -m --model"
       ;;
     embed)
-      opts="-f --files -m --model -P --provider -K --api_key --json"
+      opts="[ -f --files | --stdin ] -m --model -P --provider -K --api_key --json "
       ;;
     bench)
-      opts="-m --model -u --user -s --system -t --temperature -p --top_p -P --provider -K --api_key --json"
+      opts="-m --model -u --user -s --system -t --temperature -p --top_p -P --provider -K --api_key --json --stdin"
       ;;
     run)
       opts="-u --user -s --system -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key --json"
@@ -369,6 +369,7 @@ _llmctrlx() {
             '-P[provider]:provider:(ollama lmstudio)' \\
             '-K[api_key]:api_key:' \\
             '-v[verbose]' \\
+            '--stdin' \\
             '--json'
           ;;
         bench)
@@ -509,6 +510,7 @@ complete -c llmctrlx -n '__fish_seen_subcommand_from embed' -s m -l model -d 'Mo
 complete -c llmctrlx -n '__fish_seen_subcommand_from embed' -s P -l provider -d 'Provider' -a 'ollama lmstudio' -x
 complete -c llmctrlx -n '__fish_seen_subcommand_from embed' -s K -l api_key -d 'API key' -x
 complete -c llmctrlx -n '__fish_seen_subcommand_from embed' -l json -d 'JSON output'
+complete -c llmctrlx -n '__fish_seen_subcommand_from embed' -l stdin -d 'Read from stdin'
 
 # Bench command options
 complete -c llmctrlx -n '__fish_seen_subcommand_from bench' -s m -l model -d 'Model' -x
@@ -518,6 +520,7 @@ complete -c llmctrlx -n '__fish_seen_subcommand_from bench' -s t -l temperature 
 complete -c llmctrlx -n '__fish_seen_subcommand_from bench' -s p -l top_p -d 'Top P' -x
 complete -c llmctrlx -n '__fish_seen_subcommand_from bench' -s P -l provider -d 'Provider' -a 'ollama lmstudio' -x
 complete -c llmctrlx -n '__fish_seen_subcommand_from bench' -s K -l api_key -d 'API key' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from bench' -l stdin -d 'Read from stdin'
 complete -c llmctrlx -n '__fish_seen_subcommand_from bench' -l json -d 'JSON output'
 
 # Run command options

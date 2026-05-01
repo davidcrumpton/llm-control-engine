@@ -11,7 +11,7 @@ import { HOOK_EVENTS, HookPriority } from 'llmctrlx/plugin-api/hooks';
 const loggerPlugin = {
   meta: {
     name: 'lifecycle-logger',
-    version: '1.0.0',
+    version: 'v1.0.0',
     description: 'Logs all hook lifecycle events with timing information.',
     author: 'LLM Control Engine',
   },

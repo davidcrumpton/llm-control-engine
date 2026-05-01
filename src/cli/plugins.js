@@ -101,17 +101,18 @@ export async function cmdPlugins(options, pluginsDir) {
   }
 
   if (options.list || !options.show) {
-    // List mode (default)
+    // List mode (default) — compact summary with name, type, version, and description
     console.log(`\nFound ${plugins.length} plugin(s):\n`)
     for (const plugin of plugins) {
-      console.log(`  - ${plugin.name}`)
-      console.log(`    File: ${plugin.file}`)
-      console.log(`    Type: ${plugin.type}`)
+      const metadata = await readPluginMetadata(plugin.path)
+      const version = metadata?.version ?? 'unknown'
+      const description = metadata?.description ?? 'No description'
+      console.log(`  - ${plugin.name} (${plugin.type}) ${version} — ${description}`)
     }
   }
 
   if (options.show) {
-    // Show detailed mode
+    // Show mode — displays full details including file name, path, type, version, and description
     const showName = options.show === true ? null : options.show
     const toShow = showName ? plugins.filter(p => p.name === showName) : plugins
 
@@ -121,17 +122,15 @@ export async function cmdPlugins(options, pluginsDir) {
     }
 
     for (const plugin of toShow) {
+      const metadata = await readPluginMetadata(plugin.path)
+      const version = metadata?.version ?? 'unknown'
+      const description = metadata?.description ?? 'No description'
       console.log(`\n${plugin.name}`)
       console.log(`  File: ${plugin.file}`)
       console.log(`  Path: ${plugin.path}`)
       console.log(`  Type: ${plugin.type}`)
-
-      // Try to read metadata
-      const metadata = await readPluginMetadata(plugin.path)
-      if (metadata) {
-        console.log(`  Version: ${metadata.version}`)
-        console.log(`  Description: ${metadata.description}`)
-      }
+      console.log(`  Version: ${version}`)
+      console.log(`  Description: ${description}`)
     }
   }
 }
