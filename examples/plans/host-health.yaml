@@ -1,8 +1,16 @@
 # Run ps, top, df, netstat, and other diagnostic commands to analyze host health and resource utilization. Analyze the outputs to identify potential issues such as high CPU usage, memory leaks, disk space exhaustion, or network congestion that could be impacting system performance or stability. Provide insights and recommendations based on the findings to help resolve any identified issues.
 version: 1
 name: Host Health Diagnostic
-system: You are a senior Linux sysadmin with expertise in diagnosing and resolving host health issues.
+system: You are a senior Linux sysadmin with expertise in diagnosing and
+  resolving host health issues.
 prompt: Analyze the step data and the attachments to diagnose the host health issue
+policy:
+  model:
+    allow:
+      - "gemini-*"
+      - "gpt-*"
+      - "claude-*"
+      - "llama*"
 vars:
   server: localhost
   env: prod
@@ -10,7 +18,7 @@ vars:
   team: operations
 steps:
   - name: cpu
-    exec: ssh {{USER}}@{{server}} top -b -n 1 | head -20
+    exec: ssh {{USER}}@{{server}} top -b -n 1
   - name: memory
     exec: ssh {{USER}}@{{server}} free -m
   - name: disk

@@ -274,11 +274,19 @@ Execute a YAML-defined multi-step workflow, run each step command in order, capt
 
 Plans may include reusable variables via a top-level `vars:` mapping, and those values can be overridden on the command line.
 
+Plans can also define a `policy:` section to restrict which models and tools are allowed to execute. The engine validates these policies before running the plan to ensure compliance.
+
 Example plan YAML:
 
 ```yaml
 version: 1
 name: Host Health Check
+
+policy:
+  model:
+    allow:
+      - "gemini-*"
+      - "gpt-*"
 
 vars:
   host: localhost

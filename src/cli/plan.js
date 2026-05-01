@@ -23,8 +23,9 @@ import fsSync from 'fs'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import jsYaml from 'js-yaml'
-import { runWithoutTools } from '../core/tools.js'
+import { runWithoutTools, loadTools, executeTool } from '../core/tools.js'
 import { isImage, validateFileSize, buildImageMessage } from '../core/utils.js'
+import { validatePolicy, validateStep } from '../core/policy.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -36,7 +37,7 @@ const ALLOWED_STEP_EXECUTABLES = new Set([
   'git', 'node', 'npm', 'python', 'python3', 'pip', 'pip3',
   'curl', 'wget', 'jq', 'yq', 'awk', 'sed', 'sort', 'uniq', 'cut', 'tr',
   'tar', 'gzip', 'gunzip', 'zip', 'unzip',
-  'make', 'cmake', 'cargo', 'go',
+  'make', 'cmake', 'cargo', 'go', 'ssh',
   // Add further safe executables here as needed.
 ])
 
@@ -149,6 +150,9 @@ function validatePlan(plan, planFile) {
     throw new Error(`Missing required field 'steps' in plan: ${planFile}`)
   }
 
+  // Policy Validation
+  validatePolicy(plan)
+
   if (plan.attachments !== undefined) {
     if (!Array.isArray(plan.attachments)) {
       throw new Error(`'attachments' must be an array of file paths in plan: ${planFile}`)
@@ -164,12 +168,21 @@ function validatePlan(plan, planFile) {
     if (!step || typeof step !== 'object') {
       throw new Error(`Step ${index + 1} is not an object`)
     }
-    if (!step.name) {
-      throw new Error(`Missing required field 'name' for step ${index + 1}`)
+    
+    // Support both old and new schemas
+    if (!step.name && !step.id) {
+      throw new Error(`Missing required field 'name' or 'id' for step ${index + 1}`)
     }
-    if (!step.exec) {
-      throw new Error(`Missing required field 'exec' for step ${index + 1}`)
+    
+    // Default id to name if missing, and vice versa
+    if (!step.id) step.id = step.name
+    if (!step.name) step.name = step.id
+    
+    if (!step.exec && !step.type) {
+      throw new Error(`Missing required field 'exec' or 'type' for step ${index + 1}`)
     }
+    
+    validateStep(step, plan.policy)
   }
 }
 
@@ -271,7 +284,18 @@ function interpolatePlan(plan, vars) {
   interpolated.steps = plan.steps.map((step) => {
     const nextStep = { ...step }
     if (typeof nextStep.name === 'string') nextStep.name = interpolateString(nextStep.name, vars)
+    if (typeof nextStep.id === 'string') nextStep.id = interpolateString(nextStep.id, vars)
     if (typeof nextStep.exec === 'string') nextStep.exec = interpolateString(nextStep.exec, vars)
+    if (typeof nextStep.prompt === 'string') nextStep.prompt = interpolateString(nextStep.prompt, vars)
+    
+    if (nextStep.args && typeof nextStep.args === 'object') {
+      const newArgs = {}
+      for (const [k, v] of Object.entries(nextStep.args)) {
+        newArgs[k] = typeof v === 'string' ? interpolateString(v, vars) : v
+      }
+      nextStep.args = newArgs
+    }
+    
     return nextStep
   })
 
@@ -399,42 +423,119 @@ export async function cmdPlan(llm, options, maxUploadFileSize = 10 * 1024 * 1024
   }
 
   const results = []
+  const contextData = {}
+
+  // Load tools if there are any tool steps
+  const hasToolSteps = plan.steps.some(s => s.type === 'tool')
+  let loadedTools = []
+  if (hasToolSteps) {
+    const toolsDir = options.tools_dir || process.env.LLMCTRLX_TOOLS_DIR
+    loadedTools = await loadTools(toolsDir)
+  }
 
   for (const [index, step] of plan.steps.entries()) {
-    console.log(`Executing step ${index + 1}/${plan.steps.length}: ${step.name}`)
-    const result = await executeStep(step.exec)
-    results.push({ name: step.name, exec: step.exec, ...result })
-  }
-
-  const prompt = buildPlanPrompt(plan, results)
-  const messages = []
-
-  if (systemPrompt) {
-    messages.push({ role: 'system', content: systemPrompt })
-  }
-
-  const provider = (options.provider || 'ollama').toLowerCase()
-
-  if (Array.isArray(plan.attachments) && plan.attachments.length > 0) {
-    const attachmentMessages = await buildAttachmentMessages(
-      plan.attachments, maxUploadFileSize, provider
-    )
-    messages.push(...attachmentMessages)
-  }
-
-  messages.push({ role: 'user', content: prompt })
-
-  const analysis = await runWithoutTools(llm, model, messages)
-
-  console.log(analysis)
-
-  if (plan.output && plan.output.save) {
-    try {
-      await fs.writeFile(plan.output.save, analysis, 'utf8')
-      console.log(`Saved report to ${plan.output.save}`)
-    } catch (err) {
-      console.error(`Failed to write report to '${plan.output.save}': ${err.message}`)
-      process.exit(1)
+    console.log(`Executing step ${index + 1}/${plan.steps.length}: ${step.name || step.id}`)
+    
+    let result
+    if (step.exec) {
+      // Old shell exec path
+      result = await executeStep(step.exec)
+    } else if (step.type === 'tool') {
+      // New tool execution path
+      const toolToRun = loadedTools.find(t => t.name === step.tool)
+      if (!toolToRun) {
+         console.error(`Tool '${step.tool}' not found.`)
+         process.exit(1)
+      }
+      try {
+         const toolOutput = await executeTool(toolToRun, step.args || {})
+         result = { stdout: toolOutput, stderr: '', exitCode: 0 }
+      } catch (err) {
+         result = { stdout: '', stderr: err.message, exitCode: 1 }
+      }
+    } else if (step.type === 'prompt') {
+      // New prompt execution path
+      const stepMessages = []
+      
+      // Inject context from previous steps if requested
+      if (step.context && step.context.from_steps) {
+        for (const fromStep of step.context.from_steps) {
+           const prevResult = contextData[fromStep]
+           if (prevResult && prevResult.stdout) {
+             stepMessages.push({ role: 'user', content: `Context from step '${fromStep}':\n${prevResult.stdout}`})
+           }
+        }
+      }
+      
+      stepMessages.push({ role: 'user', content: step.prompt })
+      
+      try {
+        const promptOutput = await runWithoutTools(llm, model, stepMessages)
+        result = { stdout: promptOutput, stderr: '', exitCode: 0 }
+      } catch (err) {
+        result = { stdout: '', stderr: err.message, exitCode: 1 }
+      }
+    } else {
+      result = { stdout: '', stderr: `Unknown step type: ${step.type}`, exitCode: 1 }
     }
+    
+    const execLabel = step.exec || step.tool || 'prompt'
+    results.push({ name: step.name || step.id, exec: execLabel, ...result })
+    contextData[step.id] = result
+    
+    if (result.exitCode !== 0 && plan.flow && plan.flow.on_error === 'stop') {
+       console.error(`Step failed and flow.on_error is 'stop'. Aborting plan.`)
+       break
+    }
+  }
+
+  // Handle old-style output formatting via prompt
+  if (plan.prompt || (!plan.outputs && plan.output && plan.output.save)) {
+    const prompt = buildPlanPrompt(plan, results)
+    const messages = []
+
+    if (systemPrompt) {
+      messages.push({ role: 'system', content: systemPrompt })
+    }
+
+    const provider = (options.provider || 'ollama').toLowerCase()
+
+    if (Array.isArray(plan.attachments) && plan.attachments.length > 0) {
+      const attachmentMessages = await buildAttachmentMessages(
+        plan.attachments, maxUploadFileSize, provider
+      )
+      messages.push(...attachmentMessages)
+    }
+
+    messages.push({ role: 'user', content: prompt })
+
+    const analysis = await runWithoutTools(llm, model, messages)
+
+    console.log(analysis)
+
+    if (plan.output && plan.output.save) {
+      try {
+        await fs.writeFile(plan.output.save, analysis, 'utf8')
+        console.log(`Saved report to ${plan.output.save}`)
+      } catch (err) {
+        console.error(`Failed to write report to '${plan.output.save}': ${err.message}`)
+        process.exit(1)
+      }
+    }
+  }
+  
+  // Output handling based on the new schema `outputs`
+  if (plan.outputs && plan.outputs.save) {
+     for (const saveCmd of plan.outputs.save) {
+       const stepRes = contextData[saveCmd.step]
+       if (stepRes && stepRes.stdout) {
+         try {
+           await fs.writeFile(saveCmd.to, stepRes.stdout, 'utf8')
+           console.log(`Saved step '${saveCmd.step}' report to ${saveCmd.to}`)
+         } catch (err) {
+           console.error(`Failed to write report to '${saveCmd.to}': ${err.message}`)
+         }
+       }
+     }
   }
 }
