@@ -17,7 +17,7 @@ export function detectFormat(ctx) {
   if (process.env.LLMCTRLX_FORMAT) return process.env.LLMCTRLX_FORMAT;
 
   // Prompt hints
-  const p = ctx.data.prompt.toLowerCase();
+  const p = (ctx.data.prompt || '').toLowerCase();
   if (p.includes('format as json')) return 'json';
   if (p.includes('format as yaml')) return 'yaml';
   if (p.includes('format as markdown')) return 'markdown';
