@@ -28,7 +28,7 @@ describe("CLI Argument Parsing", () => {
         alias: { h: "host" },
         default: { host: "http://127.0.0.1:11434" },
       });
-      expect(options.host).toBe("http://localhost:8080");
+      expect(options.api_url).toBe("http://localhost:8080");
     });
 
     it("should parse --model flag", () => {
@@ -91,7 +91,7 @@ describe("CLI Argument Parsing", () => {
           provider: "ollama",
         },
       });
-      expect(options.host).toBe("http://127.0.0.1:11434");
+      expect(options.api_url).toBe("http://127.0.0.1:11434");
       expect(options.model).toBe("gemma4:e2b");
       expect(options.provider).toBe("ollama");
     });
@@ -104,7 +104,7 @@ describe("CLI Argument Parsing", () => {
         default: { host: "default", model: "default" },
       });
       expect(options.model).toBe("llama3");
-      expect(options.host).toBe("http://test:8080");
+      expect(options.api_url).toBe("http://test:8080");
       expect(options.verbose).toBe(true);
     });
   });
