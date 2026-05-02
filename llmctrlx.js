@@ -118,9 +118,9 @@ async function main() {
   let llm
 
   if (options.provider === 'lmstudio') {
-    llm = new LMStudioProvider({ host: options.api_url, apiKey: options.__api_key })
+    llm = new LMStudioProvider({ host: options.host, apiKey: options.__api_key })
   } else {
-    llm = new OllamaProvider({ host: options.api_url, apiKey: options.__api_key })
+    llm = new OllamaProvider({ host: options.host, apiKey: options.__api_key })
   }
 
   // Initialize plugin system

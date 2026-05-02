@@ -104,8 +104,7 @@ describe("CLI Argument Parsing", () => {
         default: { host: "default", model: "default" },
       });
       expect(options.model).toBe("llama3");
-      expect(options.host).
-      toBe("http://test:8080");
+      expect(options.host).toBe("http://test:8080");
       expect(options.verbose).toBe(true);
     });
   });
