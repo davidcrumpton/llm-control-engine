@@ -1,46 +1,64 @@
 /**
  * Session-scoped key-value memory tool for llmctrlx.
- *
- * Persists to ~/.llmctrlx/memory.json, keyed by session name so each
- * session has its own isolated namespace.  Safe to call across process
- * restarts because all reads and writes go directly to disk.
+ * Optimized with Atomic Writes to prevent data corruption.
  */
 
-import fs   from 'fs'
-import path from 'path'
-import os   from 'os'
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
-const MEMORY_FILE = path.resolve(os.homedir(), '.llmctrlx', 'memory.json')
+const MEMORY_DIR = path.resolve(os.homedir(), '.llmctrlx');
+const MEMORY_FILE = path.join(MEMORY_DIR, 'memory.json');
+const TEMP_FILE = path.join(MEMORY_DIR, 'memory.json.tmp');
 
 // ── Disk helpers ─────────────────────────────────────────────────────────────
 
 function loadAll() {
-  if (!fs.existsSync(MEMORY_FILE)) return {}
+  if (!fs.existsSync(MEMORY_FILE)) return {};
   try {
-    return JSON.parse(fs.readFileSync(MEMORY_FILE, 'utf8'))
-  } catch {
-    console.warn('WARN: memory.json is corrupt; starting fresh.')
-    return {}
+    const content = fs.readFileSync(MEMORY_FILE, 'utf8');
+    return content ? JSON.parse(content) : {};
+  } catch (err) {
+    console.warn(`WARN: memory.json is corrupt or unreadable: ${err.message}. Starting fresh.`);
+    return {};
   }
 }
 
+/**
+ * Performs an Atomic Write.
+ * 1. Write data to a .tmp file.
+ * 2. Flush to disk.
+ * 3. Rename .tmp to the real file (this is an atomic operation in most OSs).
+ */
 function saveAll(data) {
   try {
-    fs.mkdirSync(path.dirname(MEMORY_FILE), { recursive: true })
-    fs.writeFileSync(MEMORY_FILE, JSON.stringify(data, null, 2))
+  	if (!fs.existsSync(MEMORY_DIR)) {
+    		fs.mkdirSync(MEMORY_DIR, { recursive: true });
+  	}
+    
+    const json = JSON.stringify(data, null, 2);
+    
+    // Write to temporary file first
+    fs.writeFileSync(TEMP_FILE, json, 'utf8');
+    
+    // Atomic rename: This ensures that even if the process crashes, 
+    // the original memory.json is either untouched or fully updated.
+    fs.renameSync(TEMP_FILE, MEMORY_FILE);
   } catch (err) {
-    console.warn(`WARN: Could not save memory.json: ${err.message}`)
+    console.warn(`WARN: Could not save memory.json: ${err.message}`);
+    // Clean up temp file if it exists and we failed
+    if (fs.existsSync(TEMP_FILE)) fs.unlinkSync(TEMP_FILE);
   }
 }
 
 // ── Plugin ───────────────────────────────────────────────────────────────────
 
-let sessionKey = 'default'
+let sessionKey = 'default';
 
 export default {
   type: 'tool',
   name: 'memory',
-  version: '1.0.0',
+  version: '1.1.0',
   description:
     'Store and retrieve named values that persist across invocations. ' +
     'Use action "set" to save a value, "get" to retrieve one, ' +
@@ -53,7 +71,7 @@ export default {
       action: {
         type: 'string',
         description: 'One of: set | get | delete | list',
-        required: true,
+        enum: ['set', 'get', 'delete', 'list'],
       },
       key: {
         type: 'string',
@@ -67,45 +85,50 @@ export default {
   },
 
   init(ctx) {
-    if (ctx?.session) sessionKey = ctx.session
+    if (ctx?.session) sessionKey = ctx.session;
   },
 
   async run({ action, key, value }) {
-    const all     = loadAll()
-    const ns      = all[sessionKey] ?? {}
+    const all = loadAll();
+    // Ensure the namespace exists
+    if (!all[sessionKey]) all[sessionKey] = {};
+    const ns = all[sessionKey];
 
     switch (action) {
       case 'set': {
-        if (!key)              return 'Error: "key" is required for action "set"'
-        if (value === undefined) return 'Error: "value" is required for action "set"'
-        ns[key]            = value
-        all[sessionKey]    = ns
-        saveAll(all)
-        return `Memory set: ${key} = ${value}`
+        if (!key) return 'Error: "key" is required for action "set"';
+        // Check for null/undefined specifically
+        if (value === undefined || value === null) return 'Error: "value" is required for action "set"';
+        
+        ns[key] = String(value);
+        all[sessionKey] = ns;
+        saveAll(all);
+        return `Memory set: ${key} = ${value}`;
       }
 
       case 'get': {
-        if (!key) return 'Error: "key" is required for action "get"'
-        return key in ns ? String(ns[key]) : `No memory found for key: ${key}`
+        if (!key) return 'Error: "key" is required for action "get"';
+        return key in ns ? String(ns[key]) : `No memory found for key: ${key}`;
       }
 
       case 'delete': {
-        if (!key) return 'Error: "key" is required for action "delete"'
-        if (!(key in ns)) return `No memory found for key: ${key}`
-        delete ns[key]
-        all[sessionKey] = ns
-        saveAll(all)
-        return `Memory deleted: ${key}`
+        if (!key) return 'Error: "key" is required for action "delete"';
+        if (!(key in ns)) return `No memory found for key: ${key}`;
+        
+        delete ns[key];
+        all[sessionKey] = ns;
+        saveAll(all);
+        return `Memory deleted: ${key}`;
       }
 
       case 'list': {
-        const entries = Object.entries(ns)
-        if (entries.length === 0) return 'Memory is empty for this session'
-        return entries.map(([k, v]) => `${k}: ${v}`).join('\n')
+        const entries = Object.entries(ns);
+        if (entries.length === 0) return 'Memory is empty for this session';
+        return entries.map(([k, v]) => `${k}: ${v}`).join('\n');
       }
 
       default:
-        return `Unknown action: ${action}. Valid actions: set | get | delete | list`
+        return `Unknown action: ${action}. Valid actions: set | get | delete | list`;
     }
   },
-}
+};
