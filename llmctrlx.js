@@ -22,7 +22,7 @@ const __dirname = dirname(__filename)
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.6.13'
+const APP_VERSION = '0.6.14'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_API_URL = process.env.LLMCTRLX_API_URL || 'http://127.0.0.1:11434'
@@ -52,7 +52,7 @@ const command = argv[0]
 
 const options = getopts(argv.slice(1), {
   alias: {
-    h: 'api_url',
+    h: 'host',
     m: 'model',
     u: 'user',
     s: 'system',
@@ -70,7 +70,7 @@ const options = getopts(argv.slice(1), {
     c: 'num_ctx',
   },
   default: {
-    api_url: DEFAULT_API_URL,
+    host: DEFAULT_API_URL,
     model: DEFAULT_MODEL,
     session: DEFAULT_SESSION,
     no_tools: false,
