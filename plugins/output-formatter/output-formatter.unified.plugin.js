@@ -4,7 +4,7 @@ import { detectFormat, applyFormat } from './utils.js';
 export default {
   type: 'hook',
   name: 'output-formatter',
-  version: 'v1.0.0',
+  version: 'v1.0.1',
   description: 'Unified plugin version: formats model output into JSON, YAML, Markdown, tables, or minimal text.',
   tags: ['formatting', 'output', 'cli'],
 

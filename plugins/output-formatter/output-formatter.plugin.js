@@ -5,7 +5,7 @@ import { detectFormat, applyFormat } from './utils.js';
 export default {
   meta: {
     name: 'output-formatter',
-    version: '1.0.0',
+    version: '1.0.1',
     description: 'Transforms model output into Markdown, JSON, YAML, tables, or minimal text.',
     author: 'LLM Control Engine',
   },
