@@ -138,7 +138,7 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
   } else {
     if (!options.no_tools) {
       const requestedTags = options.tags ? options.tags.split(',').map(t => t.trim()) : null
-      const registry = await createPluginRegistry(toolsDir)
+      const registry = await createPluginRegistry(toolsDir, options.session)
       let tools = registry.list('tool')
 
       if (requestedTags) {

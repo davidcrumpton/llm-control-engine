@@ -51,7 +51,7 @@ describe("Plugin system", () => {
       }`,
     );
 
-    const registry = await createPluginRegistry(tempDir);
+    const registry = await createPluginRegistry(tempDir, "test");
 
     expect(registry.has("tool", "test-legacy")).toBe(true);
     expect(registry.has("policy", "test-policy")).toBe(true);

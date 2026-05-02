@@ -198,12 +198,11 @@ export async function runWithTools(llm, model, messages, tools, policies = [], c
  * @param {string} toolsDir - Primary tools directory or legacy tools path
  * @returns {Promise<Registry>} - Plugin registry with loaded tools and policies
  */
-export async function createPluginRegistry(toolsDir) {
+export async function createPluginRegistry(toolsDir, session) {
   const registry = new Registry()
-  const ctx = { toolsDir, projectDir: process.cwd() }
+  const ctx = { toolsDir, projectDir: process.cwd(), session }
 
   await loadPluginsFromDir(BUILTIN_PLUGINS_DIR, registry, ctx)
-  // Removed PROJECT_PLUGINS_DIR to prevent loading dev plugins
   if (toolsDir) {
     await loadPluginsFromDir(toolsDir, registry, ctx)
   }

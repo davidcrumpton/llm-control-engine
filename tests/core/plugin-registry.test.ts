@@ -37,7 +37,7 @@ describe("Plugin registry and runtime", () => {
       }`,
     );
 
-    const registry = await createPluginRegistry(tempDir);
+    const registry = await createPluginRegistry(tempDir, "test");
 
     expect(registry.has("tool", "legacy-shell")).toBe(true);
     expect(registry.has("policy", "safe-command-execution")).toBe(true);
