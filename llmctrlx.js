@@ -25,9 +25,9 @@ const APP_NAME = 'llmctrlx'
 const APP_VERSION = '0.6.10'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
-const DEFAULT_HOST = process.env.LLMCTRLX_HOST || 'http://127.0.0.1:11434'
+const DEFAULT_API_URL = process.env.LLMCTRLX_API_URL || 'http://127.0.0.1:11434'
 const DEFAULT_MODEL = process.env.LLMCTRLX_MODEL || 'gemma4:e2b'
-const DEFAULT_HISTORY = process.env.LLMCTRLX_HISTORY || path.join(os.homedir(), '.llmctrlx_history.json')
+const DEFAULT_HISTORY_FILE = process.env.LLMCTRLX_HISTORY_FILE || path.join(os.homedir(), '.llmctrlx_history.json')
 const DEFAULT_API_KEY = process.env.__LLMCTRLX_OLLAMA_API_KEY || ''
 const DEFAULT_MAX_UPLOAD_FILE_SIZE = process.env.LLMCTRLX_MAX_UPLOAD_FILE_SIZE || 1024 * 1024 * 10 // 10 MB
 const DEFAULT_PROVIDER = process.env.LLMCTRLX_PROVIDER || 'ollama'
@@ -52,7 +52,7 @@ const command = argv[0]
 
 const options = getopts(argv.slice(1), {
   alias: {
-    h: 'host',
+    h: 'api_url',
     m: 'model',
     u: 'user',
     s: 'system',
@@ -70,7 +70,7 @@ const options = getopts(argv.slice(1), {
     c: 'num_ctx',
   },
   default: {
-    host: DEFAULT_HOST,
+    api_url: DEFAULT_API_URL,
     model: DEFAULT_MODEL,
     session: DEFAULT_SESSION,
     no_tools: false,
@@ -133,7 +133,7 @@ async function main() {
   switch (command) {
     case 'chat':
     case 'c':
-      await cmdChat(llm, options, DEFAULT_HISTORY, toolsDir, DEFAULT_MAX_UPLOAD_FILE_SIZE, engineHooks)
+      await cmdChat(llm, options, DEFAULT_HISTORY_FILE, toolsDir, DEFAULT_MAX_UPLOAD_FILE_SIZE, engineHooks)
       break
     case 'model':
     case 'models':
@@ -167,7 +167,7 @@ async function main() {
     case 'history':
     case 'hist':
     case 'h':
-      cmdHistory(options, DEFAULT_HISTORY)
+      cmdHistory(options, DEFAULT_HISTORY_FILE)
       break
     case 'completion':
     case 'comp':

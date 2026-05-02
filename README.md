@@ -86,9 +86,9 @@ The completion provides:
 
 You can configure the default behavior using environment variables:
 
-- `LLMCTRLX_HOST`: The URL of your LLM provider. Default: `http://127.0.0.1:11434`
+- `LLMCTRLX_API_URL`: The URL of your LLM provider. Default: `http://127.0.0.1:11434`
 - `LLMCTRLX_MODEL`: The default model to use. Default: `gemma4:e4b`
-- `LLMCTRLX_HISTORY`: The default history file to use. Default: `~/.chat_history.json`
+- `LLMCTRLX_HISTORY_FILE`: The default history file to use. Default: `~/.chat_history.json`
 - `LLMCTRLX_TOOLS_DIR`: The default tools folder file to use. Default: `${INSTALL_PATH}/tools`
 - `__LLMCTRLX_OLLAMA_API_KEY`: The API key for the Ollama cloud provider. Default: `''`
 - `LLMCTRLX_PROVIDER`: The default provider to use. Default: `ollama`. Options: `ollama`, `lmstudio`
@@ -105,8 +105,11 @@ llmctrlx <command> [options]
 
 These options apply to most commands:
 
-- `-h, --host <url>`: Ollama API host.
-- `-m, --model <name>`: Model to use.
+- `-a, --api_url <url>`: The URL of your LLM provider. Default: `http://127.0.0.1:11434`
+- `-m, --model <name>`: Model to use. Default: `gemma4:e4b`
+- `-P, --provider <provider>`: Set the provider to use. Default: `ollama`. Options: `ollama`, `lmstudio`
+- `-K, --api_key <key>`: Set the API key for the cloud Ollama instance. Default: `''`
+- `-k, --session <name>`: Session key to use for continuing a conversation. Default: `default`
 
 ---
 
