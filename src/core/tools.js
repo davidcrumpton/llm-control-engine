@@ -34,6 +34,12 @@ export async function executeTool(tool, args) {
   }
 }
 
+function getMessageText(res) {
+  const visible = res?.message?.content ?? ''
+  const thinking = res?.message?.thinking ?? ''
+  return visible || thinking || ''
+}
+
 /**
  * Run LLM chat without tools
  * @param {Object} llm - LLM provider instance
@@ -45,7 +51,7 @@ export async function runWithoutTools(llm, model, messages, chatOptions = {}) {
   const systemPrompt = 'You do not have access to any tools. Notify user that tools are not available. If user asks'
   messages.unshift({ role: 'system', content: systemPrompt })
   const res = await llm.chat({ model, messages, options: chatOptions })
-  return res.message.content
+  return getMessageText(res)
 }
 
 async function applyPolicyPlugins(tool, args, policies = [], ctx = {}) {
@@ -79,7 +85,7 @@ export async function runWithTools(llm, model, messages, tools, policies = [], c
 
   while (true) {
     const res = await llm.chat({ model, messages, options: chatOptions })
-    const content = res.message.content
+    const content = getMessageText(res)
 
     try {
       const parsed = extractJSON(content)
