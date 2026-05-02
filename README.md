@@ -201,7 +201,7 @@ Using environment variables lessens the need to specify the host, model, and pro
 ```bash
 # Should call Wikipedia tool and return a summary of the Battle of Pontvallain
 
-export LLMCTRLX_HOST="http://127.0.0.1:1234/v1"
+export LLMCTRLX_API_URL="http://127.0.0.1:1234/v1"
 export LLMCTRLX_MODEL=gemma-4-e2b
 export LLMCTRLX_PROVIDER=lmstudio
 
