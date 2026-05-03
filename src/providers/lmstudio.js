@@ -168,11 +168,19 @@ export class LMStudioProvider {
     await assertOk(res, '/models')
     const data = await res.json()
 
-    if (!data || !Array.isArray(data.data)) {
-      throw new Error('LM Studio /models response is malformed.')
+      if (
+      data === null ||
+      typeof data !== 'object' ||
+      !Array.isArray(data.data) ||
+      data.data.length === 0
+    ) {
+      throw new Error(
+        'LM Studio models response is missing or has no models. ' +
+        `Got: ${JSON.stringify(data)?.slice(0, 200)}`
+      )
     }
-
-    return { models: data.data }
+    // we want return list of model names
+    return { models: data.data.map(model => model['id']) }
   }
 
   async show() {
@@ -185,5 +193,11 @@ export class LMStudioProvider {
 
   async delete() {
     throw new Error('LM Studio does not support delete()')
+  }
+
+  capabilities = ['list'];
+
+  getHelpMessage() {
+    return 'LM Studio model commands: --list';
   }
 }

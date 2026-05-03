@@ -34,7 +34,9 @@ export class OllamaProvider {
   }
 
   async list() {
-    return this.client.list()
+    const res = await this.client.list()
+    // extract only model name
+    return { models: res.models.map(m => m.name) }
   }
 
   async show(args) {
@@ -47,5 +49,11 @@ export class OllamaProvider {
 
   async delete(args) {
     return this.client.delete(args)
+  }
+
+  capabilities = ['list', 'show', 'pull', 'delete'];
+
+  getHelpMessage() {
+    return 'Ollama model commands: --list, --show <model>, --pull <model>, --delete <model>';
   }
 }
