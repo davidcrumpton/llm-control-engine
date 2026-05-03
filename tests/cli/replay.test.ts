@@ -39,14 +39,18 @@ describe("Recording and Replay", () => {
     };
 
     // 1. Record
-    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
     await cmdChat(llm, chatOptions, historyFile, toolsDir, 1024 * 1024, {});
-    
+
     expect(fs.existsSync(recordFile)).toBe(true);
     const sessionData = JSON.parse(fs.readFileSync(recordFile, "utf8"));
     expect(sessionData.command_type).toBe("chat");
     expect(sessionData.outputs.llmResponse).toBe("I am a recorded response");
-    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("[record] session saved"));
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("[record] session saved"),
+    );
 
     // 2. Replay (Playback)
     const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -58,7 +62,9 @@ describe("Recording and Replay", () => {
     await cmdReplay(llm, replayOptions, toolsDir);
 
     expect(consoleLogSpy).toHaveBeenCalledWith("I am a recorded response");
-    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("[replay] playback"));
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("[replay] playback"),
+    );
 
     consoleErrorSpy.mockRestore();
     consoleLogSpy.mockRestore();
@@ -90,7 +96,7 @@ describe("Recording and Replay", () => {
 
     await cmdReplay(llm, replayOptions, toolsDir);
 
-    const output = consoleLogSpy.mock.calls.map(call => call[0]).join("\n");
+    const output = consoleLogSpy.mock.calls.map((call) => call[0]).join("\n");
     expect(output).toContain("VERDICT: ✓ REPRODUCIBLE");
     expect(process.exitCode).toBeUndefined(); // Success
 
@@ -99,7 +105,8 @@ describe("Recording and Replay", () => {
 
   it("should detect differences in --diff mode", async () => {
     const llm = {
-      chat: vi.fn()
+      chat: vi
+        .fn()
         .mockResolvedValueOnce({ message: { content: "original response" } }) // For recording
         .mockResolvedValueOnce({ message: { content: "different response" } }), // For re-execution
     };
@@ -123,7 +130,7 @@ describe("Recording and Replay", () => {
 
     await cmdReplay(llm, replayOptions, toolsDir);
 
-    const output = consoleLogSpy.mock.calls.map(call => call[0]).join("\n");
+    const output = consoleLogSpy.mock.calls.map((call) => call[0]).join("\n");
     expect(output).toContain("VERDICT: ✗ DIFFERENCES FOUND");
     expect(output).toContain("- original response");
     expect(output).toContain("+ different response");
@@ -141,10 +148,14 @@ describe("Recording and Replay", () => {
       diff: false,
     };
 
-    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
     await cmdReplay(llm, replayOptions, toolsDir);
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("Failed to load session"));
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to load session"),
+    );
     expect(process.exitCode).toBe(1);
 
     consoleErrorSpy.mockRestore();
