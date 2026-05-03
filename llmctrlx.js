@@ -22,7 +22,7 @@ const __dirname = dirname(__filename)
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.6.30'
+const APP_VERSION = '0.7.00'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_API_URL = process.env.LLMCTRLX_API_URL || 'http://127.0.0.1:11434'
@@ -68,6 +68,7 @@ const options = getopts(argv.slice(1), {
     v: 'verbose',
     L: 'history_length',
     c: 'num_ctx',
+    R: 'record',
   },
   default: {
     host: DEFAULT_API_URL,
@@ -78,13 +79,13 @@ const options = getopts(argv.slice(1), {
     provider: DEFAULT_PROVIDER,
     history_length: DEFAULT_TOOLS_HISTORY_LENGTH,
   },
-  boolean: ['json', 'stream', 'no_tools', 'all', 'list', 'stdin', 'verbose','purge', 'dry-run'],
-  string: ['user', 'system', 'files', 'tools_dir', 'provider', 'show', 'tags', 'shell', 'var', 'num_ctx'],
+  boolean: ['json', 'stream', 'no_tools', 'all', 'list', 'stdin', 'verbose', 'purge', 'dry-run', 'diff'],
+  string: ['user', 'system', 'files', 'tools_dir', 'provider', 'show', 'tags', 'shell', 'var', 'num_ctx', 'record'],
   array: ['var']
 })
 
-// abort if -W and -T is given
-if (options.no_tools && options.tools_dir) {
+// abort if -W and -T is given (not applicable to replay which only reads toolsDir for re-execution)
+if (options.no_tools && options.tools_dir && command !== 'replay') {
   console.error('Cannot use both -W and -T')
   process.exit(1)
 }
@@ -110,7 +111,8 @@ async function main() {
     cmdPlan,
     cmdTools,
     cmdHistory,
-    cmdPlugins
+    cmdPlugins,
+    cmdReplay
   } = await import(cliPath)
   const { HookManager, PluginLoader, EngineHookIntegration } = await import(pluginsPath)
 
@@ -154,7 +156,10 @@ async function main() {
       break
     case 'plan':
     case 'p':
-      await cmdPlan(llm, options, engineHooks)
+      await cmdPlan(llm, options, DEFAULT_MAX_UPLOAD_FILE_SIZE)
+      break
+    case 'replay':
+      await cmdReplay(llm, options, toolsDir)
       break
     case 'tools':
     case 't':
@@ -193,6 +198,7 @@ Usage:
   bench      Benchmark models
   run        Execute command + analyze
   plan       Execute YAML-defined plan
+  replay     Replay a recorded session (--diff to re-execute and compare)
   tools      Manage tools (--list, --show, --pull, --delete)
   plugins    Manage plugins (--list, --show)
   history    Show chat history (--show or --list --all, --delete, --purge) 
@@ -208,6 +214,10 @@ Examples:
   plugins --show logger
   bench -m mistral,gemma -u "test"
   run -u "df -h"
+  run -u "df -h" -R session.json
+  chat -u "summarize this" -R session.json
+  replay session.json
+  replay session.json --diff
   completion --shell bash
 `)
   }
@@ -250,14 +260,14 @@ _llmctrlx_completions() {
   cmd="\${COMP_WORDS[1]}"
 
   # Main commands
-  cmds="chat model embed bench run plan tools plugins history completion version"
+  cmds="chat model embed bench run plan replay tools plugins history completion version"
 
   # Global options
   global_opts="-h --host -m --model -u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags -v --verbose -c --num_ctx --json --stream --all --list --show"
 
   case \${cmd} in
     chat)
-      opts="-u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags -c --num_ctx --json --stream --stdin --history_length"
+      opts="-u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags -c --num_ctx --json --stream --stdin --history_length -R --record"
       ;;
     model)
       opts="--list --show --pull --delete -m --model"
@@ -269,10 +279,13 @@ _llmctrlx_completions() {
       opts="-m --model -u --user -s --system -t --temperature -p --top_p -P --provider -K --api_key --json --stdin"
       ;;
     run)
-      opts="-u --user -s --system -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key --json"
+      opts="-u --user -s --system -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key --json -R --record"
       ;;
     plan)
-      opts="-m --model -s --system -P --provider -K --api_key -v --verbose --dry-run --var"
+      opts="-m --model -s --system -P --provider -K --api_key -v --verbose --dry-run --var -R --record"
+      ;;
+    replay)
+      opts="--diff -R --record"
       ;;
     tools)
       opts="--list --show --pull --delete"
@@ -332,6 +345,7 @@ _llmctrlx() {
     'bench:Benchmark models'
     'run:Execute command + analyze'
     'plan:Execute YAML-defined plan'
+    'replay:Replay a recorded session'
     'tools:Manage tools'
     'plugins:Manage plugins'
     'history:Show chat history'
@@ -367,7 +381,9 @@ _llmctrlx() {
             '--json' \\
             '--stream' \\
             '--stdin'
-            '--history_length[Number of previous messages to include in context, 0 for all]:history_length:'
+            '--history_length[Number of previous messages to include in context, 0 for all]:history_length:' \\
+            '-R[record session to file]:file:_files' \\
+            '--record[record session to file]:file:_files'
           ;;
         model)
           _arguments \\
@@ -411,7 +427,9 @@ _llmctrlx() {
             '-W[no_tools]' \\
             '-K[api_key]:api_key:' \\
             '-v[verbose]' \\
-            '--json'
+            '--json' \\
+            '-R[record session to file]:file:_files' \\
+            '--record[record session to file]:file:_files'
           ;;
         plan)
           _arguments \\
@@ -421,7 +439,14 @@ _llmctrlx() {
             '-K[api_key]:api_key:' \\
             '-v[verbose]' \\
             '--var[template variable assignment]:key=value:' \\
-            '--dry-run'
+            '--dry-run' \\
+            '-R[record session to file]:file:_files' \\
+            '--record[record session to file]:file:_files'
+          ;;
+        replay)
+          _arguments \\
+            '1:session file:_files' \\
+            '--diff[re-execute and diff against recording]'
           ;;
         tools)
           _arguments \\
@@ -471,6 +496,7 @@ complete -c llmctrlx -n '__fish_use_subcommand' -a 'embed' -d 'Generate embeddin
 complete -c llmctrlx -n '__fish_use_subcommand' -a 'bench' -d 'Benchmark models'
 complete -c llmctrlx -n '__fish_use_subcommand' -a 'run' -d 'Execute command + analyze'
 complete -c llmctrlx -n '__fish_use_subcommand' -a 'plan' -d 'Execute YAML-defined plan'
+complete -c llmctrlx -n '__fish_use_subcommand' -a 'replay' -d 'Replay a recorded session'
 complete -c llmctrlx -n '__fish_use_subcommand' -a 'tools' -d 'Manage tools'
 complete -c llmctrlx -n '__fish_use_subcommand' -a 'plugins' -d 'Manage plugins'
 complete -c llmctrlx -n '__fish_use_subcommand' -a 'history' -d 'Show chat history'
@@ -514,6 +540,7 @@ complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s c -l num_ctx -d 'C
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -l json -d 'JSON output'
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -l stream -d 'Stream output'
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -l stdin -d 'Read from stdin'
+complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s R -l record -d 'Record session to file' -F
 
 # Model command options
 complete -c llmctrlx -n '__fish_seen_subcommand_from model' -l list -d 'List models'
@@ -551,11 +578,20 @@ complete -c llmctrlx -n '__fish_seen_subcommand_from run' -s T -l tools_dir -d '
 complete -c llmctrlx -n '__fish_seen_subcommand_from run' -s W -l no_tools -d 'No tools'
 complete -c llmctrlx -n '__fish_seen_subcommand_from run' -s K -l api_key -d 'API key' -x
 complete -c llmctrlx -n '__fish_seen_subcommand_from run' -l json -d 'JSON output'
+complete -c llmctrlx -n '__fish_seen_subcommand_from run' -s R -l record -d 'Record session to file' -F
+
+# Plan command options
 complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -s m -l model -d 'Model' -x
 complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -s s -l system -d 'System message' -x
 complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -s P -l provider -d 'Provider' -a 'ollama lmstudio' -x
-complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -s K -l api_key -d 'API key' -xcomplete -c llmctrlx -n '__fish_seen_subcommand_from plan' -l var -d 'Template variable assignment' -xcomplete -c llmctrlx -n '__fish_seen_subcommand_from plan' -l dry-run -d 'Dry run plan'
+complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -s K -l api_key -d 'API key' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -l var -d 'Template variable assignment' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -l dry-run -d 'Dry run plan'
 complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -l verbose -d 'Verbose output'
+complete -c llmctrlx -n '__fish_seen_subcommand_from plan' -s R -l record -d 'Record session to file' -F
+
+# Replay command options
+complete -c llmctrlx -n '__fish_seen_subcommand_from replay' -l diff -d 'Re-execute and diff against recording'
 
 # Tools command options
 complete -c llmctrlx -n '__fish_seen_subcommand_from tools' -l list -d 'List tools'

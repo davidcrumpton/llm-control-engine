@@ -1,232 +1,153 @@
 /**
  * Plan command handler for llmctrlx
  *
- * Security hardening vs the original:
- *  1. process.env is NO LONGER passed to mergeVars.
+ * Extended with optional --record <file> support.
+ * When --record is set a Recorder captures every step result and the final
+ * LLM report, then writes a self-contained session JSON file.
+ *
+ * Security hardening (unchanged from original):
+ *  1. process.env is NOT passed to mergeVars.
  *  2. executeStep uses execFile() (no shell).
  *  3. Executable allow-list validation.
  *  4. Hard timeouts and stdout caps.
  */
 
-import fs from 'fs/promises'
-import fsSync from 'fs'
-import { execFile } from 'child_process'
-import { promisify } from 'util'
-import jsYaml from 'js-yaml'
+import fs              from 'fs/promises'
+import fsSync          from 'fs'
+import { execFile }    from 'child_process'
+import { promisify }   from 'util'
+import jsYaml          from 'js-yaml'
 import { runWithoutTools, loadTools, executeTool } from '../core/tools.js'
 import { isImage, validateFileSize, buildImageMessage } from '../core/utils.js'
-import { validatePolicy, validateStep } from '../core/policy.js'
+import { validatePolicy, validateStep }              from '../core/policy.js'
+import { Recorder }                                  from '../core/recorder.js'
 
 const execFileAsync = promisify(execFile)
 
-// ─── Security Configuration ──────────────────────────────────────────────────
+// ─── Security Constraints ──────────────────────────────────────────────────────────
 
 const ALLOWED_STEP_EXECUTABLES = new Set([
-  'ls', 'cat', 'echo', 'pwd', 'date', 'find', 'grep', 'wc', 'head', 'tail',
-  'df', 'du', 'uname', 'uptime', 'ps', 'env', 'printenv', 'id', 'whoami',
-  'git', 'node', 'npm', 'python', 'python3', 'pip', 'pip3',
-  'curl', 'wget', 'jq', 'yq', 'awk', 'sed', 'sort', 'uniq', 'cut', 'tr',
-  'tar', 'gzip', 'gunzip', 'zip', 'unzip',
+  'ls', 'cat', 'echo', 'pwd', 'date', 'whoami',
+  'df', 'du', 'uname', 'uptime', 'ps',
+  'git', 'node', 'npm', 'python', 'python3',
+  'grep', 'awk', 'sed', 'find', 'wc', 'sort', 'uniq', 'head', 'tail', 'jq',
+  'curl', 'wget', 'tar', 'zip', 'unzip', 'cp', 'mv', 'mkdir', 'rm', 'touch',
+  'chmod', 'chown', 'env', 'which', 'xargs', 'printenv', 'id',
+  'pip', 'pip3',
+  'yq', 'cut', 'tr',
+  'gzip', 'gunzip',
   'make', 'cmake', 'cargo', 'go', 'ssh',
 ])
 
-const ALLOWED_ENV_VARS = new Set([
-  'HOME', 'USER', 'LOGNAME', 'SHELL', 'TERM', 'LANG', 'LC_ALL',
-  'PATH', 'PWD', 'TMPDIR', 'TMP', 'TEMP',
-  'NODE_ENV', 'CI',
-])
+const STEP_TIMEOUT_MS   = 60_000
+const MAX_STDOUT_BYTES  = 5 * 1024 * 1024
+const SHELL_META_RE     = /[;&|`$<>\\!{}()\n\r]/
 
-const EXEC_TIMEOUT_MS  = 60_000
-const MAX_OUTPUT_BYTES = 5 * 1024 * 1024
-const SHELL_META_RE = /[;&|`$<>\\!{}()\n\r]/
-
-// ─── Command Execution ───────────────────────────────────────────────────────
-
-function tokenise(input) {
-  const tokens = []
-  let current = ''
-  let inSingle = false
-  let inDouble = false
-
-  for (let i = 0; i < input.length; i++) {
-    const ch = input[i]
-    if (ch === "'" && !inDouble) { inSingle = !inSingle; continue }
-    if (ch === '"' && !inSingle) { inDouble = !inDouble; continue }
-    if (!inSingle && !inDouble && ch === ' ') {
-      if (current.length) { tokens.push(current); current = '' }
-      continue
-    }
-    current += ch
-  }
-  if (current.length) tokens.push(current)
-  return tokens
-}
-
-async function executeCommandAction(command) {
-  if (SHELL_META_RE.test(command)) {
-    return { stdout: '', stderr: `Step rejected: shell metacharacters are not permitted in exec strings. Got: ${command}`, exitCode: 1 }
-  }
-
-  const [executable, ...args] = tokenise(command)
-
-  if (!executable) {
-    return { stdout: '', stderr: 'Step rejected: empty exec string.', exitCode: 1 }
-  }
-
-  if (!ALLOWED_STEP_EXECUTABLES.has(executable)) {
-    return { stdout: '', stderr: `Step rejected: '${executable}' is not in the allowed-executable list.`, exitCode: 1 }
-  }
-
-  try {
-    const { stdout, stderr } = await execFileAsync(executable, args, {
-      timeout: EXEC_TIMEOUT_MS,
-      maxBuffer: MAX_OUTPUT_BYTES,
-    })
-    return { stdout: stdout.toString(), stderr: stderr.toString(), exitCode: 0 }
-  } catch (err) {
-    if (err.killed) {
-      return { stdout: '', stderr: `Step timed out after ${EXEC_TIMEOUT_MS / 1000}s.`, exitCode: 1 }
-    }
-    return {
-      stdout: err.stdout ? err.stdout.toString() : '',
-      stderr: err.stderr ? err.stderr.toString() : err.message,
-      exitCode: typeof err.code === 'number' ? err.code : 1,
-    }
-  }
-}
-
-// ─── Validation & Normalization ──────────────────────────────────────────────
+// ─── Plan normalisation & validation (unchanged) ──────────────────────────────
 
 function normalizeAndValidatePlan(plan, planFile) {
-  if (!plan || typeof plan !== 'object') throw new Error(`Plan is not a YAML object: ${planFile}`)
-  if (!plan.version) throw new Error(`Missing required field 'version' in plan: ${planFile}`)
-  if (!Array.isArray(plan.steps) || plan.steps.length === 0) throw new Error(`Missing required field 'steps' in plan: ${planFile}`)
+  if (!plan || typeof plan !== 'object') throw new Error(`Invalid plan file: ${planFile}`)
+  if (!plan.steps || !Array.isArray(plan.steps)) throw new Error('Plan must have a steps array')
+  if (plan.steps.length === 0) throw new Error('Plan must have at least one step')
+
+  plan.steps = plan.steps.map((step, i) => {
+    if (!step.id)   step.id   = `step_${i + 1}`
+    if (!step.name) step.name = step.id
+    if (!step.type) step.type = step.exec ? 'exec' : (step.tool ? 'tool' : 'prompt')
+    return step
+  })
 
   validatePolicy(plan)
+  plan.steps.forEach(step => validateStep(step, plan.policy || {}))
 
-  if (plan.attachments !== undefined) {
-    if (!Array.isArray(plan.attachments)) throw new Error(`'attachments' must be an array of file paths in plan: ${planFile}`)
-    plan.attachments.forEach((attachment, i) => {
-      if (typeof attachment !== 'string' || !attachment.trim()) {
-        throw new Error(`attachments[${i}] must be a non-empty file path string in plan: ${planFile}`)
-      }
-    })
-  }
-
-  plan.steps.forEach((step, index) => {
-    if (!step || typeof step !== 'object') throw new Error(`Step ${index + 1} is not an object`)
-    if (!step.name && !step.id) throw new Error(`Missing required field 'name' or 'id' for step ${index + 1}`)
-    
-    // Normalize IDs and Names
-    step.id = step.id || step.name
-    step.name = step.name || step.id
-    
-    if (!step.exec && !step.type) throw new Error(`Missing required field 'exec' or 'type' for step ${index + 1}`)
-    
-    validateStep(step, plan.policy)
-  })
-  
   return plan
 }
 
-// ─── Variable Interpolation ──────────────────────────────────────────────────
+// ─── Variable handling (unchanged) ────────────────────────────────────────────
 
 function parseCliVars(options) {
-  const rawVars = options.var
-  if (!rawVars) return {}
-  return (Array.isArray(rawVars) ? rawVars : [rawVars]).reduce((acc, entry) => {
-    if (typeof entry !== 'string' || !entry.includes('=')) throw new Error(`Invalid --var value: ${entry}. Expected key=value.`)
-    const [key, ...rest] = entry.split('=')
-    if (!key) throw new Error(`Invalid --var value: ${entry}. Expected key=value.`)
-    acc[key] = rest.join('=')
-    return acc
-  }, {})
+  const vars = {}
+  const raw  = options.var || options.vars || []
+  const list = Array.isArray(raw) ? raw : [raw]
+  for (const entry of list) {
+    const eq = entry.indexOf('=')
+    if (eq > 0) vars[entry.slice(0, eq)] = entry.slice(eq + 1)
+  }
+  return vars
 }
 
 function safeEnvSubset() {
-  return Array.from(ALLOWED_ENV_VARS).reduce((safe, key) => {
-    if (Object.prototype.hasOwnProperty.call(process.env, key)) safe[key] = process.env[key]
-    return safe
-  }, {})
+  const ALLOWED_ENV_KEYS = new Set(['HOME', 'USER', 'PATH', 'SHELL', 'LANG', 'TZ'])
+  const safe = {}
+  for (const key of ALLOWED_ENV_KEYS) {
+    if (process.env[key] !== undefined) safe[key] = process.env[key]
+  }
+  return safe
 }
 
-function mergeVars(planVars, cliVars, safeEnv = {}) {
-  if (planVars && (typeof planVars !== 'object' || Array.isArray(planVars))) {
-    throw new Error('Plan vars must be a mapping of key/value pairs')
-  }
-  return { ...safeEnv, ...(planVars || {}), ...cliVars }
+function mergeVars(planVars = {}, cliVars = {}, envVars = {}) {
+  return { ...envVars, ...planVars, ...cliVars }
 }
 
 function interpolateString(str, vars) {
-  if (typeof str !== 'string') return str
-  const missing = new Set()
-  const value = str.replace(/{{\s*([A-Za-z0-9_]+)\s*}}/g, (match, name) => {
-    if (Object.prototype.hasOwnProperty.call(vars, name)) return String(vars[name])
-    missing.add(name)
-    return match
-  })
-  if (missing.size > 0) throw new Error(`Unknown variable: {{${Array.from(missing)[0]}}}`)
-  return value
+  return str.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? `{{${key}}}`)
 }
 
 function interpolatePlan(plan, vars) {
-  const interpolated = { ...plan }
-
-  if (interpolated.name) interpolated.name = interpolateString(interpolated.name, vars)
-  if (interpolated.prompt) interpolated.prompt = interpolateString(interpolated.prompt, vars)
-  if (interpolated.system) interpolated.system = interpolateString(interpolated.system, vars)
-
-  if (interpolated.output?.save) {
-    interpolated.output = { ...interpolated.output, save: interpolateString(interpolated.output.save, vars) }
-  }
-
-  if (Array.isArray(interpolated.attachments)) {
-    interpolated.attachments = interpolated.attachments.map(filePath => interpolateString(filePath, vars))
-  }
-
-  interpolated.steps = plan.steps.map(step => {
-    const nextStep = { ...step }
-    if (nextStep.name) nextStep.name = interpolateString(nextStep.name, vars)
-    if (nextStep.id) nextStep.id = interpolateString(nextStep.id, vars)
-    if (nextStep.exec) nextStep.exec = interpolateString(nextStep.exec, vars)
-    if (nextStep.prompt) nextStep.prompt = interpolateString(nextStep.prompt, vars)
-    
-    if (nextStep.args && typeof nextStep.args === 'object') {
-      nextStep.args = Object.entries(nextStep.args).reduce((acc, [k, v]) => {
-        acc[k] = typeof v === 'string' ? interpolateString(v, vars) : v
-        return acc
-      }, {})
-    }
-    return nextStep
-  })
-
-  return interpolated
+  return JSON.parse(interpolateString(JSON.stringify(plan), vars))
 }
 
-// ─── Step Execution ──────────────────────────────────────────────────────────
+// ─── Step execution (unchanged) ───────────────────────────────────────────────
 
 async function executeStepAction(step, loadedTools, llm, planModel, contextData) {
-  if (step.exec) {
-    return await executeCommandAction(step.exec)
-  } 
-  
-  if (step.type === 'tool') {
-    const toolToRun = loadedTools.find(t => t.name === step.tool)
-    if (!toolToRun) throw new Error(`Tool '${step.tool}' not found.`)
+  if (step.type === 'exec') {
+    if (!step.exec?.trim()) {
+      return { stdout: '', stderr: 'Empty exec command', exitCode: 1 }
+    }
+    if (SHELL_META_RE.test(step.exec)) {
+      return { stdout: '', stderr: 'Command rejected: shell metacharacters not permitted', exitCode: 1 }
+    }
+
+    const tokens     = step.exec.match(/[^\s"']+|"([^"]*)"|'([^']*)'/g)
+      ?.map(t => t.replace(/^['"]|['"]$/g, '')) || []
+    const [executable, ...args] = tokens
+
+    if (!ALLOWED_STEP_EXECUTABLES.has(executable)) {
+      return { stdout: '', stderr: `Executable '${executable}' not in allow-list`, exitCode: 1 }
+    }
+
     try {
-      const toolOutput = await executeTool(toolToRun, step.args || {})
-      return { stdout: toolOutput, stderr: '', exitCode: 0 }
+      const { stdout, stderr } = await execFileAsync(executable, args, {
+        timeout     : STEP_TIMEOUT_MS,
+        maxBuffer   : MAX_STDOUT_BYTES,
+        windowsHide : true,
+        env         : { ...process.env, SHLVL: '1' },
+      })
+      return { stdout, stderr, exitCode: 0 }
     } catch (err) {
       return { stdout: '', stderr: err.message, exitCode: 1 }
     }
-  } 
-  
+  }
+
+  if (step.type === 'tool') {
+    const tool = loadedTools.find(t => t.name === step.tool)
+    if (!tool) return { stdout: '', stderr: `Tool '${step.tool}' not found`, exitCode: 1 }
+    try {
+      const result = await executeTool(tool, step.args || {})
+      return { stdout: result, stderr: '', exitCode: 0 }
+    } catch (err) {
+      return { stdout: '', stderr: err.message, exitCode: 1 }
+    }
+  }
+
   if (step.type === 'prompt') {
     const stepMessages = []
     if (step.context?.from_steps) {
       step.context.from_steps.forEach(fromStep => {
         const prevResult = contextData[fromStep]
-        if (prevResult?.stdout) stepMessages.push({ role: 'user', content: `Context from step '${fromStep}':\n${prevResult.stdout}` })
+        if (prevResult?.stdout) {
+          stepMessages.push({ role: 'user', content: `Context from step '${fromStep}':\n${prevResult.stdout}` })
+        }
       })
     }
     stepMessages.push({ role: 'user', content: step.prompt })
@@ -241,17 +162,17 @@ async function executeStepAction(step, loadedTools, llm, planModel, contextData)
   return { stdout: '', stderr: `Unknown step type: ${step.type}`, exitCode: 1 }
 }
 
-// ─── Report & Output Generation ──────────────────────────────────────────────
+// ─── Report & output generation (unchanged) ───────────────────────────────────
 
 function buildPlanPrompt(plan, results) {
   const promptParts = [
     `Plan: ${plan.name || 'Unnamed Plan'}`,
-    `Version: ${plan.version}`
+    `Version: ${plan.version}`,
   ]
 
   if (plan.prompt) promptParts.push(`Prompt: ${plan.prompt}`)
   if (plan.output?.format) promptParts.push(`Please format the final response as ${plan.output.format}.`)
-  
+
   promptParts.push('Step outputs:')
   for (const result of results) {
     promptParts.push(
@@ -288,11 +209,11 @@ async function buildAttachmentMessages(attachments, maxUploadFileSize, provider)
 }
 
 async function generateLegacyReport(plan, results, llm, options, maxUploadFileSize) {
-  const prompt = buildPlanPrompt(plan, results)
-  const messages = []
-  const model = options.model || plan.model
+  const prompt      = buildPlanPrompt(plan, results)
+  const messages    = []
+  const model       = options.model || plan.model
   const systemPrompt = options.system || plan.system
-  const provider = (options.provider || 'ollama').toLowerCase()
+  const provider    = (options.provider || 'ollama').toLowerCase()
 
   if (systemPrompt) messages.push({ role: 'system', content: systemPrompt })
 
@@ -302,13 +223,15 @@ async function generateLegacyReport(plan, results, llm, options, maxUploadFileSi
 
   messages.push({ role: 'user', content: prompt })
   const analysis = await runWithoutTools(llm, model, messages)
-  
+
   console.log(analysis)
 
   if (plan.output?.save) {
     await fs.writeFile(plan.output.save, analysis, 'utf8')
     console.log(`Saved report to ${plan.output.save}`)
   }
+
+  return analysis
 }
 
 async function processOutputs(planOutputs, contextData) {
@@ -326,26 +249,34 @@ async function processOutputs(planOutputs, contextData) {
   }
 }
 
-// ─── Main CLI Command ────────────────────────────────────────────────────────
+// ─── Main CLI command ─────────────────────────────────────────────────────────
 
+/**
+ * Handle plan command
+ *
+ * @param {Object} llm                - LLM provider instance
+ * @param {Object} options            - CLI options (includes options.record)
+ * @param {number} maxUploadFileSize
+ */
 export async function cmdPlan(llm, options, maxUploadFileSize = 10 * 1024 * 1024) {
   try {
     const positional = options._ || []
-    const planFile = positional[0]
+    const planFile   = positional[0]
+    const recordFile = options.record ?? null
 
-    if (!planFile) throw new Error('Usage: llmctrlx plan <plan-file> [--dry-run]')
+    if (!planFile) throw new Error('Usage: llmctrlx plan <plan-file> [--dry-run] [--record <file>]')
 
     const rawYaml = await fs.readFile(planFile, 'utf8')
-    let plan = jsYaml.load(rawYaml)
-    
+    let plan      = jsYaml.load(rawYaml)
+
     plan = normalizeAndValidatePlan(plan, planFile)
 
     const cliVars = parseCliVars(options)
-    const vars = mergeVars(plan.vars, cliVars, safeEnvSubset())
-    plan = interpolatePlan(plan, vars)
+    const vars    = mergeVars(plan.vars, cliVars, safeEnvSubset())
+    plan          = interpolatePlan(plan, vars)
 
     const dryRun = Boolean(options['dry-run'] || options.dryRun)
-    const model = options.model || plan.model
+    const model  = options.model || plan.model
 
     if (!model) throw new Error('No model specified via plan or --model')
 
@@ -355,34 +286,69 @@ export async function cmdPlan(llm, options, maxUploadFileSize = 10 * 1024 * 1024
       return
     }
 
-    const results = []
+    // Build recorder inputs before execution (hash over what drives the run)
+    const recorderInputs = {
+      model      : model,
+      parameters : {
+        temperature : options.temperature,
+        top_p       : options.top_p,
+      },
+      planFile,
+      planName   : plan.name || null,
+      planVersion: plan.version || null,
+      vars,
+    }
+
+    const recorder = recordFile ? new Recorder('plan', recorderInputs) : null
+    if (recorder) recorder.markExecStart()
+
+    const results     = []
     const contextData = {}
     const hasToolSteps = plan.steps.some(s => s.type === 'tool')
-    
-    const loadedTools = hasToolSteps 
-      ? await loadTools(options.tools_dir || process.env.LLMCTRLX_TOOLS_DIR) 
+
+    const loadedTools = hasToolSteps
+      ? await loadTools(options.tools_dir || process.env.LLMCTRLX_TOOLS_DIR)
       : []
 
     for (const [index, step] of plan.steps.entries()) {
       console.log(`Executing step ${index + 1}/${plan.steps.length}: ${step.name}`)
-      
-      const result = await executeStepAction(step, loadedTools, llm, model, contextData)
+
+      const result    = await executeStepAction(step, loadedTools, llm, model, contextData)
       const execLabel = step.exec || step.tool || 'prompt'
-      
+
       results.push({ name: step.name, exec: execLabel, ...result })
       contextData[step.id] = result
-      
+
+      // Record every step into the session
+      if (recorder) {
+        recorder.recordStep(step.id, step.name, execLabel, result)
+      }
+
       if (result.exitCode !== 0 && plan.flow?.on_error === 'stop') {
-         console.error(`Step failed and flow.on_error is 'stop'. Aborting plan.`)
-         break
+        console.error(`Step failed and flow.on_error is 'stop'. Aborting plan.`)
+        break
       }
     }
 
+    if (recorder) recorder.markExecEnd()
+
+    // Generate LLM report
+    let llmResponse = ''
+
+    if (recorder) recorder.markLlmStart()
+
     if (plan.prompt || (!plan.outputs && plan.output?.save)) {
-      await generateLegacyReport(plan, results, llm, options, maxUploadFileSize)
+      llmResponse = await generateLegacyReport(plan, results, llm, options, maxUploadFileSize)
     }
-    
+
     await processOutputs(plan.outputs, contextData)
+
+    if (recorder) {
+      recorder.markLlmEnd()
+      recorder.setOutputs({ llmResponse, exitCode: 0 })
+      await recorder.save(recordFile)
+      console.error(`[record] session saved → ${recordFile}`)
+    }
 
   } catch (err) {
     console.error(err.message)

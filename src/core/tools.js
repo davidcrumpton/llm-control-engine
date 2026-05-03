@@ -69,129 +69,129 @@ async function applyPolicyPlugins(tool, args, policies = [], ctx = {}) {
   return null
 }
 
-/**
- * Run LLM chat with tool support - handles tool loop until final response
- * @param {Object} llm - LLM provider instance
- * @param {string} model - Model name to use
- * @param {Array} messages - Message history
- * @param {Array} tools - Available tools
- * @param {Array} policies - Available policy plugins
- * @returns {Promise<string>} - Final LLM response after tool execution
+/*
+ * Run LLM chat with tool support — handles tool loop until final response.
+ *
+ * @param {Object}   llm         - LLM provider instance
+ * @param {string}   model       - Model name
+ * @param {Array}    messages    - Message history (mutated in place)
+ * @param {Array}    tools       - Available tools
+ * @param {Array}    policies    - Available policy plugins
+ * @param {Object}   chatOptions - Extra options forwarded to llm.chat();
+ *                                 may include onToolCall(tool, args, result) callback
+ * @returns {Promise<string>} Final LLM response after all tool executions
  */
+
 export async function runWithTools(llm, model, messages, tools, policies = [], chatOptions = {}) {
+  // Pull the recorder callback out before forwarding chatOptions to llm.chat()
+  // so the provider never sees an unrecognised key.
+  const { onToolCall, ...llmChatOptions } = chatOptions
+ 
   const toolHistory = []
   let loopCount = 0
   const MAX_LOOPS = 15
-
+ 
   while (true) {
-    const res = await llm.chat({ model, messages, options: chatOptions })
+    const res     = await llm.chat({ model, messages, options: llmChatOptions })
     const content = getMessageText(res)
-
+ 
     try {
       const parsed = extractJSON(content)
-
+ 
       if (parsed && parsed.tool) {
         const tool = tools.find(t => t.name === parsed.tool)
-
+ 
         if (!tool) {
-          messages.push({
-            role: 'assistant',
-            content: `Tool ${parsed.tool} not found`
-          })
+          messages.push({ role: 'assistant', content: `Tool ${parsed.tool} not found` })
           continue
         }
-
+ 
         try {
           validateArgs(tool, parsed.arguments || {})
         } catch (err) {
-          messages.push({
-            role: 'assistant',
-            content: `Error: ${err.message}`
-          })
+          messages.push({ role: 'assistant', content: `Error: ${err.message}` })
           continue
         }
-
+ 
         const policyResult = await applyPolicyPlugins(tool, parsed.arguments || {}, policies, {
-          tools,
-          messages,
-          model
+          tools, messages, model,
         })
-
+ 
         if (policyResult) {
           messages.push({
-            role: 'assistant',
-            content: `System Error: Policy violation. ${policyResult.message}`
+            role    : 'assistant',
+            content : `System Error: Policy violation. ${policyResult.message}`,
           })
           continue
         }
-
+ 
         const argsStr = JSON.stringify(parsed.arguments || {})
-
+ 
         loopCount++
         if (loopCount > MAX_LOOPS) {
           messages.push({
-            role: 'user',
-            content: `System Error: Maximum tool loop limit reached (${MAX_LOOPS}). Please provide your final answer to the user.`
+            role    : 'user',
+            content : `System Error: Maximum tool loop limit reached (${MAX_LOOPS}). Please provide your final answer to the user.`,
           })
           continue
         }
-
+ 
         const isDuplicate = toolHistory.some(h => h.name === parsed.tool && h.argsStr === argsStr)
         if (isDuplicate) {
           messages.push({
-            role: 'user',
-            content: `System Error: You already called '${parsed.tool}' with these exact arguments. Do not repeat identical tool calls. Try a different approach or provide your final answer.`
+            role    : 'user',
+            content : `System Error: You already called '${parsed.tool}' with these exact arguments. Do not repeat identical tool calls. Try a different approach or provide your final answer.`,
           })
           continue
         }
-
+ 
         const toolPolicies = tool.policies || {}
-
+ 
         if (toolPolicies.requires) {
           const missing = toolPolicies.requires.find(req => !toolHistory.some(h => h.name === req))
           if (missing) {
             messages.push({
-              role: 'user',
-              content: `System Error: Policy violation. You must use the '${missing}' tool before using '${tool.name}'.`
+              role    : 'user',
+              content : `System Error: Policy violation. You must use the '${missing}' tool before using '${tool.name}'.`,
             })
             continue
           }
         }
-
+ 
         if (toolPolicies.maxCalls) {
           const callCount = toolHistory.filter(h => h.name === parsed.tool).length
           if (callCount >= toolPolicies.maxCalls) {
             messages.push({
-              role: 'user',
-              content: `System Error: Policy violation. You have reached the maximum allowed calls (${toolPolicies.maxCalls}) for '${tool.name}'.`
+              role    : 'user',
+              content : `System Error: Policy violation. You have reached the maximum allowed calls (${toolPolicies.maxCalls}) for '${tool.name}'.`,
             })
             continue
           }
         }
-
+ 
+        // ── Execute tool ────────────────────────────────────────────────────
         const result = await executeTool(tool, parsed.arguments || {})
-
+ 
+        // ── Notify recorder (if any) ────────────────────────────────────────
+        if (typeof onToolCall === 'function') {
+          onToolCall(parsed.tool, parsed.arguments || {}, result)
+        }
+ 
         toolHistory.push({ name: parsed.tool, argsStr })
-
-        messages.push({
-          role: 'assistant',
-          content
-        })
-
-        messages.push({
-          role: 'user',
-          content: `Tool '${tool.name}' output:\n${result}`
-        })
-
+ 
+        messages.push({ role: 'assistant', content })
+        messages.push({ role: 'user', content: `Tool '${tool.name}' output:\n${result}` })
+ 
         continue
       }
     } catch {
       // not JSON → normal response
     }
-
+ 
     return content
   }
 }
+ 
 
 /**
  * Create a plugin registry and load plugins from built-in, project, legacy, and global locations.

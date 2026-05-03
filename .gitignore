@@ -15,5 +15,7 @@ reports/
 # other
 report.md
 .env
+__*
+session.json
 
 dist/

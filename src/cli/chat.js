@@ -1,16 +1,37 @@
-import fs from 'fs/promises' // Use promise-based FS
-import { loadHistory, saveHistory, getSession } from '../core/history.js'
+/**
+ * Chat command handler for llmctrlx
+ *
+ * Extended with optional --record <file> support.
+ * When --record is set a Recorder captures the inputs, every tool call
+ * (via the onToolCall hook threaded into runWithTools), and the final
+ * LLM response, then writes a self-contained session JSON file.
+ */
+
+import fs from 'fs/promises'
+import { loadHistory, saveHistory, getSession }                          from '../core/history.js'
 import { buildOptions, isImage, validateFileSize, buildToolPrompt, buildImageMessage } from '../core/utils.js'
-import { createPluginRegistry, runWithTools, runWithoutTools } from '../core/tools.js'
+import { createPluginRegistry, runWithTools, runWithoutTools }           from '../core/tools.js'
+import { Recorder, makeToolCallRecorder }                                from '../core/recorder.js'
+
+// ─── Main command ─────────────────────────────────────────────────────────────
 
 /**
  * Handle chat command
+ *
+ * @param {Object} llm                - LLM provider instance
+ * @param {Object} options            - CLI options (includes options.record)
+ * @param {string} defaultHistoryFile - Path to the history JSON file
+ * @param {string} toolsDir           - Tools directory
+ * @param {number} maxUploadFileSize  - Maximum file attachment size in bytes
+ * @param {Object} engineHooks        - Optional engine hook system
  */
-export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUploadFileSize, engineHooks) {
+export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUploadFileSize,  engineHooks) {
+  const recordFile = options.record ?? null
+
   const historyData = loadHistory(defaultHistoryFile)
-  const session = getSession(historyData, options.session)
-  
-  // 1. Prepare Input (Stdin + User Text)
+  const session     = getSession(historyData, options.session)
+
+  // 1. Prepare Input
   const userContent = await resolveUserContent(options)
   if (!userContent) {
     console.error('Error: No input provided via CLI or stdin.')
@@ -20,41 +41,81 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
   // 2. Build Message Context
   const messages = []
   if (options.system) messages.push({ role: 'system', content: options.system })
-  
-  // Attach History
   messages.push(...getHistoryWindow(session, options.history_length))
-
-  // Attach Files
   const fileMessages = await processFiles(options.files, maxUploadFileSize, options.provider)
   messages.push(...fileMessages)
-
-  // Final User Input
   messages.push({ role: 'user', content: userContent })
 
-  // 3. Execute LLM Request
-  const chatOptions = buildOptions(options)
-  let assistantResponse = ''
-
-  if (options.stream) {
-    assistantResponse = await handleStreamingChat(llm, options, messages, chatOptions)
-  } else {
-    assistantResponse = await handleStandardChat(llm, options, messages, chatOptions, toolsDir)
+  // 3. Build recorder (inputs captured before execution)
+  const recorderInputs = {
+    model      : options.model,
+    parameters : {
+      temperature : options.temperature,
+      top_p       : options.top_p,
+      num_ctx     : options.num_ctx,
+    },
+    system     : options.system ?? null,
+    user       : userContent,
+    toolsDir   : toolsDir ?? null,
+    tags       : options.tags ?? null,
+    stream     : options.stream ?? false,
+    no_tools   : options.no_tools ?? false,
   }
 
-  // 4. Post-processing & Persistence
-  const filtered = await filterResponse(assistantResponse, engineHooks, options)
-  
-  // Only log if not already printed by stream
-  if (!options.stream) console.log(filtered)
+  const recorder = recordFile ? new Recorder('chat', recorderInputs) : null
 
-  session.messages.push({ role: 'user', content: userContent })
-  session.messages.push({ role: 'assistant', content: filtered })
-  saveHistory(defaultHistoryFile, historyData)
+  // 4. Execute LLM Request
+  const chatOptions = buildOptions(options)
+
+  // Attach the recorder's tool-call hook so every tool invocation is captured
+  if (recorder) {
+    chatOptions.onToolCall = makeToolCallRecorder(recorder)
+    recorder.markLlmStart()
+  }
+
+  let assistantResponse = ''
+
+  try {
+    if (options.stream) {
+      assistantResponse = await handleStreamingChat(llm, options, messages, chatOptions)
+    } else {
+      assistantResponse = await handleStandardChat(llm, options, messages, chatOptions, toolsDir)
+    }
+
+    if (recorder) recorder.markLlmEnd()
+
+    // 5. Post-processing & Persistence
+    const filtered = await filterResponse(assistantResponse, engineHooks, options)
+    if (!options.stream) console.log(filtered)
+
+    session.messages.push({ role: 'user',      content: userContent })
+    session.messages.push({ role: 'assistant', content: filtered })
+    saveHistory(defaultHistoryFile, historyData)
+
+    // 6. Save session recording
+    if (recorder) {
+      recorder.setOutputs({ llmResponse: filtered })
+      await recorder.save(recordFile)
+      console.error(`[record] session saved → ${recordFile}`)
+    }
+
+  } catch (err) {
+    if (recorder) {
+      recorder.markLlmEnd()
+      recorder.setOutputs({ llmResponse: '', error: err.message })
+      try {
+        await recorder.save(recordFile)
+        console.error(`[record] partial session saved → ${recordFile}`)
+      } catch {
+        // ignore save errors on failure path
+      }
+    }
+    throw err
+  }
 }
 
-/**
- * Logic to extract content from stdin or CLI arguments
- */
+// ─── Private helpers (unchanged from original) ────────────────────────────────
+
 async function resolveUserContent(options) {
   let stdinData = ''
   if (options.stdin || (!options.user && !process.stdin.isTTY)) {
@@ -73,27 +134,19 @@ async function resolveUserContent(options) {
   return parts.join('\n\n')
 }
 
-/**
- * Determines how many historical messages to include
- */
 function getHistoryWindow(session, historyLengthArg) {
   const length = parseInt(historyLengthArg)
-  const limit = Number.isNaN(length) ? 5 : Math.max(0, length)
-  
+  const limit  = Number.isNaN(length) ? 5 : Math.max(0, length)
   if (!session.messages || session.messages.length === 0 || limit === -1) return []
   return limit === 0 ? session.messages : session.messages.slice(-limit)
 }
 
-/**
- * Processes files (Images vs Text) into message objects
- */
 async function processFiles(filesInput, maxSize, provider = 'ollama') {
   const files = Array.isArray(filesInput) ? filesInput : (filesInput ? [filesInput] : [])
-  const msgs = []
+  const msgs  = []
 
   for (const file of files) {
     validateFileSize(file, maxSize)
-    
     if (isImage(file)) {
       const img = (await fs.readFile(file)).toString('base64')
       msgs.push(buildImageMessage(file, img, provider.toLowerCase()))
@@ -105,21 +158,18 @@ async function processFiles(filesInput, maxSize, provider = 'ollama') {
   return msgs
 }
 
-/**
- * Handles non-streaming logic (with or without tools)
- */
 async function handleStandardChat(llm, options, messages, chatOptions, toolsDir) {
   if (options.no_tools) {
     return await runWithoutTools(llm, options.model, messages, chatOptions)
   }
 
-  const registry = await createPluginRegistry(toolsDir, options.session)
+  const registry      = await createPluginRegistry(toolsDir, options.session)
   const requestedTags = options.tags?.split(',').map(t => t.trim())
-  
+
   let tools = registry.list('tool')
   if (requestedTags) {
-    tools = tools.filter(t => 
-      (t.tags || []).includes('always') || 
+    tools = tools.filter(t =>
+      (t.tags || []).includes('always') ||
       requestedTags.some(tag => (t.tags || []).includes(tag))
     )
   }
@@ -128,15 +178,18 @@ async function handleStandardChat(llm, options, messages, chatOptions, toolsDir)
   return await runWithTools(llm, options.model, messages, tools, registry.list('policy'), chatOptions)
 }
 
-/**
- * Handles streaming logic
- */
 async function handleStreamingChat(llm, options, messages, chatOptions) {
+  // Strip recorder-specific keys before forwarding to provider
+  const { onToolCall, ...providerOptions } = chatOptions
+
+  if(onToolCall) {
+    providerOptions.onToolCall = onToolCall
+  }
   const stream = await llm.chat({
-    model: options.model,
+    model    : options.model,
     messages,
-    stream: true,
-    options: chatOptions
+    stream   : true,
+    options  : providerOptions,
   })
 
   let fullContent = ''
@@ -149,15 +202,14 @@ async function handleStreamingChat(llm, options, messages, chatOptions) {
   return fullContent
 }
 
-/**
- * Engine Hook filter wrapper
- */
 async function filterResponse(content, engineHooks, options) {
-  if (!engineHooks) return content
+  if (typeof engineHooks?.filterResponse !== 'function') return content
+
   const result = await engineHooks.filterResponse('chat', {
     content,
-    filtered: false,
-    requestMeta: { flags: options }
+    filtered    : false,
+    requestMeta : { flags: options },
   })
+
   return result.content
 }

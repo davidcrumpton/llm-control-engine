@@ -74,7 +74,7 @@ describe("cmdChat integration", () => {
       session: "default",
     };
 
-    await cmdChat(llm, options, historyFile, tempDir, 1024 * 1024);
+    await cmdChat(llm, options, historyFile, tempDir, 1024 * 1024, {});
 
     expect(logSpy).toHaveBeenCalledWith("final chat answer");
     expect(llm.chat).toHaveBeenCalledTimes(2);
@@ -143,7 +143,7 @@ describe("cmdChat integration", () => {
       session: "default",
     };
 
-    await cmdChat(llm, options, historyFile, tempDir, 1024 * 1024);
+    await cmdChat(llm, options, historyFile, tempDir, 1024 * 1024, {});
 
     expect(logSpy).toHaveBeenCalledWith("safe final answer");
     expect(llm.chat).toHaveBeenCalledTimes(2);
