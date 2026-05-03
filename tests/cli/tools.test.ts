@@ -62,7 +62,7 @@ describe("src/cli/tools.js", () => {
 
   it("prints an error when the requested tool is not found", async () => {
     loadToolsSpy.mockResolvedValue([{ name: "alpha" }]);
-    
+
     await cmdTools({ show: "beta" }, "/path/to/tools");
 
     expect(console.error).toHaveBeenCalledWith('Error: Tool "beta" not found.');
