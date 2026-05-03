@@ -136,6 +136,7 @@ Run a chat session with an LLM. It maintains conversational history in `.chat_hi
 - `-K, --api-key <key>`: Set the API key for the cloud Ollama instance. Default: `''`.
 - `-W, --no-tools`: Disable tool usage.
 - `-g, --tags <tags>`: Comma-separated list of tags to filter loaded tools.
+- `-R, --record <file>`: Record the session to a JSON file for later replay.
 
 **Tool Usage:**
 The `chat` command automatically loads JavaScript modules from the `./tools` directory. If the model decides to use a tool, it will execute the module's `run` method and feed the result back to the LLM.
@@ -264,12 +265,31 @@ Execute a shell command and pass its standard output to an LLM for analysis.
 **Options:**
 
 - `-u, --user <command>`: The shell command to execute. Required.
+- `-R, --record <file>`: Record the session to a JSON file for later replay.
 
 **Examples:**
 
 ```bash
 llmctrlx run -u "df -h" -m llama3
 llmctrlx run -u "ls -la" -m llama3
+```
+
+#### 6. `replay`
+
+Replay a recorded session from a JSON file. Supports both simple playback and a "diff" mode that re-executes the original command and compares results.
+
+**Options:**
+
+- `--diff`: Re-execute the original command with the recorded inputs and show a diff against the recording.
+
+**Examples:**
+
+```bash
+# Playback a recorded session (prints the recorded response)
+llmctrlx replay session.json
+
+# Re-execute and compare for reproducibility
+llmctrlx replay session.json --diff
 ```
 
 #### 7. `plan`
@@ -308,6 +328,7 @@ prompt: Analyze the {{env}} host.
 - `-m, --model <name>`: Model to use, or override the plan's configured model.
 - `-s, --system <text>`: Optional system prompt to override the plan's system prompt.
 - `--var <key=value>`: Set or override a plan variable; can be repeated.
+- `-R, --record <file>`: Record the plan execution to a JSON file for later replay.
 - `--dry-run`: Show the ordered steps without executing any commands.
 
 **Examples:**
@@ -503,3 +524,41 @@ This example shows how you can use plan to diagnose a network issue. You could h
 llmctrlx plan examples/plans/network-diag.yaml --var ESCALATION_CONTACTS=examples/plan-data/escalation-contacts.txt
 Executing step 1/1: disk
 ```
+
+### Session Recording and Replay
+
+`llmctrlx` can record the full context of a command execution (inputs, tool calls, shell outputs, and LLM responses) into a structured JSON "session" file. This is useful for debugging, regression testing, or sharing reproducible AI workflows.
+
+#### Recording
+
+Add the `-R` or `--record` flag to `chat`, `run`, or `plan` commands:
+
+```bash
+# Record a chat session
+llmctrlx chat -u "What time is it?" --record session.json
+
+# Record a shell analysis
+llmctrlx run -u "df -h" --record disk_check.json
+
+# Record a multi-step plan
+llmctrlx plan my_plan.yaml --record plan_run.json
+```
+
+#### Replaying
+
+Use the `replay` command to inspect or verify a session:
+
+```bash
+# Simple playback: echoes the recorded LLM response
+llmctrlx replay session.json
+
+# Diff mode: re-runs the original inputs and compares results
+llmctrlx replay session.json --diff
+```
+
+In `--diff` mode, `llmctrlx` will:
+
+1. Re-run the exact command with the original inputs (history snapshot, variables, etc.).
+2. Compare the fresh tool calls, shell outputs, and LLM responses against the recording.
+3. Provide a detailed report of any divergences.
+4. Exit with code `0` if identical, or `2` if differences were found.

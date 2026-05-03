@@ -39,9 +39,14 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
   }
 
   // 2. Build Message Context
+  // Capture the history window before building messages so we can snapshot it
+  // into recorderInputs — replay needs the exact slice, not just the session name,
+  // because live history grows between recording and replay.
+  const historyWindow = getHistoryWindow(session, options.history_length)
+
   const messages = []
   if (options.system) messages.push({ role: 'system', content: options.system })
-  messages.push(...getHistoryWindow(session, options.history_length))
+  messages.push(...historyWindow)
   const fileMessages = await processFiles(options.files, maxUploadFileSize, options.provider)
   messages.push(...fileMessages)
   messages.push({ role: 'user', content: userContent })
@@ -54,12 +59,15 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
       top_p       : options.top_p,
       num_ctx     : options.num_ctx,
     },
-    system     : options.system ?? null,
-    user       : userContent,
-    toolsDir   : toolsDir ?? null,
-    tags       : options.tags ?? null,
-    stream     : options.stream ?? false,
-    no_tools   : options.no_tools ?? false,
+    system          : options.system ?? null,
+    user            : userContent,
+    session         : options.session ?? null,
+    history_length  : options.history_length ?? null,
+    history_snapshot: historyWindow,   // exact slice injected — makes replay self-contained
+    toolsDir        : toolsDir ?? null,
+    tags            : options.tags ?? null,
+    stream          : options.stream ?? false,
+    no_tools        : options.no_tools ?? false,
   }
 
   const recorder = recordFile ? new Recorder('chat', recorderInputs) : null

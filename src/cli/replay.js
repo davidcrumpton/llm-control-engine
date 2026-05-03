@@ -116,8 +116,11 @@ async function reExecuteChat(session, llm, toolsDir) {
   const { inputs } = session
   const recorder   = new Recorder('chat', inputs)
 
+  // Reconstruct the exact message array from the snapshot so this re-execution
+  // is identical to the original regardless of how live history has grown since.
   const messages = []
   if (inputs.system) messages.push({ role: 'system', content: inputs.system })
+  if (inputs.history_snapshot?.length) messages.push(...inputs.history_snapshot)
   messages.push({ role: 'user', content: inputs.user })
 
   const chatOptions = {}
