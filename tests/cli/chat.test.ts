@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { cmdChat } from "../../src/cli/chat.ts";
+import { cmdChat } from "@/cli/chat";
 
 function createTempDirectory(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "llmctrlx-chat-test-"));
