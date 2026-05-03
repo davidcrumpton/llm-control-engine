@@ -1,63 +1,70 @@
 /**
  * History command handler for llmctrlx
  */
-
-import { loadHistory, saveHistory, getSession } from '../core/history.js'
+import { loadHistory, saveHistory, getSession } from '../core/history.js';
 
 /**
  * Handle history command
  * @param {Object} options - CLI options
- * @param {string} defaultHistoryFile - Default history file path
+ * @param {string} historyFile - Path to the history file
  */
-export function cmdHistory(options, defaultHistoryFile) {
-  const historyData = loadHistory(defaultHistoryFile)
+export function cmdHistory(options, historyFile) {
+  const historyData = loadHistory(historyFile);
 
+  // 1. Destructive Actions (Purge/Delete)
   if (options.purge) {
-    saveHistory(defaultHistoryFile, {})
-    console.log('History purged successfully.')
-    return
+    saveHistory(historyFile, {});
+    return console.log('History purged successfully.');
   }
 
   if (options.delete) {
-    if (!options.delete) {
-      console.error('Please specify a session to delete with --delete <session_name>')
-      return
+    const sessionKey = typeof options.delete === 'string' ? options.delete : options.session;
+    
+    if (!sessionKey) {
+      return console.error('Error: Please specify a session to delete with --delete <session_name>');
     }
-    const sessionKey = options.session ? options.session : options.delete
     if (!historyData[sessionKey]) {
-      console.error(`Session not found: ${sessionKey}`)
-      return
+      return console.error(`Error: Session not found: ${sessionKey}`);
     }
-    delete historyData[sessionKey]
-    console.log(`Deleted session from permanent storage: ${sessionKey}`)
-    saveHistory( defaultHistoryFile, historyData)
-    return
+
+    delete historyData[sessionKey];
+    saveHistory(historyFile, historyData);
+    return console.log(`Deleted session: ${sessionKey}`);
   }
 
+  // 2. View Actions (List/All/Show)
   if (options.all) {
-    console.log(JSON.stringify(historyData, null, 2))
-    return
+    return console.log(JSON.stringify(historyData, null, 2));
   }
 
   if (options.list) {
-    console.log(Object.keys(historyData).join('\n'))
-    return
+    const keys = Object.keys(historyData);
+    return console.log(keys.length ? keys.join('\n') : 'No sessions found.');
   }
-  
+
   if (options.show || options.session) {
-    const sessionKey = options.session ? options.session : options.show
-    const session = getSession(historyData, sessionKey)
-    if (!session.messages || session.messages.length === 0) {
-      console.error(`No messages found for session: ${sessionKey}`)
-      return
+    const sessionKey = options.session || options.show;
+    const session = getSession(historyData, sessionKey);
+
+    if (!session?.messages?.length) {
+      return console.error(`No messages found for session: ${sessionKey}`);
     }
-    console.log(JSON.stringify(session, null, 2))
-    return
+    return console.log(JSON.stringify(session, null, 2));
   }
-// If no options are provided, show usage
-  console.log('Usage: llmctrlx history [--list | --show <session_name> | --delete <session_name> | --all]')
-  console.log('--list: List all session keys')
-  console.log('--show <session_name>: Show details of a specific session')
-  console.log('--delete <session_name>: Delete a specific session from permanent storage')
-  console.log('--all: Show entire history data')
+
+  // 3. Default: Show Help
+  printUsage();
+}
+
+function printUsage() {
+  console.log(`
+Usage: llmctrlx history [options]
+
+Options:
+  --list                List all session keys
+  --show <name>         Show details of a specific session
+  --delete <name>       Delete a specific session
+  --purge               Clear all history
+  --all                 Show entire history JSON
+  `);
 }

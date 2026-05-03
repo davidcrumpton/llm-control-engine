@@ -8,36 +8,58 @@
  * @param {Object} options - CLI options
  */
 export async function cmdBench(llm, options) {
-  const models = options.model.split(',')
-
-  // Read from stdin if --stdin flag is set, otherwise fall back to --user or default prompt
-  let userContent = options.user || 'Hello'
-  if (options.stdin) {
-    userContent = await new Promise((resolve, reject) => {
-      let data = ''
-      process.stdin.setEncoding('utf-8')
-      process.stdin.on('data', chunk => (data += chunk))
-      process.stdin.on('end', () => resolve(data.trim()))
-      process.stdin.on('error', reject)
-    })
+  // 1. Guard against undefined models
+  if (!options.model) {
+    console.error("Error: No models specified. Use --model='model1,model2'");
+    return;
   }
 
-  const results = await Promise.all(
-    models.map(async (m) => {
-      const start = Date.now()
+  const models = options.model.split(',').map(m => m.trim());
 
-      const res = await llm.chat({
-        model: m,
+  let userContent = options.user || 'Hello';
+  if (options.stdin) {
+    try {
+      userContent = await new Promise((resolve, reject) => {
+        let data = '';
+        process.stdin.setEncoding('utf-8');
+        process.stdin.on('data', chunk => (data += chunk));
+        process.stdin.on('end', () => resolve(data.trim()));
+        process.stdin.on('error', reject);
+      });
+    } catch (err) {
+      console.error("Error reading stdin:", err);
+      return;
+    }
+  }
+
+  // 2. Use map to create an array of promises
+  const tasks = models.map(async (model) => {
+    try {
+      const start = Date.now();
+      const response = await llm.chat({ // Assuming method name is chat or similar
+        model: model,
         messages: [{ role: 'user', content: userContent }]
-      })
+      });
+      const duration = Date.now() - start;
 
       return {
-        model: m,
-        time: Date.now() - start,
-        tokens: res.eval_count
-      }
-    })
-  )
+        model,
+        status: 'success',
+        latency: `${duration}ms`,
+        tokens: response.usage?.total_tokens || 'N/A'
+      };
+    } catch (error) {
+      return {
+        model,
+        status: 'failed',
+        error: error.message.substring(0, 30) // Truncate error for table readability
+      };
+    }
+  });
 
-  console.table(results)
+  // 3. Wait for all tasks to complete (even if they fail)
+  const results = await Promise.all(tasks);
+
+  // 4. Output results
+  console.table(results);
 }

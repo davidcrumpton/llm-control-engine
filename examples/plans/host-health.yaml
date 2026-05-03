@@ -17,6 +17,10 @@ vars:
   region: us-west-1
   team: operations
 steps:
+  - name: hostname
+    exec: ssh {{USER}}@{{server}} hostname
+  - name: uptime
+    exec: ssh {{USER}}@{{server}} uptime
   - name: cpu
     exec: ssh {{USER}}@{{server}} top -b -n 1
   - name: memory

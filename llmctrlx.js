@@ -22,7 +22,7 @@ const __dirname = dirname(__filename)
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.6.20'
+const APP_VERSION = '0.6.30'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_API_URL = process.env.LLMCTRLX_API_URL || 'http://127.0.0.1:11434'

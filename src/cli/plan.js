@@ -2,20 +2,10 @@
  * Plan command handler for llmctrlx
  *
  * Security hardening vs the original:
- *
- *  1. process.env is NO LONGER passed to mergeVars.  Only an explicit
- *     allow-list of safe environment variables is forwarded.  This prevents
- *     plan YAML files from exfiltrating secrets via template interpolation.
- *
- *  2. executeStep now uses execFile() (no shell) instead of
- *     exec(command, { shell: true }).  The step.exec string is tokenised into
- *     [executable, ...args] before being handed to execFile, so shell
- *     metacharacters have no effect.
- *
- *  3. The executable extracted from each step is validated against an
- *     allow-list before execution.
- *
- *  4. A hard timeout and a smaller stdout cap are applied per step.
+ *  1. process.env is NO LONGER passed to mergeVars.
+ *  2. executeStep uses execFile() (no shell).
+ *  3. Executable allow-list validation.
+ *  4. Hard timeouts and stdout caps.
  */
 
 import fs from 'fs/promises'
@@ -29,8 +19,8 @@ import { validatePolicy, validateStep } from '../core/policy.js'
 
 const execFileAsync = promisify(execFile)
 
-// ─── Security: step-executable allow-list ────────────────────────────────────
-// Extend this list deliberately. Never replace it with a deny-list.
+// ─── Security Configuration ──────────────────────────────────────────────────
+
 const ALLOWED_STEP_EXECUTABLES = new Set([
   'ls', 'cat', 'echo', 'pwd', 'date', 'find', 'grep', 'wc', 'head', 'tail',
   'df', 'du', 'uname', 'uptime', 'ps', 'env', 'printenv', 'id', 'whoami',
@@ -38,28 +28,20 @@ const ALLOWED_STEP_EXECUTABLES = new Set([
   'curl', 'wget', 'jq', 'yq', 'awk', 'sed', 'sort', 'uniq', 'cut', 'tr',
   'tar', 'gzip', 'gunzip', 'zip', 'unzip',
   'make', 'cmake', 'cargo', 'go', 'ssh',
-  // Add further safe executables here as needed.
 ])
 
-// ─── Security: allowed environment variable names ────────────────────────────
-// Only these env vars are visible to plan templates.  Add more as needed.
 const ALLOWED_ENV_VARS = new Set([
   'HOME', 'USER', 'LOGNAME', 'SHELL', 'TERM', 'LANG', 'LC_ALL',
   'PATH', 'PWD', 'TMPDIR', 'TMP', 'TEMP',
   'NODE_ENV', 'CI',
 ])
 
-const EXEC_TIMEOUT_MS  = 60_000           // 60-second per-step hard timeout
-const MAX_OUTPUT_BYTES = 5 * 1024 * 1024  // 5 MB stdout cap per step
-
-// Shell metacharacters that must never appear in a step exec string.
+const EXEC_TIMEOUT_MS  = 60_000
+const MAX_OUTPUT_BYTES = 5 * 1024 * 1024
 const SHELL_META_RE = /[;&|`$<>\\!{}()\n\r]/
 
-/**
- * Naively tokenise a command string into [executable, ...args].
- * Supports single- and double-quoted tokens; deliberately rejects any
- * shell constructs.
- */
+// ─── Command Execution ───────────────────────────────────────────────────────
+
 function tokenise(input) {
   const tokens = []
   let current = ''
@@ -68,36 +50,21 @@ function tokenise(input) {
 
   for (let i = 0; i < input.length; i++) {
     const ch = input[i]
-
     if (ch === "'" && !inDouble) { inSingle = !inSingle; continue }
     if (ch === '"' && !inSingle) { inDouble = !inDouble; continue }
-
     if (!inSingle && !inDouble && ch === ' ') {
       if (current.length) { tokens.push(current); current = '' }
       continue
     }
-
     current += ch
   }
-
   if (current.length) tokens.push(current)
   return tokens
 }
 
-/**
- * Execute a plan step safely — no shell involved.
- *
- * @param {string} command - The raw exec string from the YAML step.
- * @returns {Promise<{stdout:string, stderr:string, exitCode:number}>}
- */
-async function executeStep(command) {
-  // Guard: reject shell metacharacters
+async function executeCommandAction(command) {
   if (SHELL_META_RE.test(command)) {
-    return {
-      stdout: '',
-      stderr: `Step rejected: shell metacharacters are not permitted in exec strings. Got: ${command}`,
-      exitCode: 1,
-    }
+    return { stdout: '', stderr: `Step rejected: shell metacharacters are not permitted in exec strings. Got: ${command}`, exitCode: 1 }
   }
 
   const [executable, ...args] = tokenise(command)
@@ -107,221 +74,192 @@ async function executeStep(command) {
   }
 
   if (!ALLOWED_STEP_EXECUTABLES.has(executable)) {
-    return {
-      stdout: '',
-      stderr: `Step rejected: '${executable}' is not in the allowed-executable list.`,
-      exitCode: 1,
-    }
+    return { stdout: '', stderr: `Step rejected: '${executable}' is not in the allowed-executable list.`, exitCode: 1 }
   }
 
   try {
     const { stdout, stderr } = await execFileAsync(executable, args, {
-      timeout:   EXEC_TIMEOUT_MS,
+      timeout: EXEC_TIMEOUT_MS,
       maxBuffer: MAX_OUTPUT_BYTES,
-      // No `shell` option → defaults to false
     })
     return { stdout: stdout.toString(), stderr: stderr.toString(), exitCode: 0 }
   } catch (err) {
     if (err.killed) {
-      return {
-        stdout: '',
-        stderr: `Step timed out after ${EXEC_TIMEOUT_MS / 1000}s.`,
-        exitCode: 1,
-      }
+      return { stdout: '', stderr: `Step timed out after ${EXEC_TIMEOUT_MS / 1000}s.`, exitCode: 1 }
     }
     return {
-      stdout:   err.stdout ? err.stdout.toString() : '',
-      stderr:   err.stderr ? err.stderr.toString() : err.message,
+      stdout: err.stdout ? err.stdout.toString() : '',
+      stderr: err.stderr ? err.stderr.toString() : err.message,
       exitCode: typeof err.code === 'number' ? err.code : 1,
     }
   }
 }
 
-function validatePlan(plan, planFile) {
-  if (!plan || typeof plan !== 'object') {
-    throw new Error(`Plan is not a YAML object: ${planFile}`)
-  }
+// ─── Validation & Normalization ──────────────────────────────────────────────
 
-  if (!plan.version) {
-    throw new Error(`Missing required field 'version' in plan: ${planFile}`)
-  }
+function normalizeAndValidatePlan(plan, planFile) {
+  if (!plan || typeof plan !== 'object') throw new Error(`Plan is not a YAML object: ${planFile}`)
+  if (!plan.version) throw new Error(`Missing required field 'version' in plan: ${planFile}`)
+  if (!Array.isArray(plan.steps) || plan.steps.length === 0) throw new Error(`Missing required field 'steps' in plan: ${planFile}`)
 
-  if (!Array.isArray(plan.steps) || plan.steps.length === 0) {
-    throw new Error(`Missing required field 'steps' in plan: ${planFile}`)
-  }
-
-  // Policy Validation
   validatePolicy(plan)
 
   if (plan.attachments !== undefined) {
-    if (!Array.isArray(plan.attachments)) {
-      throw new Error(`'attachments' must be an array of file paths in plan: ${planFile}`)
-    }
-    for (const [i, attachment] of plan.attachments.entries()) {
+    if (!Array.isArray(plan.attachments)) throw new Error(`'attachments' must be an array of file paths in plan: ${planFile}`)
+    plan.attachments.forEach((attachment, i) => {
       if (typeof attachment !== 'string' || !attachment.trim()) {
         throw new Error(`attachments[${i}] must be a non-empty file path string in plan: ${planFile}`)
       }
-    }
+    })
   }
 
-  for (const [index, step] of plan.steps.entries()) {
-    if (!step || typeof step !== 'object') {
-      throw new Error(`Step ${index + 1} is not an object`)
-    }
+  plan.steps.forEach((step, index) => {
+    if (!step || typeof step !== 'object') throw new Error(`Step ${index + 1} is not an object`)
+    if (!step.name && !step.id) throw new Error(`Missing required field 'name' or 'id' for step ${index + 1}`)
     
-    // Support both old and new schemas
-    if (!step.name && !step.id) {
-      throw new Error(`Missing required field 'name' or 'id' for step ${index + 1}`)
-    }
+    // Normalize IDs and Names
+    step.id = step.id || step.name
+    step.name = step.name || step.id
     
-    // Default id to name if missing, and vice versa
-    if (!step.id) step.id = step.name
-    if (!step.name) step.name = step.id
-    
-    if (!step.exec && !step.type) {
-      throw new Error(`Missing required field 'exec' or 'type' for step ${index + 1}`)
-    }
+    if (!step.exec && !step.type) throw new Error(`Missing required field 'exec' or 'type' for step ${index + 1}`)
     
     validateStep(step, plan.policy)
-  }
+  })
+  
+  return plan
 }
+
+// ─── Variable Interpolation ──────────────────────────────────────────────────
 
 function parseCliVars(options) {
   const rawVars = options.var
   if (!rawVars) return {}
-
-  const entries = Array.isArray(rawVars) ? rawVars : [rawVars]
-  const vars = {}
-
-  for (const entry of entries) {
-    if (typeof entry !== 'string' || !entry.includes('=')) {
-      throw new Error(`Invalid --var value: ${entry}. Expected key=value.`)
-    }
-
+  return (Array.isArray(rawVars) ? rawVars : [rawVars]).reduce((acc, entry) => {
+    if (typeof entry !== 'string' || !entry.includes('=')) throw new Error(`Invalid --var value: ${entry}. Expected key=value.`)
     const [key, ...rest] = entry.split('=')
-    if (!key) {
-      throw new Error(`Invalid --var value: ${entry}. Expected key=value.`)
-    }
-
-    vars[key] = rest.join('=')
-  }
-
-  return vars
+    if (!key) throw new Error(`Invalid --var value: ${entry}. Expected key=value.`)
+    acc[key] = rest.join('=')
+    return acc
+  }, {})
 }
 
-/**
- * Build a safe subset of the current environment.
- *
- * Only variables named in ALLOWED_ENV_VARS are forwarded.
- * This prevents plan templates from reading secrets such as
- * AWS_SECRET_ACCESS_KEY, DATABASE_URL, etc.
- *
- * @returns {Record<string,string>}
- */
 function safeEnvSubset() {
-  const safe = {}
-  for (const key of ALLOWED_ENV_VARS) {
-    if (Object.prototype.hasOwnProperty.call(process.env, key)) {
-      safe[key] = process.env[key]
-    }
-  }
-  return safe
+  return Array.from(ALLOWED_ENV_VARS).reduce((safe, key) => {
+    if (Object.prototype.hasOwnProperty.call(process.env, key)) safe[key] = process.env[key]
+    return safe
+  }, {})
 }
 
 function mergeVars(planVars, cliVars, safeEnv = {}) {
   if (planVars && (typeof planVars !== 'object' || Array.isArray(planVars))) {
     throw new Error('Plan vars must be a mapping of key/value pairs')
   }
-
-  // Precedence (highest last, wins): safeEnv < planVars < cliVars
-  return {
-    ...safeEnv,
-    ...(planVars || {}),
-    ...cliVars,
-  }
+  return { ...safeEnv, ...(planVars || {}), ...cliVars }
 }
 
 function interpolateString(str, vars) {
   if (typeof str !== 'string') return str
-
   const missing = new Set()
   const value = str.replace(/{{\s*([A-Za-z0-9_]+)\s*}}/g, (match, name) => {
-    if (Object.prototype.hasOwnProperty.call(vars, name)) {
-      return String(vars[name])
-    }
+    if (Object.prototype.hasOwnProperty.call(vars, name)) return String(vars[name])
     missing.add(name)
     return match
   })
-
-  if (missing.size > 0) {
-    const next = Array.from(missing)[0]
-    throw new Error(`Unknown variable: {{${next}}}`)
-  }
-
+  if (missing.size > 0) throw new Error(`Unknown variable: {{${Array.from(missing)[0]}}}`)
   return value
 }
 
 function interpolatePlan(plan, vars) {
   const interpolated = { ...plan }
 
-  if (typeof interpolated.name   === 'string') interpolated.name   = interpolateString(interpolated.name,   vars)
-  if (typeof interpolated.prompt === 'string') interpolated.prompt = interpolateString(interpolated.prompt, vars)
-  if (typeof interpolated.system === 'string') interpolated.system = interpolateString(interpolated.system, vars)
+  if (interpolated.name) interpolated.name = interpolateString(interpolated.name, vars)
+  if (interpolated.prompt) interpolated.prompt = interpolateString(interpolated.prompt, vars)
+  if (interpolated.system) interpolated.system = interpolateString(interpolated.system, vars)
 
-  if (interpolated.output && typeof interpolated.output.save === 'string') {
-    interpolated.output = {
-      ...interpolated.output,
-      save: interpolateString(interpolated.output.save, vars),
-    }
+  if (interpolated.output?.save) {
+    interpolated.output = { ...interpolated.output, save: interpolateString(interpolated.output.save, vars) }
   }
 
   if (Array.isArray(interpolated.attachments)) {
-    interpolated.attachments = interpolated.attachments.map(
-      (filePath) => interpolateString(filePath, vars)
-    )
+    interpolated.attachments = interpolated.attachments.map(filePath => interpolateString(filePath, vars))
   }
 
-  interpolated.steps = plan.steps.map((step) => {
+  interpolated.steps = plan.steps.map(step => {
     const nextStep = { ...step }
-    if (typeof nextStep.name === 'string') nextStep.name = interpolateString(nextStep.name, vars)
-    if (typeof nextStep.id === 'string') nextStep.id = interpolateString(nextStep.id, vars)
-    if (typeof nextStep.exec === 'string') nextStep.exec = interpolateString(nextStep.exec, vars)
-    if (typeof nextStep.prompt === 'string') nextStep.prompt = interpolateString(nextStep.prompt, vars)
+    if (nextStep.name) nextStep.name = interpolateString(nextStep.name, vars)
+    if (nextStep.id) nextStep.id = interpolateString(nextStep.id, vars)
+    if (nextStep.exec) nextStep.exec = interpolateString(nextStep.exec, vars)
+    if (nextStep.prompt) nextStep.prompt = interpolateString(nextStep.prompt, vars)
     
     if (nextStep.args && typeof nextStep.args === 'object') {
-      const newArgs = {}
-      for (const [k, v] of Object.entries(nextStep.args)) {
-        newArgs[k] = typeof v === 'string' ? interpolateString(v, vars) : v
-      }
-      nextStep.args = newArgs
+      nextStep.args = Object.entries(nextStep.args).reduce((acc, [k, v]) => {
+        acc[k] = typeof v === 'string' ? interpolateString(v, vars) : v
+        return acc
+      }, {})
     }
-    
     return nextStep
   })
 
   return interpolated
 }
 
+// ─── Step Execution ──────────────────────────────────────────────────────────
+
+async function executeStepAction(step, loadedTools, llm, planModel, contextData) {
+  if (step.exec) {
+    return await executeCommandAction(step.exec)
+  } 
+  
+  if (step.type === 'tool') {
+    const toolToRun = loadedTools.find(t => t.name === step.tool)
+    if (!toolToRun) throw new Error(`Tool '${step.tool}' not found.`)
+    try {
+      const toolOutput = await executeTool(toolToRun, step.args || {})
+      return { stdout: toolOutput, stderr: '', exitCode: 0 }
+    } catch (err) {
+      return { stdout: '', stderr: err.message, exitCode: 1 }
+    }
+  } 
+  
+  if (step.type === 'prompt') {
+    const stepMessages = []
+    if (step.context?.from_steps) {
+      step.context.from_steps.forEach(fromStep => {
+        const prevResult = contextData[fromStep]
+        if (prevResult?.stdout) stepMessages.push({ role: 'user', content: `Context from step '${fromStep}':\n${prevResult.stdout}` })
+      })
+    }
+    stepMessages.push({ role: 'user', content: step.prompt })
+    try {
+      const promptOutput = await runWithoutTools(llm, planModel, stepMessages)
+      return { stdout: promptOutput, stderr: '', exitCode: 0 }
+    } catch (err) {
+      return { stdout: '', stderr: err.message, exitCode: 1 }
+    }
+  }
+
+  return { stdout: '', stderr: `Unknown step type: ${step.type}`, exitCode: 1 }
+}
+
+// ─── Report & Output Generation ──────────────────────────────────────────────
+
 function buildPlanPrompt(plan, results) {
-  const promptParts = []
-  promptParts.push(`Plan: ${plan.name || 'Unnamed Plan'}`)
-  promptParts.push(`Version: ${plan.version}`)
+  const promptParts = [
+    `Plan: ${plan.name || 'Unnamed Plan'}`,
+    `Version: ${plan.version}`
+  ]
 
-  if (plan.prompt) {
-    promptParts.push(`Prompt: ${plan.prompt}`)
-  }
-
-  if (plan.output && plan.output.format) {
-    promptParts.push(`Please format the final response as ${plan.output.format}.`)
-  }
-
+  if (plan.prompt) promptParts.push(`Prompt: ${plan.prompt}`)
+  if (plan.output?.format) promptParts.push(`Please format the final response as ${plan.output.format}.`)
+  
   promptParts.push('Step outputs:')
-
   for (const result of results) {
-    promptParts.push('---')
-    promptParts.push(`Step: ${result.name}`)
-    promptParts.push(`Command: ${result.exec}`)
-    promptParts.push(`Exit code: ${result.exitCode}`)
+    promptParts.push(
+      '---',
+      `Step: ${result.name}`,
+      `Command: ${result.exec}`,
+      `Exit code: ${result.exitCode}`
+    )
     if (result.stdout) promptParts.push(`Stdout:\n${result.stdout.trim()}`)
     if (result.stderr) promptParts.push(`Stderr:\n${result.stderr.trim()}`)
   }
@@ -331,211 +269,123 @@ function buildPlanPrompt(plan, results) {
 }
 
 async function buildAttachmentMessages(attachments, maxUploadFileSize, provider) {
-  const attachmentMessages = []
-
+  const messages = []
   for (const filePath of attachments) {
     try {
       validateFileSize(filePath, maxUploadFileSize)
+      if (isImage(filePath)) {
+        const imgData = fsSync.readFileSync(filePath).toString('base64')
+        messages.push(buildImageMessage(filePath, imgData, provider))
+      } else {
+        const content = await fs.readFile(filePath, 'utf8')
+        messages.push({ role: 'user', content: `Attached file: ${filePath}\n${content}` })
+      }
     } catch (e) {
-      console.error(`Skipping attachment '${filePath}' due to size error: ${e.message}`)
-      continue
-    }
-
-    if (isImage(filePath)) {
-      const imgData = fsSync.readFileSync(filePath).toString('base64')
-      attachmentMessages.push(buildImageMessage(filePath, imgData, provider))
-    } else {
-      const content = await fs.readFile(filePath, 'utf8')
-      attachmentMessages.push({
-        role: 'user',
-        content: `Attached file: ${filePath}\n${content}`,
-      })
+      console.error(`Skipping attachment '${filePath}' due to error: ${e.message}`)
     }
   }
-
-  return attachmentMessages
+  return messages
 }
 
-/**
- * Handle plan command
- * @param {Object} llm
- * @param {Object} options
- * @param {number} [maxUploadFileSize=10485760]
- */
-export async function cmdPlan(llm, options, maxUploadFileSize = 10 * 1024 * 1024) {
-  const positional = options._ || []
-  const planFile = positional[0]
-
-  if (!planFile) {
-    console.error('Usage: llmctrlx plan <plan-file> [--dry-run]')
-    process.exit(1)
-  }
-
-  let rawYaml
-  try {
-    rawYaml = await fs.readFile(planFile, 'utf8')
-  } catch (err) {
-    console.error(`Unable to read plan file '${planFile}': ${err.message}`)
-    process.exit(1)
-  }
-
-  let plan
-  try {
-    plan = jsYaml.load(rawYaml)
-  } catch (err) {
-    console.error(`Invalid YAML in '${planFile}': ${err.message}`)
-    process.exit(1)
-  }
-
-  try {
-    validatePlan(plan, planFile)
-  } catch (err) {
-    console.error(err.message)
-    process.exit(1)
-  }
-
-  let vars
-  try {
-    const cliVars = parseCliVars(options)
-    // Security: pass only an allow-listed env subset, not the full process.env
-    vars = mergeVars(plan.vars, cliVars, safeEnvSubset())
-    plan = interpolatePlan(plan, vars)
-  } catch (err) {
-    console.error(err.message)
-    process.exit(1)
-  }
-
-  const dryRun = Boolean(options['dry-run'] || options.dryRun)
+async function generateLegacyReport(plan, results, llm, options, maxUploadFileSize) {
+  const prompt = buildPlanPrompt(plan, results)
+  const messages = []
   const model = options.model || plan.model
   const systemPrompt = options.system || plan.system
+  const provider = (options.provider || 'ollama').toLowerCase()
 
-  if (!model) {
-    console.error('No model specified via plan or --model')
-    process.exit(1)
+  if (systemPrompt) messages.push({ role: 'system', content: systemPrompt })
+
+  if (plan.attachments?.length > 0) {
+    messages.push(...await buildAttachmentMessages(plan.attachments, maxUploadFileSize, provider))
   }
 
-  if (dryRun) {
-    console.log(`Dry run plan: ${plan.name || planFile}`)
-    plan.steps.forEach((step, index) => {
-      console.log(`${index + 1}. ${step.name}: ${step.exec}`)
-    })
-    return
-  }
-
-  const results = []
-  const contextData = {}
-
-  // Load tools if there are any tool steps
-  const hasToolSteps = plan.steps.some(s => s.type === 'tool')
-  let loadedTools = []
-  if (hasToolSteps) {
-    const toolsDir = options.tools_dir || process.env.LLMCTRLX_TOOLS_DIR
-    loadedTools = await loadTools(toolsDir)
-  }
-
-  for (const [index, step] of plan.steps.entries()) {
-    console.log(`Executing step ${index + 1}/${plan.steps.length}: ${step.name || step.id}`)
-    
-    let result
-    if (step.exec) {
-      // Old shell exec path
-      result = await executeStep(step.exec)
-    } else if (step.type === 'tool') {
-      // New tool execution path
-      const toolToRun = loadedTools.find(t => t.name === step.tool)
-      if (!toolToRun) {
-         console.error(`Tool '${step.tool}' not found.`)
-         process.exit(1)
-      }
-      try {
-         const toolOutput = await executeTool(toolToRun, step.args || {})
-         result = { stdout: toolOutput, stderr: '', exitCode: 0 }
-      } catch (err) {
-         result = { stdout: '', stderr: err.message, exitCode: 1 }
-      }
-    } else if (step.type === 'prompt') {
-      // New prompt execution path
-      const stepMessages = []
-      
-      // Inject context from previous steps if requested
-      if (step.context && step.context.from_steps) {
-        for (const fromStep of step.context.from_steps) {
-           const prevResult = contextData[fromStep]
-           if (prevResult && prevResult.stdout) {
-             stepMessages.push({ role: 'user', content: `Context from step '${fromStep}':\n${prevResult.stdout}`})
-           }
-        }
-      }
-      
-      stepMessages.push({ role: 'user', content: step.prompt })
-      
-      try {
-        const promptOutput = await runWithoutTools(llm, model, stepMessages)
-        result = { stdout: promptOutput, stderr: '', exitCode: 0 }
-      } catch (err) {
-        result = { stdout: '', stderr: err.message, exitCode: 1 }
-      }
-    } else {
-      result = { stdout: '', stderr: `Unknown step type: ${step.type}`, exitCode: 1 }
-    }
-    
-    const execLabel = step.exec || step.tool || 'prompt'
-    results.push({ name: step.name || step.id, exec: execLabel, ...result })
-    contextData[step.id] = result
-    
-    if (result.exitCode !== 0 && plan.flow && plan.flow.on_error === 'stop') {
-       console.error(`Step failed and flow.on_error is 'stop'. Aborting plan.`)
-       break
-    }
-  }
-
-  // Handle old-style output formatting via prompt
-  if (plan.prompt || (!plan.outputs && plan.output && plan.output.save)) {
-    const prompt = buildPlanPrompt(plan, results)
-    const messages = []
-
-    if (systemPrompt) {
-      messages.push({ role: 'system', content: systemPrompt })
-    }
-
-    const provider = (options.provider || 'ollama').toLowerCase()
-
-    if (Array.isArray(plan.attachments) && plan.attachments.length > 0) {
-      const attachmentMessages = await buildAttachmentMessages(
-        plan.attachments, maxUploadFileSize, provider
-      )
-      messages.push(...attachmentMessages)
-    }
-
-    messages.push({ role: 'user', content: prompt })
-
-    const analysis = await runWithoutTools(llm, model, messages)
-
-    console.log(analysis)
-
-    if (plan.output && plan.output.save) {
-      try {
-        await fs.writeFile(plan.output.save, analysis, 'utf8')
-        console.log(`Saved report to ${plan.output.save}`)
-      } catch (err) {
-        console.error(`Failed to write report to '${plan.output.save}': ${err.message}`)
-        process.exit(1)
-      }
-    }
-  }
+  messages.push({ role: 'user', content: prompt })
+  const analysis = await runWithoutTools(llm, model, messages)
   
-  // Output handling based on the new schema `outputs`
-  if (plan.outputs && plan.outputs.save) {
-     for (const saveCmd of plan.outputs.save) {
-       const stepRes = contextData[saveCmd.step]
-       if (stepRes && stepRes.stdout) {
-         try {
-           await fs.writeFile(saveCmd.to, stepRes.stdout, 'utf8')
-           console.log(`Saved step '${saveCmd.step}' report to ${saveCmd.to}`)
-         } catch (err) {
-           console.error(`Failed to write report to '${saveCmd.to}': ${err.message}`)
-         }
-       }
-     }
+  console.log(analysis)
+
+  if (plan.output?.save) {
+    await fs.writeFile(plan.output.save, analysis, 'utf8')
+    console.log(`Saved report to ${plan.output.save}`)
+  }
+}
+
+async function processOutputs(planOutputs, contextData) {
+  if (!planOutputs?.save) return
+  for (const saveCmd of planOutputs.save) {
+    const stepRes = contextData[saveCmd.step]
+    if (stepRes?.stdout) {
+      try {
+        await fs.writeFile(saveCmd.to, stepRes.stdout, 'utf8')
+        console.log(`Saved step '${saveCmd.step}' report to ${saveCmd.to}`)
+      } catch (err) {
+        console.error(`Failed to write report to '${saveCmd.to}': ${err.message}`)
+      }
+    }
+  }
+}
+
+// ─── Main CLI Command ────────────────────────────────────────────────────────
+
+export async function cmdPlan(llm, options, maxUploadFileSize = 10 * 1024 * 1024) {
+  try {
+    const positional = options._ || []
+    const planFile = positional[0]
+
+    if (!planFile) throw new Error('Usage: llmctrlx plan <plan-file> [--dry-run]')
+
+    const rawYaml = await fs.readFile(planFile, 'utf8')
+    let plan = jsYaml.load(rawYaml)
+    
+    plan = normalizeAndValidatePlan(plan, planFile)
+
+    const cliVars = parseCliVars(options)
+    const vars = mergeVars(plan.vars, cliVars, safeEnvSubset())
+    plan = interpolatePlan(plan, vars)
+
+    const dryRun = Boolean(options['dry-run'] || options.dryRun)
+    const model = options.model || plan.model
+
+    if (!model) throw new Error('No model specified via plan or --model')
+
+    if (dryRun) {
+      console.log(`Dry run plan: ${plan.name || planFile}`)
+      plan.steps.forEach((step, index) => console.log(`${index + 1}. ${step.name}: ${step.exec}`))
+      return
+    }
+
+    const results = []
+    const contextData = {}
+    const hasToolSteps = plan.steps.some(s => s.type === 'tool')
+    
+    const loadedTools = hasToolSteps 
+      ? await loadTools(options.tools_dir || process.env.LLMCTRLX_TOOLS_DIR) 
+      : []
+
+    for (const [index, step] of plan.steps.entries()) {
+      console.log(`Executing step ${index + 1}/${plan.steps.length}: ${step.name}`)
+      
+      const result = await executeStepAction(step, loadedTools, llm, model, contextData)
+      const execLabel = step.exec || step.tool || 'prompt'
+      
+      results.push({ name: step.name, exec: execLabel, ...result })
+      contextData[step.id] = result
+      
+      if (result.exitCode !== 0 && plan.flow?.on_error === 'stop') {
+         console.error(`Step failed and flow.on_error is 'stop'. Aborting plan.`)
+         break
+      }
+    }
+
+    if (plan.prompt || (!plan.outputs && plan.output?.save)) {
+      await generateLegacyReport(plan, results, llm, options, maxUploadFileSize)
+    }
+    
+    await processOutputs(plan.outputs, contextData)
+
+  } catch (err) {
+    console.error(err.message)
+    process.exit(1)
   }
 }

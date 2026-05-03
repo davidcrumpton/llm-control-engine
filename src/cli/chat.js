@@ -1,176 +1,164 @@
-/**
- * Chat command handler for llmctrlx
- */
-
-import fs from 'fs'
+import fs from 'fs/promises' // Use promise-based FS
+import readFileSyncSync from 'fs' // For legacy sync needs if necessary
 import { loadHistory, saveHistory, getSession } from '../core/history.js'
 import { buildOptions, isImage, validateFileSize, buildToolPrompt, buildImageMessage } from '../core/utils.js'
 import { createPluginRegistry, runWithTools, runWithoutTools } from '../core/tools.js'
 
 /**
  * Handle chat command
- * @param {Object} llm - LLM provider instance
- * @param {Object} options - CLI options
- * @param {string} defaultHistoryFile - Default history file path
- * @param {string} toolsDir - Default tools directory
- * @param {number} maxUploadFileSize - Maximum file upload size
- * @param {Object} [engineHooks] - Engine hooks integration
  */
 export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUploadFileSize, engineHooks) {
   const historyData = loadHistory(defaultHistoryFile)
   const session = getSession(historyData, options.session)
-
-  // Helper function to filter response through plugins
-  async function filterResponse(content) {
-    if (!engineHooks) return content;
-    const payload = { content, filtered: false, requestMeta: { flags: options } };
-    const filtered = await engineHooks.filterResponse('chat', payload);
-    return filtered.content;
-  }
-
-  const messages = []
-
-  if (options.system) {
-    messages.push({ role: 'system', content: options.system })
-  }
-  // Use number of message in opyions.history_length with 0 as all, default to 5 if not specified
-   const history_length = Number.isNaN(parseInt(options.history_length)) ? 5 : Math.max(0, parseInt(options.history_length))
-
-   if (history_length > 0 && session.messages && session.messages.length > 0) {
-     const recentMessages = session.messages.slice(-history_length)
-      messages.push(...recentMessages)
-    } else if (history_length === 0 && session.messages && session.messages.length > 0) {
-      messages.push(...session.messages)
-    }
-
-  let userInput = options.user
-
-  let stdinContent = null
-  // Using async events from process.stdin to ensure we don't throw EAGAIN
-  // if the pipe is not immediately ready on certain platforms
-
-  if (options.stdin) {
-    if (!process.stdin.isTTY) {
-      stdinContent = await new Promise((resolve) => {
-        let data = ''
-        process.stdin.on('data', chunk => data += chunk)
-        process.stdin.on('end', () => resolve(data))
-      })
-    } else {
-      console.error('--stdin specified but no stdin input detected')
-      process.exit(1)
-    }
-  } else if (!userInput && !process.stdin.isTTY) {
-    userInput = await new Promise((resolve) => {
-      let data = ''
-      process.stdin.on('data', chunk => data += chunk)
-      process.stdin.on('end', () => resolve(data))
-    })
-  }
-
-  let userContent = ''
-  if (userInput) {
-    userContent = `${userInput}`
-  }
-  if (stdinContent) {
-    if (userContent) userContent += '\n\n'
-    userContent += `${stdinContent}`
-  }
-
+  
+  // 1. Prepare Input (Stdin + User Text)
+  const userContent = await resolveUserContent(options)
   if (!userContent) {
-    console.error('No input provided')
+    console.error('Error: No input provided via CLI or stdin.')
     process.exit(1)
   }
 
-  const files = options.files
-    ? (Array.isArray(options.files) ? options.files : [options.files])
-    : []
+  // 2. Build Message Context
+  const messages = []
+  if (options.system) messages.push({ role: 'system', content: options.system })
+  
+  // Attach History
+  messages.push(...getHistoryWindow(session, options.history_length))
 
-  for (const file of files) {
-    try {
-      validateFileSize(file, maxUploadFileSize)
-    } catch (e) {
-      console.error(`Skipping ${file} due to size error: ${e.message}`)
+  // Attach Files
+  const fileMessages = await processFiles(options.files, maxUploadFileSize, options.provider)
+  messages.push(...fileMessages)
+
+  // Final User Input
+  messages.push({ role: 'user', content: userContent })
+
+  // 3. Execute LLM Request
+  const chatOptions = buildOptions(options)
+  let assistantResponse = ''
+
+  if (options.stream) {
+    assistantResponse = await handleStreamingChat(llm, options, messages, chatOptions)
+  } else {
+    assistantResponse = await handleStandardChat(llm, options, messages, chatOptions, toolsDir)
+  }
+
+  // 4. Post-processing & Persistence
+  const filtered = await filterResponse(assistantResponse, engineHooks, options)
+  
+  // Only log if not already printed by stream
+  if (!options.stream) console.log(filtered)
+
+  session.messages.push({ role: 'user', content: userContent })
+  session.messages.push({ role: 'assistant', content: filtered })
+  saveHistory(defaultHistoryFile, historyData)
+}
+
+/**
+ * Logic to extract content from stdin or CLI arguments
+ */
+async function resolveUserContent(options) {
+  let stdinData = ''
+  if (!process.stdin.isTTY || options.stdin) {
+    stdinData = await new Promise((resolve) => {
+      let data = ''
+      process.stdin.on('data', chunk => data += chunk)
+      process.stdin.on('end', () => resolve(data.trim()))
+    })
+    if (options.stdin && !stdinData && process.stdin.isTTY) {
+      console.error('--stdin specified but no input detected')
       process.exit(1)
     }
+  }
 
+  const parts = [options.user, stdinData].filter(Boolean)
+  return parts.join('\n\n')
+}
+
+/**
+ * Determines how many historical messages to include
+ */
+function getHistoryWindow(session, historyLengthArg) {
+  const length = parseInt(historyLengthArg)
+  const limit = Number.isNaN(length) ? 5 : Math.max(0, length)
+  
+  if (!session.messages || session.messages.length === 0 || limit === -1) return []
+  return limit === 0 ? session.messages : session.messages.slice(-limit)
+}
+
+/**
+ * Processes files (Images vs Text) into message objects
+ */
+async function processFiles(filesInput, maxSize, provider = 'ollama') {
+  const files = Array.isArray(filesInput) ? filesInput : (filesInput ? [filesInput] : [])
+  const msgs = []
+
+  for (const file of files) {
+    validateFileSize(file, maxSize)
+    
     if (isImage(file)) {
-      const img = fs.readFileSync(file).toString('base64')
-      const provider = (options.provider || 'ollama').toLowerCase()
-      messages.push(buildImageMessage(file, img, provider))
-
+      const img = (await fs.readFile(file)).toString('base64')
+      msgs.push(buildImageMessage(file, img, provider.toLowerCase()))
     } else {
-      const content = fs.readFileSync(file, 'utf8')
-
-      messages.push({
-        role: 'user',
-        content: `File: ${file}\n${content}`
-      })
+      const content = await fs.readFile(file, 'utf8')
+      msgs.push({ role: 'user', content: `File: ${file}\n${content}` })
     }
   }
+  return msgs
+}
 
-  if (userContent) {
-    messages.push({ role: 'user', content: userContent })
+/**
+ * Handles non-streaming logic (with or without tools)
+ */
+async function handleStandardChat(llm, options, messages, chatOptions, toolsDir) {
+  if (options.no_tools) {
+    return await runWithoutTools(llm, options.model, messages, chatOptions)
   }
 
-  const chatOptions = buildOptions(options)
-
-  // fix streaming to error if lmstudio is the provider and stream is true, since lmstudio does not support streaming
-  if (options.stream) {
-    const stream = await llm.chat({
-      model: options.model,
-      messages,
-      stream: true,
-      options: chatOptions
-    })
-
-    let full = ''
-
-    for await (const chunk of stream) {
-      process.stdout.write(chunk.message.content)
-      full += chunk.message.content
-    }
-
-    const filtered = await filterResponse(full);
-
-    session.messages.push({ role: 'user', content: userContent })
-    session.messages.push({ role: 'assistant', content: filtered })
-  } else {
-    if (!options.no_tools) {
-      const requestedTags = options.tags ? options.tags.split(',').map(t => t.trim()) : null
-      const registry = await createPluginRegistry(toolsDir, options.session)
-      let tools = registry.list('tool')
-
-      if (requestedTags) {
-        tools = tools.filter(tool => {
-          const toolTags = tool.tags || []
-          const hasAlways = toolTags.includes('always')
-          const hasMatch = requestedTags.some(tag => toolTags.includes(tag))
-          return hasAlways || hasMatch
-        })
-      }
-
-      messages.unshift({
-        role: 'system',
-        content: buildToolPrompt(tools)
-      })
-
-      const policyPlugins = registry.list('policy')
-      const res = await runWithTools(llm, options.model, messages, tools, policyPlugins, chatOptions)
-      const filtered = await filterResponse(res);
-      console.log(filtered)
-
-      session.messages.push({ role: 'user', content: userContent })
-      session.messages.push({ role: 'assistant', content: filtered })
-    } else {
-      const res = await runWithoutTools(llm, options.model, messages, chatOptions)
-      const filtered = await filterResponse(res);
-      console.log(filtered)
-
-      session.messages.push({ role: 'user', content: userContent })
-      session.messages.push({ role: 'assistant', content: filtered })
-    }
+  const registry = await createPluginRegistry(toolsDir, options.session)
+  const requestedTags = options.tags?.split(',').map(t => t.trim())
+  
+  let tools = registry.list('tool')
+  if (requestedTags) {
+    tools = tools.filter(t => 
+      (t.tags || []).includes('always') || 
+      requestedTags.some(tag => (t.tags || []).includes(tag))
+    )
   }
 
-  saveHistory(defaultHistoryFile, historyData)
+  messages.unshift({ role: 'system', content: buildToolPrompt(tools) })
+  return await runWithTools(llm, options.model, messages, tools, registry.list('policy'), chatOptions)
+}
+
+/**
+ * Handles streaming logic
+ */
+async function handleStreamingChat(llm, options, messages, chatOptions) {
+  const stream = await llm.chat({
+    model: options.model,
+    messages,
+    stream: true,
+    options: chatOptions
+  })
+
+  let fullContent = ''
+  for await (const chunk of stream) {
+    const content = chunk.message?.content || ''
+    process.stdout.write(content)
+    fullContent += content
+  }
+  process.stdout.write('\n')
+  return fullContent
+}
+
+/**
+ * Engine Hook filter wrapper
+ */
+async function filterResponse(content, engineHooks, options) {
+  if (!engineHooks) return content
+  const result = await engineHooks.filterResponse('chat', {
+    content,
+    filtered: false,
+    requestMeta: { flags: options }
+  })
+  return result.content
 }

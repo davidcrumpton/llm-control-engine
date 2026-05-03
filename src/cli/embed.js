@@ -2,7 +2,22 @@
  * Embed command handler for llmctrlx
  */
 
-import fs from 'fs'
+import fs from 'fs/promises';
+
+/**
+ * Helper to perform the embedding call
+ * @param {Object} llm - LLM provider instance
+ * @param {string} model - Model name
+ * @param {string} content - The text to embed
+ * @returns {Promise<Object>}
+ */
+async function performEmbedding(llm, model, content) {
+  const res = await llm.embeddings({
+    model,
+    prompt: content
+  });
+  return res.embedding;
+}
 
 /**
  * Handle embed command
@@ -10,44 +25,64 @@ import fs from 'fs'
  * @param {Object} options - CLI options
  */
 export async function cmdEmbed(llm, options) {
-  // -f or --stdin is required
-  if (!options.files && !options.stdin) {
-    console.error('Provide files with -f or stdin with --s or --stdin')
-    process.exit(1)
+  const { model, stdin, files } = options;
+
+  // 1. Validation
+  if (!files && !stdin) {
+    console.error('Error: Provide files with -f or stdin with --s or --stdin');
+    process.exit(1);
   }
 
-  if (options.stdin) {
-    const content = await new Promise((resolve) => {
-      let data = ''
-      process.stdin.on('data', (chunk) => {
-        data += chunk
-      })
-      process.stdin.on('end', () => {
-        resolve(data)
-      })
-    })
-    // Process stdin content as a single file
-    const res = await llm.embeddings({
-      model: options.model,
-      prompt: content
-    })
-    console.log(JSON.stringify({ file: 'stdin', embedding: res.embedding }, null, 2))
-    return
+  try {
+    const tasks = [];
+
+    // 2. Prepare Stdin Task
+    if (stdin) {
+      const stdinTask = (async () => {
+        const content = await new Promise((resolve, reject) => {
+          let data = '';
+          process.stdin.on('data', (chunk) => (data += chunk));
+          process.stdin.on('end', () => resolve(data));
+          process.stdin.on('error', reject);
+        });
+        const embedding = await performEmbedding(llm, model, content);
+        return { file: 'stdin', embedding };
+      })();
+      tasks.push(stdinTask);
+    }
+
+    // 3. Prepare File Tasks
+    const fileList = Array.isArray(files) ? files : [files];
+    for (const filePath of fileList) {
+      const fileTask = (async () => {
+        const content = await fs.readFile(filePath, 'utf8');
+        const embedding = await performEmbedding(llm, model, content);
+        return { file: filePath, embedding };
+      })();
+      tasks.push(fileTask);
+    }
+
+    // 4. Execute all tasks in parallel
+    // We use allSettled so that one failing file doesn't kill the entire batch
+    const results = await Promise.allSettled(tasks);
+
+    // 5. Format output
+    const successfulResults = results
+      .filter((res) => res.status === 'fulfilled')
+      .map((res) => res.value);
+
+    const failures = results
+      .filter((res) => res.status === 'rejected')
+      .map((res) => res.reason.message);
+
+    if (failures.length > 0) {
+      console.error('Errors encountered:', failures);
+    }
+
+    console.log(JSON.stringify(successfulResults, null, 2));
+
+  } catch (err) {
+    console.error('Fatal error during embedding process:', err.message);
+    process.exit(1);
   }
-
-  const files = Array.isArray(options.files) ? options.files : [options.files]
-
-  const results = []
-
-  for (const file of files) {
-    const content = fs.readFileSync(file, 'utf8')
-    const res = await llm.embeddings({
-      model: options.model,
-      prompt: content
-    })
-
-    results.push({ file, embedding: res.embedding })
-  }
-
-  console.log(JSON.stringify(results, null, 2))
 }
