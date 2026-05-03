@@ -2,8 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-// @ts-ignore
-import { cmdChat } from "@/cli/chat.js";
+import { cmdChat } from "../../src/cli/chat.ts";
 
 function createTempDirectory(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "llmctrlx-chat-test-"));
@@ -82,7 +81,7 @@ describe("cmdChat integration", () => {
 
     const historyData = JSON.parse(fs.readFileSync(historyFile, "utf8"));
     expect(historyData.default.messages).toEqual([
-      { role: "user", content: "Instruction: user prompt" },
+      { role: "user", content: "user prompt" },
       { role: "assistant", content: "final chat answer" },
     ]);
 
@@ -151,7 +150,7 @@ describe("cmdChat integration", () => {
 
     const historyData = JSON.parse(fs.readFileSync(historyFile, "utf8"));
     expect(historyData.default.messages).toEqual([
-      { role: "user", content: "Instruction: please run this command" },
+      { role: "user", content: "please run this command" },
       { role: "assistant", content: "safe final answer" },
     ]);
 

@@ -12,6 +12,7 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
+    "allowJs": true,
 
     "baseUrl": ".",
     "paths": {

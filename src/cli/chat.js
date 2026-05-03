@@ -14,7 +14,7 @@ import { createPluginRegistry, runWithTools, runWithoutTools } from '../core/too
  * @param {string} defaultHistoryFile - Default history file path
  * @param {string} toolsDir - Default tools directory
  * @param {number} maxUploadFileSize - Maximum file upload size
- * @param {Object} engineHooks - Engine hooks integration
+ * @param {Object} [engineHooks] - Engine hooks integration
  */
 export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUploadFileSize, engineHooks) {
   const historyData = loadHistory(defaultHistoryFile)
@@ -70,11 +70,11 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
 
   let userContent = ''
   if (userInput) {
-    userContent = `Instruction: ${userInput}`
+    userContent = `${userInput}`
   }
   if (stdinContent) {
     if (userContent) userContent += '\n\n'
-    userContent += `Input data:\n${stdinContent}`
+    userContent += `${stdinContent}`
   }
 
   if (!userContent) {
