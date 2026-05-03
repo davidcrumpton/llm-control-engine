@@ -14,6 +14,8 @@ describe("src/cli/tools.js", () => {
     const coreTools = await import("../../src/core/tools.js");
     loadToolsSpy = vi.spyOn(coreTools, "loadTools");
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
 
     // @ts-ignore
     const cliTools = await import("../../src/cli/tools.js");
@@ -29,15 +31,15 @@ describe("src/cli/tools.js", () => {
     await cmdTools({}, "/path/to/tools");
 
     expect(loadToolsSpy).toHaveBeenCalledWith("/path/to/tools", null);
-    expect(logSpy).toHaveBeenCalledWith("No tools found");
+    expect(console.warn).toHaveBeenCalledWith("No tools found.");
   });
 
   it("prints tool names when --list is provided", async () => {
     loadToolsSpy.mockResolvedValue([{ name: "alpha" }, { name: "beta" }]);
     await cmdTools({ list: true }, "/path/to/tools");
 
-    expect(logSpy).toHaveBeenNthCalledWith(1, "alpha");
-    expect(logSpy).toHaveBeenNthCalledWith(2, "beta");
+    expect(logSpy).toHaveBeenNthCalledWith(1, "- alpha");
+    expect(logSpy).toHaveBeenNthCalledWith(2, "- beta");
   });
 
   it("prints JSON output when --json is provided", async () => {
@@ -60,12 +62,10 @@ describe("src/cli/tools.js", () => {
 
   it("prints an error when the requested tool is not found", async () => {
     loadToolsSpy.mockResolvedValue([{ name: "alpha" }]);
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
+    
     await cmdTools({ show: "beta" }, "/path/to/tools");
 
-    expect(errorSpy).toHaveBeenCalledWith("Tool not found: beta");
-    errorSpy.mockRestore();
+    expect(console.error).toHaveBeenCalledWith('Error: Tool "beta" not found.');
   });
 
   it("passes tags through to loadTools when provided", async () => {
@@ -74,6 +74,6 @@ describe("src/cli/tools.js", () => {
     await cmdTools({ tags: "foo,bar" }, "/path/to/tools");
 
     expect(loadToolsSpy).toHaveBeenCalledWith("/path/to/tools", ["foo", "bar"]);
-    expect(logSpy).toHaveBeenCalledWith("No tools found");
+    expect(console.warn).toHaveBeenCalledWith("No tools found.");
   });
 });

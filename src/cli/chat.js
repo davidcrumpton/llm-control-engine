@@ -1,5 +1,4 @@
 import fs from 'fs/promises' // Use promise-based FS
-import readFileSyncSync from 'fs' // For legacy sync needs if necessary
 import { loadHistory, saveHistory, getSession } from '../core/history.js'
 import { buildOptions, isImage, validateFileSize, buildToolPrompt, buildImageMessage } from '../core/utils.js'
 import { createPluginRegistry, runWithTools, runWithoutTools } from '../core/tools.js'
@@ -58,7 +57,7 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
  */
 async function resolveUserContent(options) {
   let stdinData = ''
-  if (!process.stdin.isTTY || options.stdin) {
+  if (options.stdin || (!options.user && !process.stdin.isTTY)) {
     stdinData = await new Promise((resolve) => {
       let data = ''
       process.stdin.on('data', chunk => data += chunk)
