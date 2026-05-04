@@ -22,11 +22,9 @@ const __dirname = dirname(__filename)
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.7.02'
+const APP_VERSION = '0.7.03'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
-const DEFAULT_API_URL = process.env.LLMCTRLX_API_URL || 'http://127.0.0.1:11434'
-const DEFAULT_MODEL = process.env.LLMCTRLX_MODEL || 'gemma4:e2b'
 const DEFAULT_HISTORY_FILE = process.env.LLMCTRLX_HISTORY_FILE || path.join(os.homedir(), '.llmctrlx_history.json')
 const DEFAULT_API_KEY = process.env.__LLMCTRLX_OLLAMA_API_KEY || ''
 const DEFAULT_MAX_UPLOAD_FILE_SIZE = process.env.LLMCTRLX_MAX_UPLOAD_FILE_SIZE || 1024 * 1024 * 10 // 10 MB
@@ -71,8 +69,6 @@ const options = getopts(argv.slice(1), {
     R: 'record',
   },
   default: {
-    host: DEFAULT_API_URL,
-    model: DEFAULT_MODEL,
     session: DEFAULT_SESSION,
     no_tools: false,
     __api_key: DEFAULT_API_KEY,
@@ -124,6 +120,9 @@ async function main() {
   } else {
     llm = new OllamaProvider({ host: options.host, apiKey: options.__api_key })
   }
+
+  // Resolve model: CLI flag > env-var > provider default
+  options.model = options.model || llm.defaultModel
 
   // Initialize plugin system
   const logger = options.verbose ? console : undefined

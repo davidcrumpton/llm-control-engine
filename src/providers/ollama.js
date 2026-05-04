@@ -6,8 +6,15 @@
 import { Ollama } from 'ollama'
 
 export class OllamaProvider {
-  constructor(opts) {
-    this.client = new Ollama(opts)
+  static DEFAULT_HOST  = 'http://127.0.0.1:11434'
+  static DEFAULT_MODEL = 'gemma4:e2b'
+
+  constructor(opts = {}) {
+    // Use caller-supplied host only when explicitly provided; fall back to
+    // this provider's own default so callers never need to know the port.
+    const host = opts.host || OllamaProvider.DEFAULT_HOST
+    this.defaultModel = OllamaProvider.DEFAULT_MODEL
+    this.client = new Ollama({ ...opts, host })
   }
 
   async chat(args) {
@@ -17,7 +24,7 @@ export class OllamaProvider {
       args.messages = args.messages.map(msg => {
         if (Array.isArray(msg.content)) {
           // Flatten array content to string
-          msg.content = msg.content.map(part => 
+          msg.content = msg.content.map(part =>
             typeof part === 'string' ? part : part.text || ''
           ).join('')
         }
@@ -54,6 +61,6 @@ export class OllamaProvider {
   capabilities = ['list', 'show', 'pull', 'delete'];
 
   getHelpMessage() {
-    return 'Ollama model commands: --list, --show <model>, --pull <model>, --delete <model>';
+    return 'Ollama model commands: --list, --show <model>, --pull <model>, --delete <model>'
   }
 }

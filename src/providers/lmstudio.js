@@ -131,8 +131,14 @@ function validateHost(host) {
 // ---------------------------------------------------------------------------
 
 export class LMStudioProvider {
+  static DEFAULT_HOST  = 'http://127.0.0.1:1234/v1'
+  static DEFAULT_MODEL = 'google/gemma-4-e2b'
+
   constructor({ host } = {}) {
-    this.host = validateHost(host || 'http://127.0.0.1:1234/v1')
+    // Use caller-supplied host only when explicitly provided; fall back to
+    // this provider's own default so callers never need to know the port.
+    this.host = validateHost(host || LMStudioProvider.DEFAULT_HOST)
+    this.defaultModel = LMStudioProvider.DEFAULT_MODEL
   }
 
   async chat({ model, messages, stream }) {
@@ -168,7 +174,7 @@ export class LMStudioProvider {
     await assertOk(res, '/models')
     const data = await res.json()
 
-      if (
+    if (
       data === null ||
       typeof data !== 'object' ||
       !Array.isArray(data.data) ||
@@ -198,6 +204,6 @@ export class LMStudioProvider {
   capabilities = ['list'];
 
   getHelpMessage() {
-    return 'LM Studio model commands: --list';
+    return 'LM Studio model commands: --list'
   }
 }
