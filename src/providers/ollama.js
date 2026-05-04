@@ -20,20 +20,20 @@ export class OllamaProvider {
   async chat(args) {
     // Normalize messages for Ollama API compatibility
     // Ollama expects content as string, not array
-    if (args.messages) {
-      args.messages = args.messages.map(msg => {
-        if (Array.isArray(msg.content)) {
+    let messages = args.messages
+    if (messages) {
+      messages = messages.map(msg => {
+        const newMsg = { ...msg }
+        if (Array.isArray(newMsg.content)) {
           // Flatten array content to string
-          msg.content = msg.content.map(part =>
+          newMsg.content = newMsg.content.map(part =>
             typeof part === 'string' ? part : part.text || ''
           ).join('')
         }
-        // Remove images as Ollama handles them differently or not at all
-        delete msg.images
-        return msg
+        return newMsg
       })
     }
-    return this.client.chat(args)
+    return this.client.chat({ ...args, messages })
   }
 
   async embeddings(args) {

@@ -309,3 +309,41 @@ export function buildImageMessage(filePath, imgData, provider) {
   // Ollama default
   return { role: 'user', content: label, images: [imgData] }
 }
+
+/**
+ * Compact consecutive messages of the same role by merging their content.
+ *
+ * @param {Array} messages - Message array to compact.
+ * @returns {Array} New compacted message array.
+ */
+export function compactMessages(messages) {
+  if (!messages || messages.length === 0) return []
+
+  const compacted = []
+  let current = null
+
+  for (const msg of messages) {
+    if (!current || current.role !== msg.role) {
+      current = { ...msg }
+      compacted.push(current)
+    } else {
+      // Merge content
+      if (typeof current.content === 'string' && typeof msg.content === 'string') {
+        current.content += '\n\n' + msg.content
+      } else if (Array.isArray(current.content) && Array.isArray(msg.content)) {
+        current.content.push(...msg.content)
+      } else if (Array.isArray(current.content) && typeof msg.content === 'string') {
+        current.content.push({ type: 'text', text: msg.content })
+      } else if (typeof current.content === 'string' && Array.isArray(msg.content)) {
+        current.content = [{ type: 'text', text: current.content }, ...msg.content]
+      }
+
+      // Merge images if present
+      if (msg.images) {
+        current.images = [...(current.images || []), ...msg.images]
+      }
+    }
+  }
+
+  return compacted
+}

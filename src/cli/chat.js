@@ -9,7 +9,7 @@
 
 import fs from 'fs/promises'
 import { loadHistory, saveHistory, getSession }                          from '../core/history.js'
-import { buildOptions, isImage, validateFileSize, buildToolPrompt, buildImageMessage } from '../core/utils.js'
+import { buildOptions, isImage, validateFileSize, buildToolPrompt, buildImageMessage, compactMessages } from '../core/utils.js'
 import { createPluginRegistry, runWithTools, runWithoutTools }           from '../core/tools.js'
 import { Recorder, makeToolCallRecorder }                                from '../core/recorder.js'
 
@@ -44,12 +44,13 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
   // because live history grows between recording and replay.
   const historyWindow = getHistoryWindow(session, options.history_length)
 
-  const messages = []
-  if (options.system) messages.push({ role: 'system', content: options.system })
-  messages.push(...historyWindow)
   const fileMessages = await processFiles(options.files, maxUploadFileSize, options.provider)
-  messages.push(...fileMessages)
-  messages.push({ role: 'user', content: userContent })
+  const messages = compactMessages([
+    ...(options.system ? [{ role: 'system', content: options.system }] : []),
+    ...historyWindow,
+    ...fileMessages,
+    { role: 'user', content: userContent }
+  ])
 
   // 3. Build recorder (inputs captured before execution)
   const recorderInputs = {
