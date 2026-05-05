@@ -29,6 +29,7 @@ export function buildOptions(opts) {
   if (opts.temperature) out.temperature = opts.temperature
   if (opts.top_p)       out.top_p       = opts.top_p
   if (opts.num_ctx)     out.num_ctx     = parseInt(opts.num_ctx, 10)
+  if (opts.timeout)     out.timeout     = parseInt(opts.timeout, 10)
   return out
 }
 

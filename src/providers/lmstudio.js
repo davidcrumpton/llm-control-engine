@@ -134,11 +134,13 @@ export class LMStudioProvider {
   static DEFAULT_HOST  = 'http://127.0.0.1:1234/v1'
   static DEFAULT_MODEL = 'google/gemma-4-e2b'
 
-  constructor({ host } = {}) {
+  constructor(opts = {}) {
+    const { host, timeout } = opts
     // Use caller-supplied host only when explicitly provided; fall back to
     // this provider's own default so callers never need to know the port.
     this.host = validateHost(host || LMStudioProvider.DEFAULT_HOST)
     this.defaultModel = LMStudioProvider.DEFAULT_MODEL
+    this.timeout = timeout || 480
   }
 
   async chat({ model, messages, stream }) {
@@ -150,6 +152,7 @@ export class LMStudioProvider {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model, messages, stream }),
+      signal: AbortSignal.timeout(this.timeout * 1000),
     })
 
     await assertOk(res, '/chat/completions')
@@ -162,6 +165,7 @@ export class LMStudioProvider {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model, input: prompt }),
+      signal: AbortSignal.timeout(this.timeout * 1000),
     })
 
     await assertOk(res, '/embeddings')
@@ -170,7 +174,9 @@ export class LMStudioProvider {
   }
 
   async list() {
-    const res = await fetch(`${this.host}/models`)
+    const res = await fetch(`${this.host}/models`, {
+      signal: AbortSignal.timeout(this.timeout * 1000),
+    })
     await assertOk(res, '/models')
     const data = await res.json()
 

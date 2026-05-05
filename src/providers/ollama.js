@@ -4,6 +4,7 @@
  */
 
 import { Ollama } from 'ollama'
+import { Agent, fetch as undiciFetch } from 'undici'
 
 export class OllamaProvider {
   static DEFAULT_HOST  = 'http://127.0.0.1:11434'
@@ -14,7 +15,20 @@ export class OllamaProvider {
     // this provider's own default so callers never need to know the port.
     const host = opts.host || OllamaProvider.DEFAULT_HOST
     this.defaultModel = OllamaProvider.DEFAULT_MODEL
-    this.client = new Ollama({ ...opts, host })
+    
+    // Custom fetch with timeout settings for undici (handles long-running queries)
+    const timeoutMs = (opts.timeout || 480) * 1000
+    const customFetch = (input, init) => {
+      return undiciFetch(input, {
+        ...init,
+        dispatcher: new Agent({
+          headersTimeout: timeoutMs,
+          bodyTimeout: timeoutMs,
+        })
+      })
+    }
+
+    this.client = new Ollama({ ...opts, host, fetch: customFetch })
   }
 
   async chat(args) {

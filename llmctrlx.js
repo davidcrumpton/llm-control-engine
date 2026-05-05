@@ -22,7 +22,7 @@ const __dirname = dirname(__filename)
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.7.10'
+const APP_VERSION = '0.7.14'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_HISTORY_FILE = process.env.LLMCTRLX_HISTORY_FILE || path.join(os.homedir(), '.llmctrlx_history.json')
@@ -30,7 +30,9 @@ const DEFAULT_API_KEY = process.env.__LLMCTRLX_OLLAMA_API_KEY || ''
 const DEFAULT_MAX_UPLOAD_FILE_SIZE = process.env.LLMCTRLX_MAX_UPLOAD_FILE_SIZE || 1024 * 1024 * 10 // 10 MB
 const DEFAULT_PROVIDER = process.env.LLMCTRLX_PROVIDER || 'ollama'
 const DEFAULT_SESSION = process.env.LLMCTRLX_SESSION || 'default'
-const DEFAULT_TOOLS_HISTORY_LENGTH = 5
+const DEFAULT_TOOLS_HISTORY_LENGTH = process.env.LLMCTRLX_TOOLS_HISTORY_LENGTH || 5
+const DEFAULT_NUM_CTX = process.env.LLMCTRLX_NUM_CTX || 4096
+const DEFAULT_TIMEOUT = process.env.LLMCTRLX_TIMEOUT || 480
 
 // --------------------
 // Tools Directory
@@ -67,16 +69,20 @@ const options = getopts(argv.slice(1), {
     L: 'history_length',
     c: 'num_ctx',
     R: 'record',
+    o: 'timeout',
   },
   default: {
+    num_ctx: DEFAULT_NUM_CTX,
+    timeout: DEFAULT_TIMEOUT,
+    history_length: DEFAULT_TOOLS_HISTORY_LENGTH,
     session: DEFAULT_SESSION,
     no_tools: false,
     __api_key: DEFAULT_API_KEY,
     provider: DEFAULT_PROVIDER,
-    history_length: DEFAULT_TOOLS_HISTORY_LENGTH,
+   
   },
   boolean: ['json', 'stream', 'no_tools', 'all', 'list', 'stdin', 'verbose', 'purge', 'dry-run', 'diff'],
-  string: ['user', 'system', 'files', 'tools_dir', 'provider', 'show', 'tags', 'shell', 'var', 'num_ctx', 'record'],
+  string: ['user', 'system', 'files', 'tools_dir', 'provider', 'show', 'tags', 'shell', 'var', 'num_ctx', 'record', 'timeout'],
   array: ['var']
 })
 
@@ -116,9 +122,9 @@ async function main() {
   let llm
 
   if (options.provider === 'lmstudio') {
-    llm = new LMStudioProvider({ host: options.host || process.env.LLMCTRLX_API_URL || undefined, apiKey: options.__api_key })
+    llm = new LMStudioProvider({ host: options.host || process.env.LLMCTRLX_API_URL || undefined, apiKey: options.__api_key, timeout: options.timeout })
   } else {
-    llm = new OllamaProvider({ host: options.host || process.env.LLMCTRLX_API_URL || undefined, apiKey: options.__api_key })
+    llm = new OllamaProvider({ host: options.host || process.env.LLMCTRLX_API_URL || undefined, apiKey: options.__api_key, timeout: options.timeout })
   }
 
   // Resolve model: CLI flag > env-var > provider default
@@ -212,6 +218,7 @@ Examples:
   plugins --list
   plugins --show logger
   bench -m mistral,gemma -u "test"
+  chat -u "long query" --timeout 600
   run -u "df -h"
   run -u "df -h" -R session.json
   chat -u "summarize this" -R session.json
@@ -262,11 +269,11 @@ _llmctrlx_completions() {
   cmds="chat model embed bench run plan replay tools plugins history completion version"
 
   # Global options
-  global_opts="-h --host -m --model -u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags -v --verbose -c --num_ctx --json --stream --all --list --show"
+  global_opts="-h --host -m --model -u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags -v --verbose -c --num_ctx -o --timeout --json --stream --all --list --show"
 
   case \${cmd} in
     chat)
-      opts="-u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags -c --num_ctx --json --stream --stdin --history_length -R --record"
+      opts="-u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags -c --num_ctx -o --timeout --json --stream --stdin --history_length -R --record"
       ;;
     model)
       opts="--list --show --pull --delete -m --model"
@@ -376,6 +383,7 @@ _llmctrlx() {
             '-K[api_key]:api_key:' \\
             '-g[tags]:tags:' \\
             '-c[num_ctx]:num_ctx:' \\
+            '-o[timeout]:timeout:' \\
             '-v[verbose]' \\
             '--json' \\
             '--stream' \\
@@ -517,6 +525,7 @@ complete -c llmctrlx -s W -l no_tools -d 'No tools'
 complete -c llmctrlx -s K -l api_key -d 'API key' -x
 complete -c llmctrlx -s g -l tags -d 'Tags' -x
 complete -c llmctrlx -s c -l num_ctx -d 'Context Window' -x
+complete -c llmctrlx -s o -l timeout -d 'Request timeout in seconds' -x
 complete -c llmctrlx -s v -l verbose -d 'Verbose output'
 complete -c llmctrlx -l json -d 'JSON output'
 complete -c llmctrlx -l stream -d 'Stream output'

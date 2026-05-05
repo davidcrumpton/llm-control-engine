@@ -94,6 +94,9 @@ You can configure the default behavior using environment variables:
 - `LLMCTRLX_PROVIDER`: The default provider to use. Default: `ollama`. Options: `ollama`, `lmstudio`
 - `LLMCTRLX_MAX_UPLOAD_FILE_SIZE`: The maximum file size to upload. Default: `1024 * 1024 * 10` (10 MB)
 - `LLMCTRLX_SESSION`: The default session to use. Default: `default`
+- `LLMCTRLX_NUM_CTX`: The default context window size. Default: `4096`
+- `LLMCTRLX_TIMEOUT`: The default request timeout in seconds. Default: `480`
+
 
 ## Usage
 
@@ -110,6 +113,7 @@ These options apply to most commands:
 - `-P, --provider <provider>`: Set the provider to use. Default: `ollama`. Options: `ollama`, `lmstudio`
 - `-K, --api_key <key>`: Set the API key for the cloud Ollama instance. Default: `''`
 - `-k, --session <name>`: Session key to use for continuing a conversation. Default: `default`
+- `-o, --timeout <number>`: Request timeout in seconds. Default: `480`
 
 ---
 
