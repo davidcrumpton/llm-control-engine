@@ -86,17 +86,16 @@ The completion provides:
 
 You can configure the default behavior using environment variables:
 
-- `LLMCTRLX_API_URL`: The URL of your LLM provider. Default: `http://127.0.0.1:11434`
+- `LLMCTRLX_API_URL`: The URL of your LLM provider. Default: Is provider specific
 - `LLMCTRLX_MODEL`: The default model to use. Default: `gemma4:e4b`
-- `LLMCTRLX_HISTORY_FILE`: The default history file to use. Default: `~/.chat_history.json`
+- `LLMCTRLX_HISTORY_FILE`: The default history file to use. Default: `~/.llmctrlx_history.json`. Use `NUL` on Windows or `/dev/null` on Linux/MacOS to disable history.
 - `LLMCTRLX_TOOLS_DIR`: The default tools folder file to use. Default: `${INSTALL_PATH}/tools`
 - `__LLMCTRLX_OLLAMA_API_KEY`: The API key for the Ollama cloud provider. Default: `''`
 - `LLMCTRLX_PROVIDER`: The default provider to use. Default: `ollama`. Options: `ollama`, `lmstudio`
 - `LLMCTRLX_MAX_UPLOAD_FILE_SIZE`: The maximum file size to upload. Default: `1024 * 1024 * 10` (10 MB)
 - `LLMCTRLX_SESSION`: The default session to use. Default: `default`
-- `LLMCTRLX_NUM_CTX`: The default context window size. Default: `4096`
+- `LLMCTRLX_NUM_CTX`: The default context window size. Default: `32768`
 - `LLMCTRLX_TIMEOUT`: The default request timeout in seconds. Default: `480`
-
 
 ## Usage
 

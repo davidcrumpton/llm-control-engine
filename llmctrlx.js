@@ -22,7 +22,7 @@ const __dirname = dirname(__filename)
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.7.20'
+const APP_VERSION = '0.7.22'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_HISTORY_FILE = process.env.LLMCTRLX_HISTORY_FILE || path.join(os.homedir(), '.llmctrlx_history.json')
@@ -31,7 +31,7 @@ const DEFAULT_MAX_UPLOAD_FILE_SIZE = process.env.LLMCTRLX_MAX_UPLOAD_FILE_SIZE |
 const DEFAULT_PROVIDER = process.env.LLMCTRLX_PROVIDER || 'ollama'
 const DEFAULT_SESSION = process.env.LLMCTRLX_SESSION || 'default'
 const DEFAULT_TOOLS_HISTORY_LENGTH = process.env.LLMCTRLX_TOOLS_HISTORY_LENGTH || 5
-const DEFAULT_NUM_CTX = process.env.LLMCTRLX_NUM_CTX || 4096
+const DEFAULT_NUM_CTX = process.env.LLMCTRLX_NUM_CTX || 32768
 const DEFAULT_TIMEOUT = process.env.LLMCTRLX_TIMEOUT || 480
 
 // --------------------
@@ -70,11 +70,13 @@ const options = getopts(argv.slice(1), {
     c: 'num_ctx',
     R: 'record',
     o: 'timeout',
+    H: 'history_file',
   },
   default: {
     num_ctx: DEFAULT_NUM_CTX,
     timeout: DEFAULT_TIMEOUT,
     history_length: DEFAULT_TOOLS_HISTORY_LENGTH,
+    history_file: DEFAULT_HISTORY_FILE,
     session: DEFAULT_SESSION,
     no_tools: false,
     __api_key: DEFAULT_API_KEY,
@@ -204,15 +206,15 @@ Usage:
   run        Execute command + analyze
   plan       Execute YAML-defined plan
   replay     Replay a recorded session (--diff to re-execute and compare)
-  tools      Manage tools (--list, --show, --pull, --delete)
+  tools      Manage tools (--list, --show, --pull)
   plugins    Manage plugins (--list, --show)
   history    Show chat history (--show or --list --all, --delete, --purge) 
   completion Generate shell completion script
   version    Show version
 
-Examples:
+Command Examples:
   chat -u "hello"
-  cat file.txt | chat -u "analyze this" --stdin
+  cat file.txt | llmctrlx chat -u "analyze this" --stdin
   model --list
   embed -f file.txt
   plugins --list
@@ -269,11 +271,11 @@ _llmctrlx_completions() {
   cmds="chat model embed bench run plan replay tools plugins history completion version"
 
   # Global options
-  global_opts="-h --host -m --model -u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags -v --verbose -c --num_ctx -o --timeout --json --stream --all --list --show"
+  global_opts="-h --host -m --model -u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags -v --verbose -c --num_ctx -o --timeout --json --stream --all --list --show --history_file"
 
   case \${cmd} in
     chat)
-      opts="-u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags -c --num_ctx -o --timeout --json --stream --stdin --history_length -R --record"
+      opts="-u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags -c --num_ctx -o --timeout --json --stream --stdin --history_length -R --record --history_file"
       ;;
     model)
       opts="--list --show --pull --delete -m --model"
@@ -300,7 +302,7 @@ _llmctrlx_completions() {
       opts="--list --show --json"
       ;;
     history)
-      opts="--show --list --all -k --session --delete --purge"
+      opts="--show --list --all -k --session --delete --purge -H --history_file"
       ;;
     completion)
       opts="--shell"
@@ -389,6 +391,7 @@ _llmctrlx() {
             '--stream' \\
             '--stdin'
             '--history_length[Number of previous messages to include in context, 0 for all]:history_length:' \\
+            '-H[history file]:history_file:_files' \\
             '-R[record session to file]:file:_files' \\
             '--record[record session to file]:file:_files'
           ;;
@@ -435,6 +438,7 @@ _llmctrlx() {
             '-K[api_key]:api_key:' \\
             '-v[verbose]' \\
             '--json' \\
+            '-H[history file]:history_file:_files' \\
             '-R[record session to file]:file:_files' \\
             '--record[record session to file]:file:_files'
           ;;
@@ -475,6 +479,9 @@ _llmctrlx() {
             '--list' \\
             '--all' \\
             '-k[session]:session:' \\
+            '-H[history file]:history_file:_files' \\
+            '--delete[delete session]:' \\
+            '--purge[purge all sessions]:' \\
             '-v[verbose]'
           ;;
         completion)
@@ -524,7 +531,7 @@ complete -c llmctrlx -s T -l tools_dir -d 'Tools directory' -F
 complete -c llmctrlx -s W -l no_tools -d 'No tools'
 complete -c llmctrlx -s K -l api_key -d 'API key' -x
 complete -c llmctrlx -s g -l tags -d 'Tags' -x
-complete -c llmctrlx -s c -l num_ctx -d 'Context Window' -x
+complete -c llmctrlx -s c -l num_ctx -d 'Number of tokens to use as context window' -x
 complete -c llmctrlx -s o -l timeout -d 'Request timeout in seconds' -x
 complete -c llmctrlx -s v -l verbose -d 'Verbose output'
 complete -c llmctrlx -l json -d 'JSON output'
@@ -544,10 +551,11 @@ complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s T -l tools_dir -d 
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s W -l no_tools -d 'No tools'
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s K -l api_key -d 'API key' -x
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s g -l tags -d 'Tags' -x
-complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s c -l num_ctx -d 'Context Window' -x
+complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s c -l num_ctx -d 'Number of tokens to use as context window' -x
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -l json -d 'JSON output'
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -l stream -d 'Stream output'
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -l stdin -d 'Read from stdin'
+complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s H -l history_file -d 'History file' -F
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s R -l record -d 'Record session to file' -F
 
 # Model command options
@@ -615,8 +623,8 @@ complete -c llmctrlx -n '__fish_seen_subcommand_from plugins' -l json -d 'JSON o
 complete -c llmctrlx -n '__fish_seen_subcommand_from history' -l show -d 'Show history'
 complete -c llmctrlx -n '__fish_seen_subcommand_from history' -l list -d 'List history'
 complete -c llmctrlx -n '__fish_seen_subcommand_from history' -l all -d 'All history'
-complete -c llmctrlx -n '__fish_seen_subcommand_from history' -l delete -d 'Delete history'
-complete -c llmctrlx -n '__fish_seen_subcommand_from history' -l purge -d 'Purge history'
+complete -c llmctrlx -n '__fish_seen_subcommand_from history' -l delete -d 'Delete session'
+complete -c llmctrlx -n '__fish_seen_subcommand_from history' -l purge -d 'Purge all sessions'
 complete -c llmctrlx -n '__fish_seen_subcommand_from history' -s k -l session -d 'Session' -x
 
 # Completion command options

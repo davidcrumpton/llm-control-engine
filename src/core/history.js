@@ -70,6 +70,11 @@ function sanitiseMessage(msg) {
  * @returns {Object} Always a plain object (possibly empty).
  */
 function validateHistory(parsed) {
+  // if parsed is empty object
+  if (Object.keys(parsed).length === 0) {
+    return {}
+  }
+  // if parsed is not an object
   if (!isPlainObject(parsed)) {
     console.warn('WARN: History file does not contain a valid object; starting with empty history.')
     return {}
@@ -109,6 +114,11 @@ function validateHistory(parsed) {
  */
 export function loadHistory(file) {
   if (!fs.existsSync(file)) return {}
+
+  // If file is /dev/null return empty object
+  // /dev/null not on Windows, but it's a common way to disable history on Linux/MacOS.
+  // On Windows, use NUL  
+  if (file === '/dev/null' || file === 'NUL') return {}
 
   let raw
   try {

@@ -43,16 +43,106 @@ function validateCommand(rawInput) {
     throw new Error('Command rejected: shell metacharacters are not permitted.');
   }
 
-  const tokens = rawInput.match(/[^\s"']+|"([^"]*)"|'([^']*)'/g)
-    ?.map(t => t.replace(/^['"]|['"]$/g, '')) || [];
-
+  const tokens = parseTokens(rawInput);
   const [executable, ...args] = tokens;
 
-  if (!ALLOWED_EXECUTABLES.has(executable)) {
-    throw new Error(`Command rejected: '${executable}' is not in the allow-list.`);
+  if (!executable || !ALLOWED_EXECUTABLES.has(executable)) {
+    throw new Error(`Command rejected: '${executable ?? ''}' is not in the allow-list.`);
   }
 
   return { executable, args };
+}
+
+/**
+ * Parse a command string into tokens, respecting quoted strings.
+ * Handles both single and double-quoted arguments.
+ */
+function parseTokens(input) {
+  const tokens = [];
+  let current = '';
+  let inQuotes = false;
+  let quoteChar = null;
+
+  for (const char of input) {
+    if (inQuotes) {
+      if (char === quoteChar) {
+        tokens.push(current);
+        current = '';
+        inQuotes = false;
+        quoteChar = null;
+      } else {
+        current += char;
+      }
+    } else if (char === '"' || char === "'") {
+      inQuotes = true;
+      quoteChar = char;
+    } else if (char === ' ' || char === '\t') {
+      if (current) {
+        tokens.push(current);
+        current = '';
+      }
+    } else {
+      current += char;
+    }
+  }
+
+  if (current) {
+    tokens.push(current);
+  }
+
+  return tokens;
+}
+
+/**
+ * Safely invokes a recorder method only if a recorder exists.
+ * Prevents repetitive `if (recorder)` checks throughout the code.
+ * @param {Recorder|null} recorder
+ * @param {string} method
+ * @param  {...any} args
+ */
+function record(recorder, method, ...args) {
+  recorder?.[method](...args);
+}
+
+/**
+ * Execute the shell command and return stdout.
+ */
+async function executeCommand(executable, args, recorder) {
+  record(recorder, 'markExecStart');
+
+  const { stdout, stderr, error: execError } = await execFileAsync(
+    executable,
+    args,
+    {
+      timeout: EXEC_TIMEOUT_MS,
+      maxBuffer: MAX_OUTPUT_BYTES,
+      windowsHide: true,
+      env: { ...process.env, SHLVL: '1' },
+    }
+  );
+
+  record(recorder, 'markExecEnd');
+
+  if (execError || stderr) {
+    throw new Error(`Shell execution error: ${stderr || execError?.message}`);
+  }
+
+  return stdout;
+}
+
+/**
+ * Filter the LLM response using engine hooks
+ */
+async function filterResponse(content, engineHooks, options) {
+  if (typeof engineHooks?.filterResponse !== 'function') return content;
+
+  const result = await engineHooks.filterResponse('run', {
+    content,
+    filtered: false,
+    requestMeta: { flags: options },
+  });
+
+  return result.content;
 }
 
 // ─── Main command ─────────────────────────────────────────────────────────────
@@ -92,28 +182,13 @@ export async function cmdRun(llm, options, defaultHistoryFile, engineHooks) {
       }
     }
 
-    if (recorder) recorder.markExecStart();
-    const { stdout, stderr, error: execError } = await execFileAsync(
-      executable,
-      args,
-      {
-        timeout: EXEC_TIMEOUT_MS,
-        maxBuffer: MAX_OUTPUT_BYTES,
-        windowsHide: true,
-        env: { ...process.env, SHLVL: '1' },
-      }
-    );
-    if (recorder) recorder.markExecEnd();
+    const stdout = await executeCommand(executable, args, recorder);
 
-    if (execError || stderr) {
-      throw new Error(`Shell execution error: ${stderr || execError?.message}`);
-    }
-
-    if (recorder) recorder.markLlmStart();
+    record(recorder, 'markLlmStart');
 
     const userContent = `I executed the shell command "${rawCommand}" and received the following output:\n\n\`\`\`\n${stdout}\n\`\`\`\n\nPlease analyze this output and explain what it means.`;
     const systemContent = options.system || 'You are a helpful assistant that analyzes shell command output to provide technical insights.';
-    
+
     const messages = compactMessages([
       { role: 'system', content: systemContent },
       ...historyWindow,
@@ -126,7 +201,7 @@ export async function cmdRun(llm, options, defaultHistoryFile, engineHooks) {
       messages,
       options: chatOptions,
     });
-    if (recorder) recorder.markLlmEnd();
+    record(recorder, 'markLlmEnd');
 
     const llmResponse = res.message.content;
     const filtered = await filterResponse(llmResponse, engineHooks, options);
@@ -161,19 +236,4 @@ export async function cmdRun(llm, options, defaultHistoryFile, engineHooks) {
 
     process.exitCode = 1;
   }
-}
-
-/**
- * Filter the LLM response using engine hooks
- */
-async function filterResponse(content, engineHooks, options) {
-  if (typeof engineHooks?.filterResponse !== 'function') return content;
-
-  const result = await engineHooks.filterResponse('run', {
-    content,
-    filtered: false,
-    requestMeta: { flags: options },
-  });
-
-  return result.content;
 }
