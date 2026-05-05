@@ -22,7 +22,7 @@ const __dirname = dirname(__filename)
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.7.14'
+const APP_VERSION = '0.7.20'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_HISTORY_FILE = process.env.LLMCTRLX_HISTORY_FILE || path.join(os.homedir(), '.llmctrlx_history.json')
@@ -157,7 +157,7 @@ async function main() {
       break
     case 'run':
     case 'r':
-      await cmdRun(llm, options, engineHooks)
+      await cmdRun(llm, options, DEFAULT_HISTORY_FILE, engineHooks)
       break
     case 'plan':
     case 'p':

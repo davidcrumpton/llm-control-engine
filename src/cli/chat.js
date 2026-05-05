@@ -8,7 +8,7 @@
  */
 
 import fs from 'fs/promises'
-import { loadHistory, saveHistory, getSession }                          from '../core/history.js'
+import { loadHistory, saveHistory, getSession, getHistoryWindow }                          from '../core/history.js'
 import { buildOptions, isImage, validateFileSize, buildToolPrompt, buildImageMessage, compactMessages } from '../core/utils.js'
 import { createPluginRegistry, runWithTools, runWithoutTools }           from '../core/tools.js'
 import { Recorder, makeToolCallRecorder }                                from '../core/recorder.js'
@@ -143,12 +143,6 @@ async function resolveUserContent(options) {
   return parts.join('\n\n')
 }
 
-function getHistoryWindow(session, historyLengthArg) {
-  const length = parseInt(historyLengthArg)
-  const limit  = Number.isNaN(length) ? 5 : Math.max(0, length)
-  if (!session.messages || session.messages.length === 0 || limit === -1) return []
-  return limit === 0 ? session.messages : session.messages.slice(-limit)
-}
 
 async function processFiles(filesInput, maxSize, provider = 'ollama') {
   const files = Array.isArray(filesInput) ? filesInput : (filesInput ? [filesInput] : [])

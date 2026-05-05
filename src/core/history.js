@@ -164,3 +164,17 @@ export function getSession(history, key) {
   }
   return history[key]
 }
+/**
+ * Get a slice of the session history messages based on the requested length.
+ *
+ * @param {Object} session          - Session object from history.
+ * @param {string|number} historyLengthArg - Requested history length (defaults to 5).
+ *                                           0 means all history.
+ * @returns {Array}                 - Slice of messages.
+ */
+export function getHistoryWindow(session, historyLengthArg) {
+  const length = parseInt(historyLengthArg)
+  const limit  = Number.isNaN(length) ? 5 : Math.max(0, length)
+  if (!session.messages || session.messages.length === 0 || limit === -1) return []
+  return limit === 0 ? session.messages : session.messages.slice(-limit)
+}
