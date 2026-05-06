@@ -158,10 +158,7 @@ export class PluginLoader {
    *
    * Every file path is confined to `directory` before being loaded.
    */
-  async loadFromDirectory(
-    directory: string,
-    isRoot = true,
-  ): Promise<string[]> {
+  async loadFromDirectory(directory: string, isRoot = true): Promise<string[]> {
     const loaded: string[] = [];
     const rootDir = resolve(directory); // canonical base for confinement checks
 
