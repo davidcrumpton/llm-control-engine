@@ -30,18 +30,20 @@ export type HookEvent = (typeof HOOK_EVENTS)[number];
 // Priority
 // ---------------------------------------------------------------------------
 
-export enum HookPriority {
+export const HookPriority = {
   /** Reserved for engine internals. Runs first. */
-  SYSTEM = 0,
+  SYSTEM: 0,
   /** High-priority plugins (security, auth). */
-  HIGH = 100,
+  HIGH: 100,
   /** Default priority for most plugins. */
-  NORMAL = 500,
+  NORMAL: 500,
   /** Low-priority plugins (analytics, logging). */
-  LOW = 900,
+  LOW: 900,
   /** Monitor-only. Runs last, cannot mutate. */
-  MONITOR = 1000,
-}
+  MONITOR: 1000,
+} as const;
+
+export type HookPriority = (typeof HookPriority)[keyof typeof HookPriority];
 
 // ---------------------------------------------------------------------------
 // Context & Result

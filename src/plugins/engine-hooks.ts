@@ -54,7 +54,11 @@ export interface ErrorPayload {
 // ---------------------------------------------------------------------------
 
 export class EngineHookIntegration {
-  constructor(private hooks: HookManager) {}
+  private hooks: HookManager;
+
+  constructor(hooks: HookManager) {
+    this.hooks = hooks;
+  }
 
   private makeMeta(event: HookMeta["event"], requestId?: string): HookMeta {
     return {
