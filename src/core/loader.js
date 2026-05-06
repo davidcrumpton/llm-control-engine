@@ -14,7 +14,7 @@ import path from 'path'
 import { pathToFileURL } from 'url'
 import { validateTool } from './utils.js'
 
-const JS_EXTENSIONS = ['.js', '.mjs', '.cjs']
+const JS_EXTENSIONS = ['.js', '.mjs', '.cjs', '.ts']
 
 // ---------------------------------------------------------------------------
 // Path-confinement helper
@@ -47,6 +47,7 @@ function assertConfined(root, target) {
 // ---------------------------------------------------------------------------
 
 function isPluginFile(filePath) {
+  if (filePath.endsWith('.d.ts')) return false
   return JS_EXTENSIONS.includes(path.extname(filePath))
 }
 
@@ -77,6 +78,9 @@ async function loadPluginFile(filePath, registry, ctx) {
     const plugin = normalizePlugin(await importPlugin(filePath))
     if (!plugin) return
 
+    // Silently skip files that don't look like plugins (missing name or type)
+    if (!plugin.name || !plugin.type) return
+
     plugin.init?.(ctx)
 
     if (plugin.type === 'tool') {
@@ -85,7 +89,9 @@ async function loadPluginFile(filePath, registry, ctx) {
 
     registry.register(plugin)
   } catch (err) {
-    console.error(`Skipping plugin file ${filePath}: ${err.message}`)
+    // If we get here, it means the file looked like a plugin (had name and type)
+    // but failed to load, initialize, or validate. This should be reported.
+    console.error(`Error loading plugin ${filePath}: ${err.message}`)
   }
 }
 
