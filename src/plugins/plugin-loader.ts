@@ -170,8 +170,22 @@ export class PluginLoader {
       return loaded;
     }
 
+    const CORE_FILES = [
+      "index.ts",
+      "index.js",
+      "plugin-loader.ts",
+      "plugin-loader.js",
+      "engine-hooks.ts",
+      "engine-hooks.js",
+      "hook-manager.ts",
+      "hook-manager.js",
+      "types.ts",
+      "types.js",
+    ];
+
     // Load plugin files at the root level
     const pluginFiles = entries.filter((f) => {
+      if (CORE_FILES.includes(f)) return false;
       const ext = extname(f);
       const base = f.slice(0, -ext.length);
       return (
@@ -265,22 +279,46 @@ export class PluginLoader {
 
       // Rewrite relative imports to absolute file URLs.
       const pluginDir = resolve(filePath, "..");
-      content = content.replace(
-        /from ['"](\.[^'"]*)['"]/g,
-        (_match, relativePath) => {
-          const absolutePath = resolve(pluginDir, relativePath);
-          // Confine intra-plugin relative imports too.
-          if (rootDir) {
-            const base = resolve(rootDir);
-            if (!resolve(absolutePath).startsWith(base + "/")) {
-              throw new Error(
-                `Relative import escapes plugin root: '${relativePath}' in '${filePath}'`,
-              );
+      const relativeImportRegex = /from ['"](\.[^'"]*)['"]/g;
+
+      // We use a synchronous-ish replacement here, but we need to check file existence.
+      // Since this is ESM, we can't easily do async inside replace.
+      // However, we can pre-scan or just try both extensions in the URL.
+      // Better: Use a custom resolver or just assume if .js fails, .ts might work.
+      // Actually, we can use a helper to find the actual file on disk.
+      const matches = [...content.matchAll(relativeImportRegex)];
+      for (const match of matches) {
+        const relativePath = match[1];
+        let absolutePath = resolve(pluginDir, relativePath);
+
+        // If we are loading a .ts file, and the import is .js, but the .js doesn't exist,
+        // try to see if a .ts version exists.
+        if (filePath.endsWith(".ts") && absolutePath.endsWith(".js")) {
+          try {
+            await stat(absolutePath);
+          } catch {
+            const tsPath = absolutePath.slice(0, -3) + ".ts";
+            try {
+              await stat(tsPath);
+              absolutePath = tsPath;
+            } catch {
+              // Both fail? Keep .js and let Node throw its own error.
             }
           }
-          return `from 'file://${absolutePath}'`;
-        },
-      );
+        }
+
+        // Confine intra-plugin relative imports.
+        if (rootDir) {
+          const base = resolve(rootDir);
+          if (!resolve(absolutePath).startsWith(base + "/")) {
+            throw new Error(
+              `Relative import escapes plugin root: '${relativePath}' in '${filePath}'`,
+            );
+          }
+        }
+
+        content = content.replace(match[0], `from 'file://${absolutePath}'`);
+      }
 
       // ── Import from a data: URI (no temp file, no TOCTOU) ────────────────
       // Encode as base64 so the source is not interpreted as a URL.

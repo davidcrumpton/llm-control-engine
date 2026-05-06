@@ -99,6 +99,21 @@ async function loadPluginFile(filePath, registry, ctx) {
 // Public API
 // ---------------------------------------------------------------------------
 
+const CORE_FILES = [
+  'index.ts',
+  'index.js',
+  'plugin-loader.ts',
+  'plugin-loader.js',
+  'engine-hooks.ts',
+  'engine-hooks.js',
+  'hook-manager.ts',
+  'hook-manager.js',
+  'types.ts',
+  'types.js',
+  'loader.js',
+  'loader.ts'
+]
+
 /**
  * Recursively load all plugin files from `dir`, confining every resolved
  * path inside `dir` to prevent traversal attacks.
@@ -116,6 +131,8 @@ export async function loadPluginsFromDir(dir, registry, ctx) {
   const entries = fs.readdirSync(root)
 
   for (const entry of entries) {
+    if (CORE_FILES.includes(entry)) continue
+
     const fullPath = path.resolve(root, entry)
 
     // ── Confinement check ──────────────────────────────────────────────────
