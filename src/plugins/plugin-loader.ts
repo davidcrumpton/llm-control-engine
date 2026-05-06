@@ -158,7 +158,10 @@ export class PluginLoader {
    *
    * Every file path is confined to `directory` before being loaded.
    */
-  async loadFromDirectory(directory: string): Promise<string[]> {
+  async loadFromDirectory(
+    directory: string,
+    isRoot = true,
+  ): Promise<string[]> {
     const loaded: string[] = [];
     const rootDir = resolve(directory); // canonical base for confinement checks
 
@@ -205,7 +208,7 @@ export class PluginLoader {
         assertConfined(rootDir, fullPath);
         const entryStat = await stat(fullPath);
         if (entryStat.isDirectory()) {
-          const subLoaded = await this.loadFromDirectory(fullPath);
+          const subLoaded = await this.loadFromDirectory(fullPath, false);
           loaded.push(...subLoaded);
         }
       } catch (err) {
@@ -215,9 +218,11 @@ export class PluginLoader {
       }
     }
 
-    this.logger.info(
-      `[PluginLoader] Found ${loaded.length} plugin(s) in ${rootDir}`,
-    );
+    if (isRoot) {
+      this.logger.info(
+        `[PluginLoader] Found ${loaded.length} plugin(s) in ${rootDir}`,
+      );
+    }
 
     return loaded;
   }

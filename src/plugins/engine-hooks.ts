@@ -34,9 +34,13 @@ export interface InferencePayload {
 }
 
 export interface ResponsePayload {
-  content: string;
+  output: string;
+  content?: string; // Legacy alias for output
+  prompt?: string;
+  requestId?: string;
   filtered: boolean;
   filterReasons?: string[];
+  requestMeta?: Record<string, any>;
 }
 
 export interface ErrorPayload {
@@ -136,6 +140,14 @@ export class EngineHookIntegration {
       "response:filter",
       this.ctx("response:filter", payload, requestId),
     );
+
+    // Sync content and output for backward compatibility
+    if (result.data.output && !result.data.content) {
+      result.data.content = result.data.output;
+    } else if (result.data.content && !result.data.output) {
+      result.data.output = result.data.content;
+    }
+
     return result.data;
   }
 

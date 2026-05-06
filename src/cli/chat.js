@@ -94,7 +94,7 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
     if (recorder) recorder.markLlmEnd()
 
     // 5. Post-processing & Persistence
-    const filtered = await filterResponse(assistantResponse, engineHooks, options)
+    const filtered = await filterResponse(assistantResponse, engineHooks, options, userContent)
     if (!options.stream) console.log(filtered)
 
     session.messages.push({ role: 'user',      content: userContent })
@@ -205,14 +205,17 @@ async function handleStreamingChat(llm, options, messages, chatOptions) {
   return fullContent
 }
 
-async function filterResponse(content, engineHooks, options) {
-  if (typeof engineHooks?.filterResponse !== 'function') return content
+async function filterResponse(output, engineHooks, options, prompt) {
+  if (typeof engineHooks?.filterResponse !== 'function') return output
 
   const result = await engineHooks.filterResponse('chat', {
-    content,
+    output,
+    content     : output, // Alias for backward compatibility
+    prompt,
+    requestId   : options.session || 'default',
     filtered    : false,
     requestMeta : { flags: options },
   })
 
-  return result.content
+  return result.output || result.content
 }

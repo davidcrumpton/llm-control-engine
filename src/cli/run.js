@@ -133,16 +133,19 @@ async function executeCommand(executable, args, recorder) {
 /**
  * Filter the LLM response using engine hooks
  */
-async function filterResponse(content, engineHooks, options) {
-  if (typeof engineHooks?.filterResponse !== 'function') return content;
+async function filterResponse(output, engineHooks, options, prompt) {
+  if (typeof engineHooks?.filterResponse !== 'function') return output;
 
   const result = await engineHooks.filterResponse('run', {
-    content,
+    output,
+    content: output, // Alias for backward compatibility
+    prompt,
+    requestId: 'run',
     filtered: false,
     requestMeta: { flags: options },
   });
 
-  return result.content;
+  return result.output || result.content;
 }
 
 // ─── Main command ─────────────────────────────────────────────────────────────
@@ -204,7 +207,7 @@ export async function cmdRun(llm, options, defaultHistoryFile, engineHooks) {
     record(recorder, 'markLlmEnd');
 
     const llmResponse = res.message.content;
-    const filtered = await filterResponse(llmResponse, engineHooks, options);
+    const filtered = await filterResponse(llmResponse, engineHooks, options, userContent);
     console.log(filtered);
 
     session.messages.push({ role: 'user', content: userContent });
