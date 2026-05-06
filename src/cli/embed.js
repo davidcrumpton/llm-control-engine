@@ -29,8 +29,7 @@ export async function cmdEmbed(llm, options) {
 
   // 1. Validation
   if (!files && !stdin) {
-    console.error('Error: Provide files with -f or stdin with --s or --stdin');
-    process.exit(1);
+    throw new Error('Error: Provide files with -f or stdin with --s or --stdin');
   }
 
   try {
@@ -82,7 +81,6 @@ export async function cmdEmbed(llm, options) {
     console.log(JSON.stringify(successfulResults, null, 2));
 
   } catch (err) {
-    console.error('Fatal error during embedding process:', err.message);
-    process.exit(1);
+    throw new Error(`Fatal error during embedding process: ${err.message}`);
   }
 }

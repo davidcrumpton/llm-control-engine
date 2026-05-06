@@ -352,6 +352,6 @@ export async function cmdPlan(llm, options, maxUploadFileSize = 10 * 1024 * 1024
 
   } catch (err) {
     console.error(err.message)
-    process.exit(1)
+    process.exitCode = 1
   }
 }

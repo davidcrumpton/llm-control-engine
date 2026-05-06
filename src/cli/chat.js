@@ -34,8 +34,7 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
   // 1. Prepare Input
   const userContent = await resolveUserContent(options)
   if (!userContent) {
-    console.error('Error: No input provided via CLI or stdin.')
-    process.exit(1)
+    throw new Error('Error: No input provided via CLI or stdin.')
   }
 
   // 2. Build Message Context
@@ -134,8 +133,7 @@ async function resolveUserContent(options) {
       process.stdin.on('end', () => resolve(data.trim()))
     })
     if (options.stdin && !stdinData && process.stdin.isTTY) {
-      console.error('--stdin specified but no input detected')
-      process.exit(1)
+      throw new Error('--stdin specified but no input detected')
     }
   }
 

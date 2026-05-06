@@ -22,7 +22,7 @@ const __dirname = dirname(__filename)
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.7.29'
+const APP_VERSION = '0.7.33'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_HISTORY_FILE = process.env.LLMCTRLX_HISTORY_FILE || path.join(os.homedir(), '.llmctrlx_history.json')
@@ -250,7 +250,8 @@ function cmdCompletion(shell) {
       break
     default:
       console.error(`Unsupported shell: ${shellName}. Supported: bash, zsh, fish`)
-      process.exit(1)
+      process.exitCode = 1
+      return
   }
 }
 
@@ -631,4 +632,7 @@ complete -c llmctrlx -n '__fish_seen_subcommand_from history' -s k -l session -d
 complete -c llmctrlx -n '__fish_seen_subcommand_from completion' -l shell -d 'Shell type' -a 'bash zsh fish' -x`
 }
 
-main()
+main().catch(err => {
+  console.error(`[${APP_NAME}] Error: ${err.message}`)
+  process.exitCode = 1
+})
