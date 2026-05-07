@@ -172,7 +172,7 @@ llmctrlx chat -u "What time is it?" -k "my-session" -m gemma4:e2b
 llmctrlx chat -u "What time is it?" -k "my-session" --stream -m gemma4:e2b
 
 # Read prompt from stdin and set system message
-cat examples/prompt.txt | llmctrlx chat -s 'You are a helpfule assistant'
+cat examples/prompt.txt | llmctrlx chat -s 'You are a helpful assistant'
 
 # Chat with stdin and user prompt
 cat Makefile | llmctrlx chat -u "examine my Makefile" --stdin
@@ -181,7 +181,7 @@ cat Makefile | llmctrlx chat -u "examine my Makefile" --stdin
 llmctrlx chat -u "Summarize these files." -f "examples/attachment1.txt" -f "examples/attachment2.txt"
 
 # Attach images
-llmctrlx chat -u "What is this image of?" -f "examples/png.png" -m gemma4:e26b
+llmctrlx chat -u "What is this image of?" -f "examples/png.png" -m gemma4:26b
 ```
 
 ## Ollama
@@ -450,7 +450,7 @@ Made changes.
 # question.
 
 man -T ascii getopt_long | col -b | llmctrlx chat -u 'Summarize man page' --stdin
-llmctrlx.js chat -u 'does getopt_long allow long options without a short equivalent'
+llmctrlx chat -u 'does getopt_long allow long options without a short equivalent'
 ```
 
 Yes, according to the man page, **`getopt_long()` can absolutely handle long options that do not have a corresponding short equivalent.**
