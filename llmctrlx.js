@@ -22,7 +22,7 @@ const __dirname = dirname(__filename)
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.7.40'
+const APP_VERSION = '0.7.41'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_HISTORY_FILE = process.env.LLMCTRLX_HISTORY_FILE || path.join(os.homedir(), '.llmctrlx_history.json')
@@ -84,9 +84,17 @@ const options = getopts(argv.slice(1), {
    
   },
   boolean: ['json', 'stream', 'no_tools', 'all', 'list', 'stdin', 'verbose', 'purge', 'dry-run', 'diff'],
-  string: ['user', 'system', 'files', 'tools_dir', 'provider', 'show', 'tags', 'shell', 'var', 'num_ctx', 'record', 'timeout'],
-  array: ['var']
+  string: ['user', 'system', 'tools_dir', 'provider', 'show', 'tags', 'shell', 'var', 'num_ctx', 'record', 'timeout'],
+  array: ['files', 'var']
 })
+
+// Check for -f flag with no files for chat command
+if (command === 'chat' && (argv.includes('-f') || argv.includes('--files'))) {
+  if (!options.files || options.files.length === 0) {
+    console.error('Error: -f flag provided but no files specified.')
+    process.exit(1)
+  }
+}
 
 // abort if -W and -T is given (not applicable to replay which only reads toolsDir for re-execution)
 if (options.no_tools && options.tools_dir && command !== 'replay') {
