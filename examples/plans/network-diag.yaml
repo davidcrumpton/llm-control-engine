@@ -1,9 +1,9 @@
 version: 1
 name: Network Health Diagnostic
 attachments:
-   - ./examples/network-diagram.png
-   - ./examples/curl-command.txt
-   - "{{ ESCALATION_CONTACTS }}"
+  - ./examples/network-diagram.png
+  - ./examples/curl-command.txt
+  - "{{ESCALATION_CONTACTS}}"
 vars:
   server: localhost
   env: dev
