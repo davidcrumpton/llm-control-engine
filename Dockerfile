@@ -34,6 +34,7 @@ WORKDIR /app
 # Copy source and configs needed for compilation
 COPY tsconfig.json tsconfig.build.json ./
 COPY src/ ./src/
+COPY llmctrlx.js polyfill.js ./
 
 # Compile TypeScript
 RUN npm run build
@@ -77,6 +78,11 @@ WORKDIR /app
 COPY --from=build --chown=engine:engine /app/node_modules ./node_modules
 COPY --from=build --chown=engine:engine /app/dist ./dist
 COPY --from=build --chown=engine:engine /app/package.json ./
+COPY --from=build --chown=engine:engine /app/llmctrlx.js ./
+COPY --from=build --chown=engine:engine /app/polyfill.js ./
+COPY --from=build --chown=engine:engine /app/src ./src
+COPY --chown=engine:engine tools/ ./tools/
+COPY --chown=engine:engine plugins/ ./plugins/
 
 USER engine
 
@@ -84,4 +90,5 @@ USER engine
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD node -e "process.exit(0)"
 
-CMD ["llmctrlx"]
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["node", "llmctrlx.js"]
