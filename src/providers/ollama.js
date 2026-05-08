@@ -4,7 +4,6 @@
  */
 
 import { Ollama } from 'ollama'
-import { Agent, fetch as undiciFetch } from 'undici'
 
 export class OllamaProvider {
   static DEFAULT_HOST  = 'http://127.0.0.1:11434'
@@ -16,15 +15,12 @@ export class OllamaProvider {
     const host = opts.host || OllamaProvider.DEFAULT_HOST
     this.defaultModel = OllamaProvider.DEFAULT_MODEL
     
-    // Custom fetch with timeout settings for undici (handles long-running queries)
+    // Custom fetch with timeout settings
     const timeoutMs = (opts.timeout || 480) * 1000
     const customFetch = (input, init) => {
-      return undiciFetch(input, {
+      return fetch(input, {
         ...init,
-        dispatcher: new Agent({
-          headersTimeout: timeoutMs,
-          bodyTimeout: timeoutMs,
-        })
+        signal: AbortSignal.timeout(timeoutMs)
       })
     }
 

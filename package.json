@@ -1,6 +1,6 @@
 {
   "name": "llmctrlx",
-  "version": "0.1.0",
+  "version": "0.7.80",
   "description": "A modular LLM control engine with dynamic tool loading and multi-provider support",
   "type": "module",
   "engines": {
@@ -47,6 +47,19 @@
   "bin": {
     "llmctrlx": "llmctrlx.js"
   },
+  "pkg": {
+    "scripts": [
+      "llmctrlx.js"
+    ],
+    "assets": [
+      "llmctrlx.js",
+      "node_modules/undici/**/*"
+    ],
+    "targets": [
+      "node20-linux-x64",
+      "node20-macos-x64"
+    ]
+  },
   "files": [
     "dist",
     "llmctrlx.js",
@@ -57,14 +70,14 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build:bin": "esbuild llmctrlx.js --inject:polyfill.js --bundle --packages=external --platform=node --format=cjs --outfile=dist/llmctrlx.cjs && npx @yao-pkg/pkg dist/llmctrlx.cjs --targets node20-linux-x64,node20-macos-x64 --out-path dist/",
+    "build": "npm run build:bin && tsc -p tsconfig.build.json",
     "build:clean": "rm -rf dist && npm run build",
-    "build:bin": "pkg llmctrlx.js --targets node18-linux-x64,node18-macos-x64 --out-path dist/",
-    "build:deb": "fpm -s dir -t deb -n llmctrlx -v $(node -p \"require('./package.json').version\") dist/llmctrlx-linux-x64=/usr/local/bin/llmctrlx",
-    "build:rpm": "fpm -s dir -t rpm -n llmctrlx -v $(node -p \"require('./package.json').version\") dist/llmctrlx-linux-x64=/usr/local/bin/llmctrlx",
-    "build:packages": "npm run build:bin && npm run build:deb && npm run build:rpm",
-    "dev": "tsx watch src/cli/index.ts",
-    "start": "node dist/cli/index.js",
+    "build:deb": "npm run build && fpm -s dir -t deb -n llmctrlx -v $(node -p \"require('./package.json').version\") dist/llmctrlx-linux=/usr/local/bin/llmctrlx",
+    "build:rpm": "npm run build && fpm -s dir -t rpm -n llmctrlx -v $(node -p \"require('./package.json').version\") dist/llmctrlx-linux=/usr/local/bin/llmctrlx",
+    "build:packages": "npm run build:deb && npm run build:rpm",
+    "dev": "tsx watch llmctrlx.js",
+    "start": "node llmctrlx.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -100,6 +113,8 @@
     "@semantic-release/gitlab": "^13.2.0",
     "@types/node": "^20.19.39",
     "@vitest/coverage-v8": "^2.1.0",
+    "@yao-pkg/pkg": "^6.19.0",
+    "esbuild": "^0.28.0",
     "eslint": "^9.12.0",
     "memfs": "^4.57.2",
     "pkg": "^5.8.1",

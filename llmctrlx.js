@@ -11,18 +11,34 @@ import { fileURLToPath, pathToFileURL } from 'url'
 import { dirname, join } from 'path'
 import os from 'os'
 
+import { OllamaProvider, LMStudioProvider } from './src/providers/index.js'
+import {
+  cmdChat,
+  cmdModel,
+  cmdEmbed,
+  cmdBench,
+  cmdRun,
+  cmdPlan,
+  cmdTools,
+  cmdHistory,
+  cmdPlugins,
+  cmdReplay
+} from './src/cli/index.js'
+import { HookManager, PluginLoader, EngineHookIntegration } from './dist/plugins/index.js'
+
 
 // --------------------
 // Setup paths relative to script location
 // --------------------
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
+const isESM = typeof import.meta !== 'undefined' && typeof import.meta.url !== 'undefined'
+const _filename = typeof __filename !== 'undefined' ? __filename : (isESM ? fileURLToPath(import.meta.url) : process.argv[1] || process.cwd())
+const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(_filename)
 
 // --------------------
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.7.42'
+const APP_VERSION = '0.7.80'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_HISTORY_FILE = process.env.LLMCTRLX_HISTORY_FILE || path.join(os.homedir(), '.llmctrlx_history.json')
@@ -37,7 +53,7 @@ const DEFAULT_TIMEOUT = process.env.LLMCTRLX_TIMEOUT || 480
 // --------------------
 // Tools Directory
 // --------------------
-const DEFAULT_TOOLS_DIR = process.env.LLMCTRLX_TOOLS_DIR || join(__dirname, 'tools')
+const DEFAULT_TOOLS_DIR = process.env.LLMCTRLX_TOOLS_DIR || join(_dirname, 'tools')
 
 // --------------------
 // Plugins Directory
@@ -107,26 +123,6 @@ const toolsDir = options.tools_dir || DEFAULT_TOOLS_DIR
 // Router
 // --------------------
 async function main() {
-  // Dynamically import modules relative to script location
-  // Convert to file:// URLs for proper module resolution across platforms
-  const providersPath = pathToFileURL(join(__dirname, 'src/providers/index.js')).href
-  const cliPath = pathToFileURL(join(__dirname, 'src/cli/index.js')).href
-  const pluginsPath = pathToFileURL(join(__dirname, 'dist/plugins/index.js')).href
-
-  const { OllamaProvider, LMStudioProvider } = await import(providersPath)
-  const {
-    cmdChat,
-    cmdModel,
-    cmdEmbed,
-    cmdBench,
-    cmdRun,
-    cmdPlan,
-    cmdTools,
-    cmdHistory,
-    cmdPlugins,
-    cmdReplay
-  } = await import(cliPath)
-  const { HookManager, PluginLoader, EngineHookIntegration } = await import(pluginsPath)
 
   // Initialize LLM provider
   let llm
