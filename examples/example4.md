@@ -4,7 +4,6 @@
 
 I ran the benchmarks on the following hardware:
 
-
 ## System
 
 - Intel i7-8700K
