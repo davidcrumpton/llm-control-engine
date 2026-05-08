@@ -261,6 +261,18 @@ Benchmark one or multiple models to compare their speed (response time and token
 llmctrlx bench -m llama3,gemma:7b,mistral -u "Write a short poem."
 ```
 
+```bash
+for model in $(llmctrlx model --list)
+do
+  # Pre-load without timing (or just ignore this output)
+  llmctrlx bench -u 'warmup' -m $model > /dev/null
+  
+  # Now run the actual timed benchmarks
+  llmctrlx bench -u 'Why is the sky blue?' -m $model
+  llmctrlx bench -u 'Why is the sky blue?' -m $model
+done
+```
+
 #### 5. `run`
 
 Execute a shell command and pass its standard output to an LLM for analysis.
