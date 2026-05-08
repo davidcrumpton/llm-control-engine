@@ -47,6 +47,7 @@
   "bin": {
     "llmctrlx": "llmctrlx.js"
   },
+  "man": "./man/llmctrlx.1",
   "pkg": {
     "scripts": [
       "llmctrlx.js"
@@ -67,7 +68,8 @@
     "tools",
     "README.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "man"
   ],
   "scripts": {
     "build:for_npm_link": "pkg llmctrlx.js --targets node18-linux-x64,node18-macos-x64 --out-path dist/",

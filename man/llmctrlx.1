@@ -1,0 +1,437 @@
+.Dd May 8, 2026
+.Dt LLMCTRLX 1
+.Os
+.Sh NAME
+.Nm llmctrlx
+.Nd local LLM orchestration and execution CLI with tool and plugin support
+.Sh SYNOPSIS
+.Nm
+.Ar command
+.Op options
+.Sh DESCRIPTION
+.Nm
+is a local LLM orchestration and execution CLI built with Node.js.
+It features persistent chat history, support for multiple chat sessions,
+LLM tool execution, model management, benchmarking, and shell command analysis.
+.Sh PREREQUISITES
+.Bl -bullet -compact
+.It
+Node.js installed
+.It
+Ollama or LM Studio running locally (or accessible remotely)
+.It
+.Sy ollama ,
+.Sy node-fetch ,
+.Sy getopts ,
+and
+.Sy uuid
+packages installed via
+.Cm npm install
+.El
+.Sh INSTALLATION
+Install project dependencies:
+.Bd -literal -offset indent
+npm install
+.Ed
+.Pp
+Install the CLI globally for local development:
+.Bd -literal -offset indent
+npm install -g .
+.Ed
+.Pp
+This creates the
+.Nm
+executable in your global npm bin path.
+.Sh ENVIRONMENT
+.Bl -tag -width LLMCTRLX_MAX_UPLOAD_FILE_SIZE
+.It Ev LLMCTRLX_API_URL
+The URL of your LLM provider.
+Default is provider-specific.
+.It Ev LLMCTRLX_MODEL
+The default model to use.
+Default:
+.Li gemma4:e4b .
+.It Ev LLMCTRLX_HISTORY_FILE
+The default history file.
+Default:
+.Pa ~/.llmctrlx_history.json .
+Use
+.Li NUL
+on Windows or
+.Pa /dev/null
+on Linux/macOS to disable history.
+.It Ev LLMCTRLX_TOOLS_DIR
+The default tools directory.
+Default:
+.Li ${INSTALL_PATH}/tools .
+.It Ev __LLMCTRLX_OLLAMA_API_KEY
+API key for the Ollama cloud provider.
+Default: empty string.
+.It Ev LLMCTRLX_PROVIDER
+The default provider.
+Default:
+.Li ollama .
+Options:
+.Li ollama ,
+.Li lmstudio .
+.It Ev LLMCTRLX_MAX_UPLOAD_FILE_SIZE
+Maximum file size to upload.
+Default: 10 MB (1024 * 1024 * 10).
+.It Ev LLMCTRLX_SESSION
+The default session name.
+Default:
+.Li default .
+.It Ev LLMCTRLX_NUM_CTX
+The default context window size.
+Default:
+.Li 32768 .
+.It Ev LLMCTRLX_TIMEOUT
+The default request timeout in seconds.
+Default:
+.Li 480 .
+.El
+.Sh GLOBAL OPTIONS
+These options apply to most commands:
+.Bl -tag -width indent
+.It Fl a , -api_url Ar url
+The URL of your LLM provider.
+Default:
+.Li http://127.0.0.1:11434 .
+.It Fl m , -model Ar name
+Model to use.
+Default:
+.Li gemma4:e4b .
+.It Fl P , -provider Ar provider
+Set the provider.
+Default:
+.Li ollama .
+Options:
+.Li ollama ,
+.Li lmstudio .
+.It Fl K , -api_key Ar key
+Set the API key for the cloud Ollama instance.
+.It Fl k , -session Ar name
+Session key for continuing a conversation.
+Default:
+.Li default .
+.It Fl o , -timeout Ar seconds
+Request timeout in seconds.
+Default:
+.Li 480 .
+.El
+.Sh COMMANDS
+.Ss chat
+Run a chat session with an LLM.
+Maintains conversational history in
+.Pa .chat_history.json
+and supports tool usage.
+Tools do not execute when
+.Fl -stream
+is used; only the tool call is generated.
+.Pp
+Options:
+.Bl -tag -width indent
+.It Fl u , -user Ar text
+The user prompt. Can be combined with
+.Fl -stdin .
+.It Fl s , -system Ar text
+A system prompt to prepend.
+.It Fl f , -files Ar path
+Attach files to the prompt. Can be specified multiple times.
+.It Fl k , -session Ar name
+Session key.
+Default:
+.Li default .
+.It Fl c , -context-length Ar number
+Number of messages to include in conversation history.
+Default:
+.Li 5 .
+.It Fl -stdin
+Read content from stdin. Can be combined with
+.Fl u .
+.It Fl -json
+Force JSON output.
+.It Fl -stream
+Stream output as it is generated.
+.It Fl t , -temperature Ar float
+Set the generation temperature.
+.It Fl p , -top_p Ar float
+Set the top-p sampling value.
+.It Fl T , -tools-dir Ar path
+Path to the tools directory.
+Default:
+.Li ./tools .
+.It Fl W , -no-tools
+Disable tool usage.
+.It Fl g , -tags Ar tags
+Comma-separated list of tags to filter loaded tools.
+.It Fl R , -record Ar file
+Record the session to a JSON file for later replay.
+.El
+.Pp
+The
+.Cm chat
+command automatically loads JavaScript modules from the
+.Li ./tools
+directory.
+When tags are specified via
+.Fl -tags ,
+only tools matching those tags (or tools with the
+.Li always
+tag) are loaded.
+.Pp
+Examples:
+.Bd -literal -offset indent
+llmctrlx chat -u "Why is the sky blue?"
+llmctrlx chat -u "Tell me a joke." -W -m gemma4:e2b
+llmctrlx chat -u "What time is it?" -m gemma4:e2b
+llmctrlx chat -u "What time is it?" -T "~/my-tools" -m gemma4:e2b
+llmctrlx chat -u "Check my IP" --tags network -m gemma4:e2b
+cat examples/prompt.txt | llmctrlx chat -s 'You are a helpful assistant'
+cat Makefile | llmctrlx chat -u "examine my Makefile" --stdin
+llmctrlx chat -u "Summarize these files." -f file1.txt -f file2.txt
+llmctrlx chat -u "What is this image of?" -f img.png -m gemma4:26b
+.Ed
+.Ss model
+Manage LLM models.
+.Pp
+Options:
+.Bl -tag -width indent
+.It Fl -list
+List all local models.
+.It Fl -show
+Show details for a specific model (requires
+.Fl m ) .
+.It Fl -pull
+Pull a model (requires
+.Fl m ) .
+.It Fl -delete
+Delete a model (requires
+.Fl m ) .
+.El
+.Pp
+Examples:
+.Bd -literal -offset indent
+llmctrlx model --list
+llmctrlx model --pull -m llama3
+llmctrlx model --show -m llama3
+llmctrlx model --delete -m llama3
+.Ed
+.Ss embed
+Generate embeddings for files.
+.Pp
+Options:
+.Bl -tag -width indent
+.It Fl f , -files Ar path
+File(s) to generate embeddings for. Required.
+.El
+.Pp
+Example:
+.Bd -literal -offset indent
+llmctrlx embed -f README.md -m mistral:latest
+.Ed
+.Ss bench
+Benchmark one or multiple models to compare speed (response time and token count).
+.Pp
+Options:
+.Bl -tag -width indent
+.It Fl m , -model Ar names
+Comma-separated list of models to benchmark. Required.
+.It Fl u , -user Ar text
+The prompt to test with.
+Default:
+.Li Hello .
+.El
+.Pp
+Example:
+.Bd -literal -offset indent
+llmctrlx bench -m llama3,gemma:7b,mistral -u "Write a short poem."
+.Ed
+.Ss run
+Execute a shell command and pass its standard output to an LLM for analysis.
+.Pp
+Options:
+.Bl -tag -width indent
+.It Fl u , -user Ar command
+The shell command to execute. Required.
+.It Fl R , -record Ar file
+Record the session to a JSON file for later replay.
+.El
+.Pp
+Examples:
+.Bd -literal -offset indent
+llmctrlx run -u "df -h" -m llama3
+llmctrlx run -u "ls -la" -m llama3
+.Ed
+.Ss replay
+Replay a recorded session from a JSON file.
+Supports simple playback and a diff mode that re-executes the original command
+and compares results.
+.Pp
+Options:
+.Bl -tag -width indent
+.It Fl -diff
+Re-execute the original command with the recorded inputs and show a diff
+against the recording.
+Exit code is
+.Li 0
+if identical, or
+.Li 2
+if differences were found.
+.El
+.Pp
+Examples:
+.Bd -literal -offset indent
+llmctrlx replay session.json
+llmctrlx replay session.json --diff
+.Ed
+.Ss plan
+Execute a YAML-defined multi-step workflow.
+Runs each step command in order, captures stdout/stderr, and analyzes the
+combined output with an LLM.
+Plans may include reusable variables via a top-level
+.Li vars:
+mapping, overridable on the command line.
+A
+.Li policy:
+section may restrict which models and tools are allowed.
+.Pp
+Options:
+.Bl -tag -width indent
+.It Fl m , -model Ar name
+Model to use, or override the plan's configured model.
+.It Fl s , -system Ar text
+Optional system prompt to override the plan's system prompt.
+.It Fl -var Ar key=value
+Set or override a plan variable; can be repeated.
+.It Fl R , -record Ar file
+Record the plan execution to a JSON file for later replay.
+.It Fl -dry-run
+Show the ordered steps without executing any commands.
+.El
+.Pp
+Examples:
+.Bd -literal -offset indent
+llmctrlx plan examples/plans/host-health.yaml
+llmctrlx plan examples/plans/host-health.yaml -m llama3
+llmctrlx plan examples/plans/host-health.yaml --dry-run
+llmctrlx plan examples/plans/host-health.yaml --var server=proxmox1 --var env=prod
+.Ed
+.Ss tools
+List and inspect available LLM tools.
+.Pp
+Options:
+.Bl -tag -width indent
+.It Fl g , -tags Ar tags
+Filter displayed tools by tags.
+Tools with the
+.Li always
+tag are always included.
+.It Fl -json
+Output tools in JSON format.
+.El
+.Pp
+Examples:
+.Bd -literal -offset indent
+llmctrlx tools
+llmctrlx tools --tags network,web
+.Ed
+.Ss history
+Manage chat history across all sessions.
+.Pp
+Options:
+.Bl -tag -width indent
+.It Fl -show
+Show the current chat history (default when no other option is provided).
+.It Fl -all
+Show all chat history entries.
+.It Fl -list
+List session keys.
+.El
+.Pp
+Examples:
+.Bd -literal -offset indent
+llmctrlx history
+llmctrlx history --all
+llmctrlx history --list
+llmctrlx history --show -k my-session
+.Ed
+.Ss completion
+Generate shell completion scripts for bash, zsh, and fish.
+.Pp
+Options:
+.Bl -tag -width indent
+.It Fl -shell Ar shell
+Shell type to generate completion for.
+Options:
+.Li bash ,
+.Li zsh ,
+.Li fish .
+Defaults to the current shell if not specified.
+.El
+.Pp
+Examples:
+.Bd -literal -offset indent
+llmctrlx completion --shell bash
+llmctrlx completion --shell zsh
+llmctrlx completion --shell fish
+.Ed
+.Sh SHELL COMPLETIONS
+.Nm
+supports auto-completion for bash, zsh, and fish shells.
+.Ss Automatic Installation
+.Bd -literal -offset indent
+node install-completion.js
+node install-completion.js bash
+node install-completion.js zsh
+node install-completion.js fish
+.Ed
+.Ss Manual Installation
+.Bd -literal -offset indent
+# bash
+llmctrlx completion --shell bash > /usr/local/etc/bash_completion.d/llmctrlx
+
+# zsh
+llmctrlx completion --shell zsh > /usr/local/share/zsh/site-functions/_llmctrlx
+
+# fish
+llmctrlx completion --shell fish > ~/.config/fish/completions/llmctrlx.fish
+.Ed
+.Sh BUILDING
+.Ss Binary Building
+Build standalone Linux and macOS binaries:
+.Bd -literal -offset indent
+npm run build:bin
+.Ed
+Output is placed in the
+.Pa dist/
+directory as
+.Pa llmctrlx-linux
+and
+.Pa llmctrlx-macos .
+.Ss Package Building
+Requires
+.Sy fpm
+(effing package management):
+.Bd -literal -offset indent
+# macOS
+brew install fpm
+
+# Linux
+gem install fpm
+
+npm run build:packages
+.Ed
+A Homebrew formula is provided in
+.Pa llmctrlx.rb .
+.Sh EXIT STATUS
+.Ex -std
+When used with
+.Cm replay Fl -diff ,
+exits with
+.Li 2
+if differences are found between the recorded and replayed session.
+.Sh SEE ALSO
+.Xr ollama 1
+.Sh AUTHORS
+See the project repository for contributor information.
