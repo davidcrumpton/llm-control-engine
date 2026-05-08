@@ -13,35 +13,6 @@
 is a local LLM orchestration and execution CLI built with Node.js.
 It features persistent chat history, support for multiple chat sessions,
 LLM tool execution, model management, benchmarking, and shell command analysis.
-.Sh PREREQUISITES
-.Bl -bullet -compact
-.It
-Node.js installed
-.It
-Ollama or LM Studio running locally (or accessible remotely)
-.It
-.Sy ollama ,
-.Sy node-fetch ,
-.Sy getopts ,
-and
-.Sy uuid
-packages installed via
-.Cm npm install
-.El
-.Sh INSTALLATION
-Install project dependencies:
-.Bd -literal -offset indent
-npm install
-.Ed
-.Pp
-Install the CLI globally for local development:
-.Bd -literal -offset indent
-npm install -g .
-.Ed
-.Pp
-This creates the
-.Nm
-executable in your global npm bin path.
 .Sh ENVIRONMENT
 .Bl -tag -width LLMCTRLX_MAX_UPLOAD_FILE_SIZE
 .It Ev LLMCTRLX_API_URL
