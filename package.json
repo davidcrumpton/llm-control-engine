@@ -71,7 +71,7 @@
   ],
   "scripts": {
     "build:bin": "esbuild llmctrlx.js --inject:polyfill.js --bundle --packages=external --platform=node --format=cjs --outfile=dist/llmctrlx.cjs && npx @yao-pkg/pkg dist/llmctrlx.cjs --targets node20-linux-x64,node20-macos-x64 --out-path dist/",
-    "build": "npm run build:bin && tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && npm run build:bin",
     "build:clean": "rm -rf dist && npm run build",
     "build:deb": "npm run build && fpm -s dir -t deb -n llmctrlx -v $(node -p \"require('./package.json').version\") dist/llmctrlx-linux=/usr/local/bin/llmctrlx",
     "build:rpm": "npm run build && fpm -s dir -t rpm -n llmctrlx -v $(node -p \"require('./package.json').version\") dist/llmctrlx-linux=/usr/local/bin/llmctrlx",
