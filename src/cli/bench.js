@@ -46,7 +46,8 @@ export async function cmdBench(llm, options) {
         model,
         status: 'success',
         latency: `${duration}ms`,
-        tokens: response.usage?.total_tokens || 'N/A'
+        eval_count: response.eval_count || 'N/A',
+        prompt_eval_count: response.prompt_eval_count || 'N/A',
       };
     } catch (error) {
       return {
