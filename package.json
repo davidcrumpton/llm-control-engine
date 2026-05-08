@@ -70,6 +70,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
+    "build:for_npm_link": "pkg llmctrlx.js --targets node18-linux-x64,node18-macos-x64 --out-path dist/",
     "build:bin": "esbuild llmctrlx.js --inject:polyfill.js --bundle --packages=external --platform=node --format=cjs --outfile=dist/llmctrlx.cjs && npx @yao-pkg/pkg dist/llmctrlx.cjs --targets node20-linux-x64,node20-macos-x64 --out-path dist/",
     "build": "tsc -p tsconfig.build.json && npm run build:bin",
     "build:clean": "rm -rf dist && npm run build",

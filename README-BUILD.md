@@ -48,9 +48,26 @@ Run `npm run` test:ui for the interactive Vitest dashboard in your browser.
 
 Installation can vary by operating system but this works on some things.
 
+### Local Install (not publishing to npm)
+
 ```sh
    make install
    make build
    # use su/sudo/doas in case you don't have system permission
    npm link
+```
+
+### Local Install (publishing to npm)
+
+```sh
+   make install
+   make build:deb
+   make build:rpm
+   # use su/sudo/doas in case you don't have system permission
+   sudo dpkg -i dist/llmctrlx*.deb 
+   sudo rpm -i dist/llmctrlx*.rpm
+
+   # MacOS
+   chmod +x dist/llmctrlx-macos
+   sudo cp dist/llmctrlx-macos /usr/local/bin/llmctrlx
 ```
