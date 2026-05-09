@@ -3,8 +3,6 @@
  * Handles tool loading, validation, and execution flow
  */
 
-import path from 'path'
-import os from 'os'
 import { extractJSON, validateArgs } from './utils.js'
 import { Registry } from './registry.js'
 import { loadPluginsFromDir } from './loader.js'
