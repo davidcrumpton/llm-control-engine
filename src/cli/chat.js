@@ -165,7 +165,7 @@ async function handleStandardChat(llm, options, messages, chatOptions, toolsDir)
   }
 
   const registry      = await createPluginRegistry(toolsDir, options.session)
-  const requestedTags = options.tags?.split(',').map(t => t.trim())
+  const requestedTags = options.tags ? options.tags.split(',').map(t => t.trim()).filter(Boolean) : null
 
   let tools = registry.list('tool')
   if (requestedTags) {
@@ -175,7 +175,9 @@ async function handleStandardChat(llm, options, messages, chatOptions, toolsDir)
     )
   }
 
-  messages.unshift({ role: 'system', content: buildToolPrompt(tools) })
+  if (tools.length > 0) {
+    messages.unshift({ role: 'system', content: buildToolPrompt(tools) })
+  }
   return await runWithTools(llm, options.model, messages, tools, registry.list('policy'), chatOptions)
 }
 

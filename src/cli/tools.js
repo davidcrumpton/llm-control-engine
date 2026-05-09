@@ -9,7 +9,7 @@ import { loadTools } from '../core/tools.js'
  * @param {string} toolsDir - Tools directory path
  */
 export async function cmdTools(options, toolsDir) {
-  const requestedTags = options.tags?.split(',').map(t => t.trim()) ?? null
+  const requestedTags = options.tags ? options.tags.split(',').map(t => t.trim()).filter(Boolean) : null
   const tools = await loadTools(toolsDir, requestedTags)
 
   // 1. Handle Empty State

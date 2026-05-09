@@ -12,6 +12,7 @@
 import fs from 'fs'
 import path from 'path'
 import { pathToFileURL } from 'url'
+import { createRequire } from 'module'
 import { validateTool } from './utils.js'
 
 const JS_EXTENSIONS = ['.js', '.mjs', '.cjs', '.ts']
@@ -51,9 +52,83 @@ function isPluginFile(filePath) {
   return JS_EXTENSIONS.includes(path.extname(filePath))
 }
 
+/**
+ * Load a plugin file using dynamic import().
+ * Falls back to a CJS-compatible loader when running inside a pkg-compiled
+ * binary, which intercepts import() and throws
+ * ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING.
+ */
 async function importPlugin(filePath) {
-  const mod = await import(pathToFileURL(filePath).href)
-  return mod.default || mod
+  try {
+    const mod = await import(pathToFileURL(filePath).href)
+    return mod.default || mod
+  } catch (err) {
+    // pkg-compiled binaries block dynamic import() of external filesystem paths.
+    // Fall back to a synchronous CJS loader that transforms ESM syntax.
+    if (
+      err.code === 'ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING' ||
+      (err.message && err.message.includes('dynamic import callback'))
+    ) {
+      return loadPluginCJS(filePath)
+    }
+    throw err
+  }
+}
+
+/**
+ * CJS fallback loader for pkg-compiled binaries.
+ * Reads the source file, rewrites ES module syntax to CommonJS, and
+ * evaluates it with a require() bound to the tool's own directory so that
+ * imports of built-in modules (fs, path, os, …) continue to work.
+ *
+ * Handles the subset of ESM used by llmctrlx tool files:
+ *   import X from 'Y'          → const X = require('Y')
+ *   import { a, b } from 'Y'  → const { a, b } = require('Y')
+ *   export default { … }       → module.exports = { … }
+ *
+ * @param {string} filePath - Absolute path to the tool/plugin .js file.
+ * @returns {Object} The plugin's default export.
+ */
+function loadPluginCJS(filePath) {
+  const source = fs.readFileSync(filePath, 'utf8')
+
+  // Transform ESM import/export syntax to CJS equivalents.
+  const transformed = source
+    // import defaultExport from 'mod'
+    .replace(
+      /^import\s+(\w+)\s+from\s+['"]([^'"]+)['"]\s*;?\s*$/gm,
+      (_, name, mod) => `const ${name} = require('${mod}');`
+    )
+    // import { a, b as c } from 'mod'
+    .replace(
+      /^import\s+\{([^}]+)\}\s+from\s+['"]([^'"]+)['"]\s*;?\s*$/gm,
+      (_, names, mod) => `const { ${names.trim()} } = require('${mod}');`
+    )
+    // import * as ns from 'mod'
+    .replace(
+      /^import\s+\*\s+as\s+(\w+)\s+from\s+['"]([^'"]+)['"]\s*;?\s*$/gm,
+      (_, name, mod) => `const ${name} = require('${mod}');`
+    )
+    // export default <expr>
+    .replace(/^export\s+default\s+/m, 'module.exports = ')
+    // bare re-exports — strip silently (rare in tools)
+    .replace(/^export\s+\{[^}]*\}\s*from\s*['"][^'"]+['"]\s*;?\s*$/gm, '')
+    // named exports — strip the keyword
+    .replace(/^export\s+(const|let|var|function|class|async)\s+/gm, '$1 ')
+
+  const requireFn = createRequire(filePath)
+  const mod = { exports: {} }
+  const dir = path.dirname(filePath)
+
+  // Wrap in a function so that top-level const/let are scoped correctly.
+  // eslint-disable-next-line no-new-func
+  const fn = new Function(
+    'require', 'module', 'exports', '__dirname', '__filename',
+    transformed
+  )
+  fn(requireFn, mod, mod.exports, dir, filePath)
+
+  return mod.exports
 }
 
 function normalizePlugin(plugin) {

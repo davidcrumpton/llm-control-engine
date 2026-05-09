@@ -5,16 +5,9 @@
 
 import path from 'path'
 import os from 'os'
-import { fileURLToPath } from 'url'
 import { extractJSON, validateArgs } from './utils.js'
 import { Registry } from './registry.js'
 import { loadPluginsFromDir } from './loader.js'
-
-const isESM = typeof import.meta !== 'undefined' && typeof import.meta.url !== 'undefined'
-const _filename = typeof __filename !== 'undefined' ? __filename : (isESM ? fileURLToPath(import.meta.url) : process.argv[1] || process.cwd())
-const _dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(_filename)
-const BUILTIN_PLUGINS_DIR = path.resolve(_dirname, '../plugins')
-const GLOBAL_PLUGINS_DIR = path.resolve(os.homedir(), '.llmctrlx/plugins')
 
 /**
  * Execute a tool with given arguments
@@ -204,11 +197,9 @@ export async function createPluginRegistry(toolsDir, session) {
   const registry = new Registry()
   const ctx = { toolsDir, projectDir: process.cwd(), session }
 
-  await loadPluginsFromDir(BUILTIN_PLUGINS_DIR, registry, ctx)
   if (toolsDir) {
     await loadPluginsFromDir(toolsDir, registry, ctx)
   }
-  await loadPluginsFromDir(GLOBAL_PLUGINS_DIR, registry, ctx)
 
   return registry
 }
