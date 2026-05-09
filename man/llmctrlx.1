@@ -388,33 +388,7 @@ llmctrlx completion --shell zsh > /usr/local/share/zsh/site-functions/_llmctrlx
 # fish
 llmctrlx completion --shell fish > ~/.config/fish/completions/llmctrlx.fish
 .Ed
-.Sh BUILDING
-.Ss Binary Building
-Build standalone Linux and macOS binaries:
-.Bd -literal -offset indent
-npm run build:bin
-.Ed
-Output is placed in the
-.Pa dist/
-directory as
-.Pa llmctrlx-linux
-and
-.Pa llmctrlx-macos .
-.Ss Package Building
-Requires
-.Sy fpm
-(effing package management):
-.Bd -literal -offset indent
-# macOS
-brew install fpm
 
-# Linux
-gem install fpm
-
-npm run build:packages
-.Ed
-A Homebrew formula is provided in
-.Pa llmctrlx.rb .
 .Sh EXIT STATUS
 .Ex -std
 When used with
