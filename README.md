@@ -410,8 +410,9 @@ llmctrlx history --all
 # List available sessions
 llmctrlx history --list
 
-# Show history for a specific session
-llmctrlx history --show -k my-session
+# Show history for a specific session and use jq to extract the content of the second
+# message (the first message is the system prompt)
+llmctrlx history --show -k my-session | jq -r '.messages[1].content'
 ```
 
 #### 10. `completion`
@@ -444,7 +445,7 @@ llmctrlx completion --shell fish
 
 - Added `build:deb` and `build:rpm` scripts using `fpm` (effing package management)
 - Added `build:packages` script to build all packages after binaries
-- Created a Homebrew formula in llmctrlx.rb for macOS installation
+- Created a Homebrew formula in ./homebrew/llmctrlx.rb for macOS installation
 
 ## Build Usage
 

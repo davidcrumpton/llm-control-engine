@@ -1,7 +1,7 @@
 class Llmctrlx < Formula
-  desc "LLM Control Engine - A modular LLM control engine with dynamic tool loading"
+  desc "LLM Control Engine - local LLM orchestration and execution CLI with tool and plugin support"
   homepage "https://github.com/davidcrumpton/llm-control-engine"
-  url "https://registry.npmjs.org/llmctrlx/-/llmctrlx-#{version}.tgz"
+  url "https://registry.npmjs.org/llmctrlx/-/llmctrlx-0.7.82.tgz"
   sha256 "..."
   license "Apache-2.0"
 
@@ -10,6 +10,15 @@ class Llmctrlx < Formula
   def install
     system "npm", "install", "--production", "--ignore-scripts"
     bin.install "llmctrlx.js" => "llmctrlx"
+    lib.install "plugins"   # Install plugins into the formula's lib directory
+  end
+
+  def caveats
+    <<~EOS
+      To use the plugins, copy them to your local plugins directory:
+        mkdir -p ~/.llmctrlx_plugins
+        cp -r #{HOMEBREW_PREFIX}/lib/plugins/* ~/.llmctrlx_plugins/
+    EOS
   end
 
   test do
