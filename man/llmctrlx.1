@@ -61,6 +61,26 @@ The default request timeout in seconds.
 Default:
 .Li 480 .
 .El
+.Sh PLUGINS
+.Nm
+supports dynamic plugins to extend its functionality.
+While plugins are not required, the system-wide packages install a collection of useful plugins to
+.Pa /usr/local/share/llmctrlx/plugins .
+.Pp
+To enable plugins, create a
+.Pa ~/.llmctrlx_plugins
+directory and copy the desired plugins into it:
+.Bd -literal -offset indent
+mkdir -p ~/.llmctrlx_plugins
+cp /usr/local/share/llmctrlx/plugins/logger.plugin.js ~/.llmctrlx_plugins/
+cp /usr/local/share/llmctrlx/plugins/prompt-guard.plugin.js ~/.llmctrlx_plugins/
+.Ed
+.Pp
+The
+.Pa logger.plugin.js
+and
+.Pa prompt-guard.plugin.js
+plugins are great to start off with.
 .Sh GLOBAL OPTIONS
 These options apply to most commands:
 .Bl -tag -width indent

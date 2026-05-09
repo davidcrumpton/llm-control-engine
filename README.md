@@ -97,6 +97,20 @@ You can configure the default behavior using environment variables:
 - `LLMCTRLX_NUM_CTX`: The default context window size. Default: `32768`
 - `LLMCTRLX_TIMEOUT`: The default request timeout in seconds. Default: `480`
 
+## Plugins
+
+`llmctrlx` supports dynamic plugins to extend its functionality. While plugins are not required, the system-wide DEB/RPM installations include a collection of useful plugins located in `/usr/local/share/llmctrlx/plugins`.
+
+To use these plugins, you need to copy them to your local `~/.llmctrlx_plugins` folder:
+
+```bash
+mkdir -p ~/.llmctrlx_plugins
+cp /usr/local/share/llmctrlx/plugins/logger.plugin.js ~/.llmctrlx_plugins/
+cp /usr/local/share/llmctrlx/plugins/prompt-guard.plugin.js ~/.llmctrlx_plugins/
+```
+
+`logger.plugin.js` and `prompt-guard.plugin.js` are great plugins to start off with.
+
 ## Usage
 
 ```bash
