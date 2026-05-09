@@ -10,14 +10,29 @@ class Llmctrlx < Formula
   def install
     system "npm", "install", "--production", "--ignore-scripts"
     bin.install "llmctrlx.js" => "llmctrlx"
-    lib.install "plugins"   # Install plugins into the formula's lib directory
+    # Install shared resources (tools and plugins) into pkgshare
+    # resolves to /usr/local/share/llmctrlx/
+    (pkgshare/"tools").install Dir["tools/*"]
+    (pkgshare/"plugins").install Dir["plugins/*"]
   end
 
   def caveats
     <<~EOS
-      To use the plugins, copy them to your local plugins directory:
+      Tools are NOT loaded by default. To use the bundled tools, point llmctrlx at the
+      shared tools directory using -T or LLMCTRLX_TOOLS_DIR:
+
+        export LLMCTRLX_TOOLS_DIR="#{pkgshare}/tools"
+        llmctrlx chat -u "What time is it?"
+
+      Or create your own tools folder and copy/create tools there:
+        mkdir -p ~/my-tools
+        cp #{pkgshare}/tools/datetime.js ~/my-tools/
+        llmctrlx chat -T ~/my-tools -u "What time is it?"
+
+      To use the bundled plugins, copy them to your local plugins directory:
         mkdir -p ~/.llmctrlx_plugins
-        cp -r #{HOMEBREW_PREFIX}/lib/plugins/* ~/.llmctrlx_plugins/
+        cp #{pkgshare}/plugins/logger.plugin.js ~/.llmctrlx_plugins/
+        cp #{pkgshare}/plugins/prompt-guard.plugin.js ~/.llmctrlx_plugins/
     EOS
   end
 

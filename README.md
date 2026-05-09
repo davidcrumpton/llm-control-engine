@@ -89,7 +89,7 @@ You can configure the default behavior using environment variables:
 - `LLMCTRLX_API_URL`: The URL of your LLM provider. Default: Is provider specific
 - `LLMCTRLX_MODEL`: The default model to use. Default: `gemma4:e4b`
 - `LLMCTRLX_HISTORY_FILE`: The default history file to use. Default: `~/.llmctrlx_history.json`. Use `NUL` on Windows or `/dev/null` on Linux/MacOS to disable history.
-- `LLMCTRLX_TOOLS_DIR`: The default tools folder file to use. Default: `${INSTALL_PATH}/tools`
+- `LLMCTRLX_TOOLS_DIR`: The tools directory to load tools from. **No tools are loaded by default.** Set this to `/usr/local/share/llmctrlx/tools` (DEB/RPM/Homebrew installs) or a custom path to opt-in.
 - `__LLMCTRLX_OLLAMA_API_KEY`: The API key for the Ollama cloud provider. Default: `''`
 - `LLMCTRLX_PROVIDER`: The default provider to use. Default: `ollama`. Options: `ollama`, `lmstudio`
 - `LLMCTRLX_MAX_UPLOAD_FILE_SIZE`: The maximum file size to upload. Default: `1024 * 1024 * 10` (10 MB)
@@ -110,6 +110,33 @@ cp /usr/local/share/llmctrlx/plugins/prompt-guard.plugin.js ~/.llmctrlx_plugins/
 ```
 
 `logger.plugin.js` and `prompt-guard.plugin.js` are great plugins to start off with.
+
+## Tools
+
+`llmctrlx` supports LLM tool execution but **loads no tools by default** — the engine starts blank, similar to n8n's agent. This prevents unwanted tools from consuming tokens on every request.
+
+System-wide DEB/RPM/Homebrew installations include a collection of tools in `/usr/local/share/llmctrlx/tools`.
+
+To use the bundled tools, point `llmctrlx` at that directory via the environment variable or the `-T` flag:
+
+```bash
+# Permanently via environment variable
+export LLMCTRLX_TOOLS_DIR="/usr/local/share/llmctrlx/tools"
+
+# Or per-invocation with the -T flag
+llmctrlx chat -T /usr/local/share/llmctrlx/tools -u "What time is it?"
+```
+
+You can also create your own tools folder and copy only the tools you need:
+
+```bash
+mkdir -p ~/my-tools
+cp /usr/local/share/llmctrlx/tools/datetime.js ~/my-tools/
+cp /usr/local/share/llmctrlx/tools/wikipedia.js ~/my-tools/
+llmctrlx chat -T ~/my-tools -u "What is the capital of France?"
+```
+
+Or write your own tools and drop them into any directory, then point `-T` at it.
 
 ## Usage
 

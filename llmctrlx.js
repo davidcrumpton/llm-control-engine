@@ -38,7 +38,7 @@ const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(_filenam
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.7.82'
+const APP_VERSION = '0.7.84'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_HISTORY_FILE = process.env.LLMCTRLX_HISTORY_FILE || path.join(os.homedir(), '.llmctrlx_history.json')
@@ -53,7 +53,10 @@ const DEFAULT_TIMEOUT = process.env.LLMCTRLX_TIMEOUT || 480
 // --------------------
 // Tools Directory
 // --------------------
-const DEFAULT_TOOLS_DIR = process.env.LLMCTRLX_TOOLS_DIR || join(_dirname, 'tools')
+// No tools are loaded by default. Users must explicitly opt-in by setting
+// LLMCTRLX_TOOLS_DIR (e.g. /usr/local/share/llmctrlx/tools or a custom path)
+// or by passing -T <path> on the command line.
+const DEFAULT_TOOLS_DIR = process.env.LLMCTRLX_TOOLS_DIR || null
 
 // --------------------
 // Plugins Directory
@@ -117,7 +120,7 @@ if (options.no_tools && options.tools_dir && command !== 'replay') {
   console.error('Cannot use both -W and -T')
   process.exit(1)
 }
-const toolsDir = options.tools_dir || DEFAULT_TOOLS_DIR
+const toolsDir = options.tools_dir || DEFAULT_TOOLS_DIR || null
 
 // --------------------
 // Router
