@@ -1,6 +1,6 @@
 {
   "name": "llmctrlx",
-  "version": "v0.7.85",
+  "version": "v0.7.87",
   "description": "A modular LLM control engine with dynamic tool loading and multi-provider support",
   "type": "module",
   "engines": {

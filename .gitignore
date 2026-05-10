@@ -19,3 +19,5 @@ __*
 session.json
 
 dist/
+
+tests/scripts/results/

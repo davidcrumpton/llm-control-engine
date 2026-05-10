@@ -89,8 +89,7 @@ export async function runWithTools(llm, model, messages, tools, policies = [], c
     const content = getMessageText(res)
  
     try {
-      const parsed = extractJSON(content)
- 
+      const parsed = extractJSON(res.message?.content || '')
       if (parsed && parsed.tool) {
         const tool = tools.find(t => t.name === parsed.tool)
  

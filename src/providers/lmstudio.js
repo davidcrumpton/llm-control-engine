@@ -11,8 +11,6 @@
  *     URL, preventing accidental SSRF via a misconfigured host string.
  */
 
-import fetch from 'node-fetch'
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

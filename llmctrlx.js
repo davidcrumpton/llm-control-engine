@@ -38,7 +38,7 @@ const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(_filenam
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.7.85'
+const APP_VERSION = 'v0.7.87'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_HISTORY_FILE = process.env.LLMCTRLX_HISTORY_FILE || path.join(os.homedir(), '.llmctrlx_history.json')
@@ -132,8 +132,12 @@ async function main() {
 
   if (options.provider === 'lmstudio') {
     llm = new LMStudioProvider({ host: options.host || process.env.LLMCTRLX_API_URL || undefined, apiKey: options.__api_key, timeout: options.timeout })
-  } else {
+  } else if (options.provider === 'ollama') {
     llm = new OllamaProvider({ host: options.host || process.env.LLMCTRLX_API_URL || undefined, apiKey: options.__api_key, timeout: options.timeout })
+  } else {
+    // fail and let user know wrong provider
+    console.error('Error: Invalid provider. Supported providers are: ollama, lmstudio')
+    process.exit(1)
   }
 
   // Resolve model: CLI flag > env-var > provider default
