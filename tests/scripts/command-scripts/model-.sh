@@ -14,16 +14,12 @@ assert_fails "model: --show with no -m" \
 assert_fails "model: --show non-existent model" \
     llmctrlx model --show -m "definitely_not_a_real_model_xray99:latest"
 
-# 3. --delete with no model name
-assert_fails "model: --delete with no -m" \
-    llmctrlx model --delete
-
-# 4. --pull with no model name
-assert_fails "model: --pull with no -m" \
-    llmctrlx model --pull
-
-# 5. model with no sub-command (should print usage or error)
+# 3. model with no sub-command (should print usage or error)
 assert_fails "model: no sub-command given" \
     llmctrlx model
+
+# 4. Show a model that exists (use the configured default)
+assert_fails "model: --show default model" \
+    llmctrlx model --show -m "${LLMCTRLX_MODEL:-gemma4:e4b}"
 
 print_assert_summary

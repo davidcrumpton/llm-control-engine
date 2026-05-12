@@ -71,6 +71,6 @@ export class OllamaProvider {
   capabilities = ['list', 'show', 'pull', 'delete'];
 
   getHelpMessage() {
-    return 'Ollama model commands: --list, --show <model>, --pull <model>, --delete <model>'
+    throw new Error('Ollama model commands: --list, --show <model>, --pull <model>, --delete <model>')
   }
 }

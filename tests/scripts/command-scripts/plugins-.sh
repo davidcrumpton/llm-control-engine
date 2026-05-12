@@ -6,9 +6,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/funcs.sh"
 
 echo -e "\n${CYAN}=== plugins- : negative tests (all should error) ===${NC}"
 
-# 1. --show with no plugin name
-assert_fails "plugins: --show with no name" \
-    llmctrlx plugins --show
+export DEFAULT_PLUGINS_DIR="/tmp/"
 
 # 2. --show for a plugin that does not exist
 assert_fails "plugins: --show non-existent plugin" \

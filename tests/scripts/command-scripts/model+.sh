@@ -14,8 +14,14 @@ assert_succeeds "model: --list" \
 assert_output_contains "model: --list returns at least one model" "." \
     llmctrlx model --list
 
-# 3. Show a model that exists (use the configured default)
-assert_succeeds "model: --show default model" \
-    llmctrlx model --show -m "${LLMCTRLX_MODEL:-gemma4:e4b}"
+# The following is the right idea but deletes the default mode
+# which breaks the testing scripts
+# # 3. --delete with no model name uses default model if none specied
+# assert_succeeds "model: --delete with no -m" \
+#     llmctrlx model --delete
+
+# 3. --pull with no model name should take the default model for pull
+assert_succeeds "model: --pull with no -m" \
+    llmctrlx model --pull
 
 print_assert_summary

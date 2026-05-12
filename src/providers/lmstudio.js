@@ -208,6 +208,6 @@ export class LMStudioProvider {
   capabilities = ['list'];
 
   getHelpMessage() {
-    return 'LM Studio model commands: --list'
+    throw new Error('LM Studio model commands: --list')
   }
 }

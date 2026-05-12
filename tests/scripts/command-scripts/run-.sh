@@ -16,6 +16,6 @@ assert_fails "run: -W and -T are mutually exclusive" \
 
 # 3. Bad API URL
 assert_fails "run: unreachable API URL" \
-    llmctrlx run -a "http://127.0.0.1:19999" -u "echo test"
+    llmctrlx run -h "http://127.0.0.1:19999" -u "echo test"
 
 print_assert_summary

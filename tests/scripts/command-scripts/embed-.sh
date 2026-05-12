@@ -8,14 +8,14 @@ echo -e "\n${CYAN}=== embed- : negative tests (all should error) ===${NC}"
 
 # 1. No file and no stdin
 assert_fails "embed: no -f and no --stdin" \
-    llmctrlx embed
+  llmctrlx embed -m mistral:latest
 
 # 2. Non-existent file
 assert_fails "embed: non-existent file" \
-    llmctrlx embed -f "/tmp/no_file_here_xray99.txt"
+  llmctrlx embed -f "/tmp/no_file_here_xray99.txt" -m mistral:latest
 
 # 3. Empty stdin
 assert_fails "embed: empty stdin" \
-    bash -c 'llmctrlx embed --stdin < /dev/null'
+  bash -c 'llmctrlx embed --stdin < /dev/null' -m mistral:latest
 
 print_assert_summary

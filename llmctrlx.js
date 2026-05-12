@@ -38,7 +38,7 @@ const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(_filenam
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = 'v0.7.87'
+const APP_VERSION = 'v0.7.89'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_HISTORY_FILE = process.env.LLMCTRLX_HISTORY_FILE || path.join(os.homedir(), '.llmctrlx_history.json')
@@ -66,6 +66,16 @@ const DEFAULT_PLUGINS_DIR = process.env.LLMCTRLX_PLUGINS_DIR || path.join(os.hom
 // --------------------
 // CLI parsing
 // --------------------
+
+const KNOWN_OPTIONS = new Set([
+  'host', 'model', 'user', 'system', 'files', 'session', 'temperature',
+  'top_p', 'provider', 'tools_dir', 'no_tools', 'api_key', 'tags',
+  'verbose', 'history_length', 'num_ctx', 'record', 'timeout', 'history_file',
+  'json', 'stream', 'all', 'list', 'stdin', 'purge', 'dry-run', 'diff',
+  'show', 'shell', 'var', "pull"
+  // short aliases are checked automatically
+])
+
 const argv = process.argv.slice(2)
 const command = argv[0]
 
@@ -90,6 +100,7 @@ const options = getopts(argv.slice(1), {
     R: 'record',
     o: 'timeout',
     H: 'history_file',
+    r: 'pull',
   },
   default: {
     num_ctx: DEFAULT_NUM_CTX,
@@ -102,9 +113,13 @@ const options = getopts(argv.slice(1), {
     provider: DEFAULT_PROVIDER,
    
   },
-  boolean: ['json', 'stream', 'no_tools', 'all', 'list', 'stdin', 'verbose', 'purge', 'dry-run', 'diff'],
+  boolean: ['json', 'stream', 'no_tools', 'all', 'list', 'stdin', 'verbose', 'purge', 'dry-run', 'diff', 'pull'],
   string: ['user', 'system', 'tools_dir', 'provider', 'show', 'tags', 'shell', 'var', 'num_ctx', 'record', 'timeout'],
-  array: ['files', 'var']
+  array: ['files', 'var'],
+  unknown: (option) => {
+    console.error(`Unknown option: --${option}`)
+    process.exit(1)
+  }
 })
 
 // Check for -f flag with no files for chat command
@@ -115,6 +130,12 @@ if (command === 'chat' && (argv.includes('-f') || argv.includes('--files'))) {
   }
 }
 
+if (argv.includes('-k') || argv.includes('--session')) {
+  if (!options.session || options.session.length === undefined) {
+    console.error('Error: -k flag provided by no session name specified.')
+    process.exit(1)
+  }
+}
 // abort if -W and -T is given (not applicable to replay which only reads toolsDir for re-execution)
 if (options.no_tools && options.tools_dir && command !== 'replay') {
   console.error('Cannot use both -W and -T')
@@ -155,8 +176,8 @@ async function main() {
     case 'c':
       await cmdChat(llm, options, DEFAULT_HISTORY_FILE, toolsDir, DEFAULT_MAX_UPLOAD_FILE_SIZE, engineHooks)
       break
-    case 'model':
     case 'models':
+    case 'model':
     case 'm':
       await cmdModel(llm, options)
       break
@@ -199,14 +220,14 @@ async function main() {
     case 'version':
     case 'v':
       if(options.verbose) {
-        console.log(`${APP_NAME} v${APP_VERSION} - ${APP_TAGLINE}`)
+        console.log(`${APP_NAME} ${APP_VERSION} - ${APP_TAGLINE}`)
         console.log(`${APP_DESCRIPTION}`)
       } else {
-        console.log(`${APP_NAME} v${APP_VERSION}`)
+        console.log(`${APP_NAME} ${APP_VERSION}`)
       }
       break
     default:
-      console.log(`${APP_NAME} v${APP_VERSION}`)
+      console.log(`${APP_NAME} ${APP_VERSION}`)
       // Never document shortcuts in usage string to avoid making ugly output
       console.log(`
 Usage:
@@ -647,3 +668,4 @@ main().catch(err => {
   console.error(`[${APP_NAME}] Error: ${err.message}`)
   process.exitCode = 1
 })
+

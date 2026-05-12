@@ -27,7 +27,7 @@ async function performEmbedding(llm, model, content) {
 export async function cmdEmbed(llm, options) {
   const { model, stdin, files } = options;
 
-  // 1. Validation
+
   if (!files && !stdin) {
     throw new Error('Error: Provide files with -f or stdin with --s or --stdin');
   }
@@ -35,13 +35,18 @@ export async function cmdEmbed(llm, options) {
   try {
     const tasks = [];
 
-    // 2. Prepare Stdin Task
     if (stdin) {
       const stdinTask = (async () => {
         const content = await new Promise((resolve, reject) => {
           let data = '';
           process.stdin.on('data', (chunk) => (data += chunk));
-          process.stdin.on('end', () => resolve(data));
+          process.stdin.on('end', () => {
+            if (!data.trim()) {
+              reject(new Error('stdin was empty'));
+            } else {
+              resolve(data);
+            }
+          });
           process.stdin.on('error', reject);
         });
         const embedding = await performEmbedding(llm, model, content);
@@ -50,22 +55,20 @@ export async function cmdEmbed(llm, options) {
       tasks.push(stdinTask);
     }
 
-    // 3. Prepare File Tasks
-    const fileList = Array.isArray(files) ? files : [files];
-    for (const filePath of fileList) {
-      const fileTask = (async () => {
-        const content = await fs.readFile(filePath, 'utf8');
-        const embedding = await performEmbedding(llm, model, content);
-        return { file: filePath, embedding };
-      })();
-      tasks.push(fileTask);
+    if (files) {
+      const fileList = Array.isArray(files) ? files : [files];
+      for (const filePath of fileList) {
+        const fileTask = (async () => {
+          const content = await fs.readFile(filePath, 'utf8');
+          const embedding = await performEmbedding(llm, model, content);
+          return { file: filePath, embedding };
+        })();
+        tasks.push(fileTask);
+      }
     }
 
-    // 4. Execute all tasks in parallel
-    // We use allSettled so that one failing file doesn't kill the entire batch
     const results = await Promise.allSettled(tasks);
 
-    // 5. Format output
     const successfulResults = results
       .filter((res) => res.status === 'fulfilled')
       .map((res) => res.value);
@@ -75,7 +78,8 @@ export async function cmdEmbed(llm, options) {
       .map((res) => res.reason.message);
 
     if (failures.length > 0) {
-      console.error('Errors encountered:', failures);
+      console.error('Errors encountered:', JSON.stringify(failures, null, 2));
+      throw new Error(`${failures.length} embedding(s) failed`);
     }
 
     console.log(JSON.stringify(successfulResults, null, 2));
