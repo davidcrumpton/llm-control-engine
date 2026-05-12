@@ -40,13 +40,13 @@ register(plugin) {
         throw new Error(`Unsupported plugin type: "${type}". No corresponding registry found.`);
     }
 
-    // Optional Enhancement: Validate the container structure (assuming Map behavior)
+    // Validate the container structure (assuming Map behavior)
     if (typeof bucket.set !== 'function' || typeof bucket.has !== 'function') {
          console.warn(`Warning: Plugin container for type "${type}" does not appear to be a standard registry (lacks .set() method).`);
          // Depending on requirement, this could throw an error instead of just warning.
     }
 
-    // Optional Enhancement: Check for name collision if strict uniqueness is required
+    // Check for name collision if strict uniqueness is required
     if (typeof bucket.has === 'function' && bucket.has(name)) {
         throw new Error(`Plugin registration failed: A plugin named "${name}" already exists for type "${type}".`);
     }
