@@ -18,7 +18,7 @@ assert_succeeds "chat: explicit --provider ollama and --model" \
 
 # 3. Env var model override
 (
-  export LLMCTRLX_MODEL="${LLMCTRLX_MODEL:-gemma4:e4b}"
+  export LLMCTRLX_MODEL="${LLMCTRLX_MODEL:-gemma4:e2b}"
   export LLMCTRLX_PROVIDER="ollama"
   assert_succeeds "chat: model from LLMCTRLX_MODEL env var" \
     llmctrlx chat -u "Say 'Hello World'" -k "${SESSION_BASE}_envmodel"
@@ -43,7 +43,7 @@ assert_succeeds "chat: stdin + streaming" \
   bash -c 'echo "Say: STDIN_STREAM_OK" | llmctrlx chat --stdin --stream -k "'"${SESSION_BASE}"'_stdin_stream"'
 
 # 8. File attachment
-TMPFILE=$(mktemp /tmp/llmctrlx-test-XXXXXXXX.txt)
+TMPFILE=$(mktemp)
 echo "The secret code is: XRAY-42." >"${TMPFILE}"
 assert_output_contains "chat: file attachment" "XRAY-42" \
   llmctrlx chat -u "What is the secret code in this file? Output it exactly." -f "${TMPFILE}" -k "${SESSION_BASE}_file"

@@ -79,7 +79,7 @@ export async function cmdPlugins(options, pluginsDir) {
   const plugins = await discoverPlugins(pluginsDir)
 
   if (plugins.length === 0) {
-    throw new Error('No plugins found.')
+    console.error('No plugins found.')
   }
 
   // Enrich plugins with metadata in parallel

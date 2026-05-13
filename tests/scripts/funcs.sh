@@ -113,7 +113,7 @@ print_assert_summary() {
 setup_ollama_local() {
     export LLMCTRLX_PROVIDER="ollama"
     export LLMCTRLX_API_URL="http://127.0.0.1:11434"
-    export LLMCTRLX_MODEL="${LLMCTRLX_MODEL:-gemma4:e4b}"
+    export LLMCTRLX_MODEL="${LLMCTRLX_MODEL:-gemma4:e2b}"
 }
 
 # Remote Ollama

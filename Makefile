@@ -32,6 +32,9 @@ test-watch: ## Run tests in watch mode
 coverage: ## Run tests with coverage report
 	npm run test:coverage
 
+test-cli:
+	tests/scripts/llmtest
+
 lint: ## Lint source and test files
 	npm run lint
 

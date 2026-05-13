@@ -20,4 +20,10 @@ assert_succeeds "plugins: --list --json" \
 assert_succeeds "plugins: --show with no name" \
     llmctrlx plugins --show
 
+unset LLMCTRLX_PLUGINS_DIR
+
+# 2. Test with no plugins directory
+assert_succeeds "plugins: no plugins directory" \
+    llmctrlx plugins --list
+
 print_assert_summary

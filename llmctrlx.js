@@ -38,7 +38,7 @@ const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(_filenam
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = 'v0.7.89'
+const APP_VERSION = 'v0.7.90'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_HISTORY_FILE = process.env.LLMCTRLX_HISTORY_FILE || path.join(os.homedir(), '.llmctrlx_history.json')
@@ -61,8 +61,8 @@ const DEFAULT_TOOLS_DIR = process.env.LLMCTRLX_TOOLS_DIR || null
 // --------------------
 // Plugins Directory
 // --------------------
-const DEFAULT_PLUGINS_DIR = process.env.LLMCTRLX_PLUGINS_DIR || path.join(os.homedir(), '.llmctrlx_plugins')
- 
+const DEFAULT_PLUGINS_DIR = process.env.LLMCTRLX_PLUGINS_DIR || null
+
 // --------------------
 // CLI parsing
 // --------------------
@@ -92,6 +92,8 @@ const options = getopts(argv.slice(1), {
     P: 'provider',
     T: 'tools_dir',
     W: 'no_tools',
+    X: 'plugins_dir',
+    x: 'no_plugins',
     K: 'api_key',
     g: 'tags',
     v: 'verbose',
@@ -109,12 +111,14 @@ const options = getopts(argv.slice(1), {
     history_file: DEFAULT_HISTORY_FILE,
     session: DEFAULT_SESSION,
     no_tools: false,
+    no_plugins: false,
+    plugins_dir: DEFAULT_PLUGINS_DIR,
     __api_key: DEFAULT_API_KEY,
     provider: DEFAULT_PROVIDER,
    
   },
-  boolean: ['json', 'stream', 'no_tools', 'all', 'list', 'stdin', 'verbose', 'purge', 'dry-run', 'diff', 'pull'],
-  string: ['user', 'system', 'tools_dir', 'provider', 'show', 'tags', 'shell', 'var', 'num_ctx', 'record', 'timeout'],
+  boolean: ['json', 'stream', 'no_tools', 'no_plugins', 'all', 'list', 'stdin', 'verbose', 'purge', 'dry-run', 'diff', 'pull'],
+  string: ['user', 'system', 'tools_dir', 'plugins_dir', 'provider', 'show', 'tags', 'shell', 'var', 'num_ctx', 'record', 'timeout'],
   array: ['files', 'var'],
   unknown: (option) => {
     console.error(`Unknown option: --${option}`)
@@ -129,6 +133,22 @@ if (command === 'chat' && (argv.includes('-f') || argv.includes('--files'))) {
     process.exit(1)
   }
 }
+
+// Plugins directory
+
+if (command === 'chat' && (argv.includes('-X') || argv.includes('--plugins_dir'))) {
+  if (!options.plugins_dir || options.plugins_dir.length === 0) {
+    console.error('Error: -X flag provided but no plugins_dir specified.')
+    process.exit(1)
+  }
+}
+
+// No -x and -X given together
+if (options.no_plugins && options.plugins_dir) {
+  console.error('Error: Cannot use both -x and -X flags or equivalent environment variables.')
+  process.exit(1)
+}
+
 
 if (argv.includes('-k') || argv.includes('--session')) {
   if (!options.session || options.session.length === undefined) {
@@ -165,10 +185,15 @@ async function main() {
   options.model = options.model || process.env.LLMCTRLX_MODEL || llm.defaultModel
 
   // Initialize plugin system
+  // Plugins are opt-in: only load if a directory is explicitly configured via
+  // -X / --plugins_dir or the LLMCTRLX_PLUGINS_DIR env var. No directory = no plugins, silently.
   const logger = options.verbose ? console : undefined
   const hookManager = new HookManager(logger)
   const pluginLoader = new PluginLoader(hookManager, logger)
-  await pluginLoader.loadFromDirectory(DEFAULT_PLUGINS_DIR)
+  const effectivePluginsDir = options.no_plugins ? null : (options.plugins_dir || DEFAULT_PLUGINS_DIR)
+  if (effectivePluginsDir) {
+    await pluginLoader.loadFromDirectory(effectivePluginsDir)
+  }
   const engineHooks = new EngineHookIntegration(hookManager)
 
   switch (command) {
@@ -206,7 +231,7 @@ async function main() {
       break
     case 'plugins':
     case 'pl':
-      await cmdPlugins(options, DEFAULT_PLUGINS_DIR)
+      await cmdPlugins(options, options.no_plugins ? null : options.plugins_dir || DEFAULT_PLUGINS_DIR)
       break
     case 'history':
     case 'hist':
@@ -304,11 +329,11 @@ _llmctrlx_completions() {
   cmds="chat model embed bench run plan replay tools plugins history completion version"
 
   # Global options
-  global_opts="-h --host -m --model -u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags -v --verbose -c --num_ctx -o --timeout --json --stream --all --list --show --history_file"
+  global_opts="-h --host -m --model -u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -X --plugins_dir -x --no_plugins -K --api_key -g --tags -v --verbose -c --num_ctx -o --timeout --json --stream --all --list --show --history_file"
 
   case \${cmd} in
     chat)
-      opts="-u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key -g --tags -c --num_ctx -o --timeout --json --stream --stdin --history_length -R --record --history_file"
+      opts="-u --user -s --system -f --files -k --session -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -X --plugins_dir -x --no_plugins -K --api_key -g --tags -c --num_ctx -o --timeout --json --stream --stdin --history_length -R --record --history_file"
       ;;
     model)
       opts="--list --show --pull --delete -m --model"
@@ -320,7 +345,7 @@ _llmctrlx_completions() {
       opts="-m --model -u --user -s --system -t --temperature -p --top_p -P --provider -K --api_key --json --stdin"
       ;;
     run)
-      opts="-u --user -s --system -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -K --api_key --json -R --record"
+      opts="-u --user -s --system -t --temperature -p --top_p -P --provider -T --tools_dir -W --no_tools -X --plugins_dir -x --no_plugins -K --api_key --json -R --record"
       ;;
     plan)
       opts="-m --model -s --system -P --provider -K --api_key -v --verbose --dry-run --var -R --record"
@@ -332,7 +357,7 @@ _llmctrlx_completions() {
       opts="--list --show --pull --delete"
       ;;
     plugins)
-      opts="--list --show --json"
+      opts="--list --show --json -X --plugins_dir -x --no_plugins"
       ;;
     history)
       opts="--show --list --all -k --session --delete --purge -H --history_file"
@@ -354,6 +379,10 @@ _llmctrlx_completions() {
       ;;
     -f|--files)
       COMPREPLY=( \$(compgen -f -- \${cur}) )
+      return 0
+      ;;
+    -X|--plugins_dir)
+      COMPREPLY=( \$(compgen -d -- \${cur}) )
       return 0
       ;;
     --shell)
@@ -415,6 +444,8 @@ _llmctrlx() {
             '-P[provider]:provider:(ollama lmstudio)' \\
             '-T[tools_dir]:directory:_directories' \\
             '-W[no_tools]' \\
+            '-X[plugins_dir]:directory:_directories' \\
+            '-x[no_plugins]' \\
             '-K[api_key]:api_key:' \\
             '-g[tags]:tags:' \\
             '-c[num_ctx]:num_ctx:' \\
@@ -468,6 +499,8 @@ _llmctrlx() {
             '-P[provider]:provider:(ollama lmstudio)' \\
             '-T[tools_dir]:directory:_directories' \\
             '-W[no_tools]' \\
+            '-X[plugins_dir]:directory:_directories' \\
+            '-x[no_plugins]' \\
             '-K[api_key]:api_key:' \\
             '-v[verbose]' \\
             '--json' \\
@@ -504,7 +537,9 @@ _llmctrlx() {
             '--list' \\
             '--show' \\
             '-v[verbose]' \\
-            '--json'
+            '--json' \\
+            '-X[plugins_dir]:directory:_directories' \\
+            '-x[no_plugins]'
           ;;
         history)
           _arguments \\
@@ -562,6 +597,8 @@ complete -c llmctrlx -s p -l top_p -d 'Top P' -x
 complete -c llmctrlx -s P -l provider -d 'Provider' -a 'ollama lmstudio' -x
 complete -c llmctrlx -s T -l tools_dir -d 'Tools directory' -F
 complete -c llmctrlx -s W -l no_tools -d 'No tools'
+complete -c llmctrlx -s X -l plugins_dir -d 'Plugins directory' -F
+complete -c llmctrlx -s x -l no_plugins -d 'Disable plugins'
 complete -c llmctrlx -s K -l api_key -d 'API key' -x
 complete -c llmctrlx -s g -l tags -d 'Tags' -x
 complete -c llmctrlx -s c -l num_ctx -d 'Number of tokens to use as context window' -x
@@ -582,6 +619,8 @@ complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s p -l top_p -d 'Top
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s P -l provider -d 'Provider' -a 'ollama lmstudio' -x
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s T -l tools_dir -d 'Tools directory' -F
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s W -l no_tools -d 'No tools'
+complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s X -l plugins_dir -d 'Plugins directory' -F
+complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s x -l no_plugins -d 'Disable plugins'
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s K -l api_key -d 'API key' -x
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s g -l tags -d 'Tags' -x
 complete -c llmctrlx -n '__fish_seen_subcommand_from chat' -s c -l num_ctx -d 'Number of tokens to use as context window' -x
@@ -651,6 +690,8 @@ complete -c llmctrlx -n '__fish_seen_subcommand_from tools' -l json -d 'JSON out
 complete -c llmctrlx -n '__fish_seen_subcommand_from plugins' -l list -d 'List plugins'
 complete -c llmctrlx -n '__fish_seen_subcommand_from plugins' -l show -d 'Show plugin'
 complete -c llmctrlx -n '__fish_seen_subcommand_from plugins' -l json -d 'JSON output'
+complete -c llmctrlx -n '__fish_seen_subcommand_from plugins' -s X -l plugins_dir -d 'Plugins directory' -F
+complete -c llmctrlx -n '__fish_seen_subcommand_from plugins' -s x -l no_plugins -d 'Disable plugins'
 
 # History command options
 complete -c llmctrlx -n '__fish_seen_subcommand_from history' -l show -d 'Show history'
@@ -666,6 +707,10 @@ complete -c llmctrlx -n '__fish_seen_subcommand_from completion' -l shell -d 'Sh
 
 main().catch(err => {
   console.error(`[${APP_NAME}] Error: ${err.message}`)
+  if(options.verbose)
+    console.error(err)
+  else
+    console.error(err.cause ? err.cause : err)
   process.exitCode = 1
 })
 

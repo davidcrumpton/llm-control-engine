@@ -21,7 +21,7 @@ Default is provider-specific.
 .It Ev LLMCTRLX_MODEL
 The default model to use.
 Default:
-.Li gemma4:e4b .
+.Li gemma4:e2b .
 .It Ev LLMCTRLX_HISTORY_FILE
 The default history file.
 Default:
@@ -37,6 +37,15 @@ No tools are loaded by default.
 Set this to
 .Pa /usr/local/share/llmctrlx/tools
 (DEB/RPM/Homebrew installs) or a custom path to opt-in.
+.It Ev LLMCTRLX_PLUGINS_DIR
+The plugins directory to load plugins from.
+No plugins are loaded by default.
+Set this to
+.Pa /usr/local/share/llmctrlx/plugins
+(DEB/RPM/Homebrew installs) or a custom path to opt-in.
+The CLI flag
+.Fl X
+takes precedence over this variable.
 .It Ev __LLMCTRLX_OLLAMA_API_KEY
 API key for the Ollama cloud provider.
 Default: empty string.
@@ -66,16 +75,29 @@ Default:
 .Sh PLUGINS
 .Nm
 supports dynamic plugins to extend its functionality.
-While plugins are not required, the system-wide packages install a collection of useful plugins to
-.Pa /usr/local/share/llmctrlx/plugins .
+.Sy Plugins are opt-in \(em none are loaded by default .
 .Pp
-To enable plugins, create a
-.Pa ~/.llmctrlx_plugins
-directory and copy the desired plugins into it:
+To enable plugins, set the
+.Ev LLMCTRLX_PLUGINS_DIR
+environment variable or pass the
+.Fl X
+flag:
+.Bd -literal -offset indent
+# Permanently via environment variable
+export LLMCTRLX_PLUGINS_DIR="/usr/local/share/llmctrlx/plugins"
+
+# Or per-invocation
+llmctrlx chat -X /usr/local/share/llmctrlx/plugins -u "hello"
+.Ed
+.Pp
+System-wide DEB/RPM/Homebrew installations include a collection of plugins in
+.Pa /usr/local/share/llmctrlx/plugins .
+You can copy only the plugins you want into a local directory:
 .Bd -literal -offset indent
 mkdir -p ~/.llmctrlx_plugins
 cp /usr/local/share/llmctrlx/plugins/logger.plugin.js ~/.llmctrlx_plugins/
 cp /usr/local/share/llmctrlx/plugins/prompt-guard.plugin.js ~/.llmctrlx_plugins/
+export LLMCTRLX_PLUGINS_DIR="~/.llmctrlx_plugins"
 .Ed
 .Pp
 The
@@ -83,6 +105,16 @@ The
 and
 .Pa prompt-guard.plugin.js
 plugins are great to start off with.
+.Pp
+To explicitly disable plugins even when
+.Ev LLMCTRLX_PLUGINS_DIR
+is set, use
+.Fl x .
+The flags
+.Fl x
+and
+.Fl X
+are mutually exclusive.
 .Sh TOOLS
 .Nm
 supports LLM tool execution but loads
@@ -124,7 +156,7 @@ Default:
 .It Fl m , -model Ar name
 Model to use.
 Default:
-.Li gemma4:e4b .
+.Li gemma4:e2b .
 .It Fl P , -provider Ar provider
 Set the provider.
 Default:
@@ -138,6 +170,17 @@ Set the API key for the cloud Ollama instance.
 Session key for continuing a conversation.
 Default:
 .Li default .
+.It Fl X , -plugins_dir Ar path
+Path to the plugins directory to load plugins from.
+Overrides
+.Ev LLMCTRLX_PLUGINS_DIR .
+No plugins are loaded if neither is set.
+.It Fl x , -no_plugins
+Disable plugin loading entirely, even if
+.Ev LLMCTRLX_PLUGINS_DIR
+is set.
+Mutually exclusive with
+.Fl X .
 .It Fl o , -timeout Ar seconds
 Request timeout in seconds.
 Default:

@@ -78,7 +78,7 @@ The completion provides:
 
 - Command completion (`chat`, `model`, `embed`, etc.)
 - Option completion for each command
-- File completion for `-f/--files` and `-T/--tools_dir` options
+- File completion for `-f/--files`, `-T/--tools_dir`, and `-X/--plugins_dir` options
 - Provider completion (`ollama`, `lmstudio`)
 - Shell type completion for the `completion` command
 
@@ -87,9 +87,10 @@ The completion provides:
 You can configure the default behavior using environment variables:
 
 - `LLMCTRLX_API_URL`: The URL of your LLM provider. Default: Is provider specific
-- `LLMCTRLX_MODEL`: The default model to use. Default: `gemma4:e4b`
+- `LLMCTRLX_MODEL`: The default model to use. Default: `gemma4:e2b`
 - `LLMCTRLX_HISTORY_FILE`: The default history file to use. Default: `~/.llmctrlx_history.json`. Use `NUL` on Windows or `/dev/null` on Linux/MacOS to disable history.
 - `LLMCTRLX_TOOLS_DIR`: The tools directory to load tools from. **No tools are loaded by default.** Set this to `/usr/local/share/llmctrlx/tools` (DEB/RPM/Homebrew installs) or a custom path to opt-in.
+- `LLMCTRLX_PLUGINS_DIR`: The plugins directory to load plugins from. **No plugins are loaded by default.** Set this to `/usr/local/share/llmctrlx/plugins` (DEB/RPM/Homebrew installs) or a custom path to opt-in.
 - `__LLMCTRLX_OLLAMA_API_KEY`: The API key for the Ollama cloud provider. Default: `''`
 - `LLMCTRLX_PROVIDER`: The default provider to use. Default: `ollama`. Options: `ollama`, `lmstudio`
 - `LLMCTRLX_MAX_UPLOAD_FILE_SIZE`: The maximum file size to upload. Default: `1024 * 1024 * 10` (10 MB)
@@ -99,17 +100,38 @@ You can configure the default behavior using environment variables:
 
 ## Plugins
 
-`llmctrlx` supports dynamic plugins to extend its functionality. While plugins are not required, the system-wide DEB/RPM installations include a collection of useful plugins located in `/usr/local/share/llmctrlx/plugins`.
+`llmctrlx` supports dynamic plugins to extend its functionality. **Plugins are opt-in — none are loaded by default.** You must explicitly specify a plugins directory via the `LLMCTRLX_PLUGINS_DIR` environment variable or the `-X` flag.
 
-To use these plugins, you need to copy them to your local `~/.llmctrlx_plugins` folder:
+System-wide DEB/RPM/Homebrew installations include a collection of useful plugins in `/usr/local/share/llmctrlx/plugins`.
+
+To use plugins, point `llmctrlx` at a directory via the environment variable or the `-X` flag:
+
+```bash
+# Permanently via environment variable
+export LLMCTRLX_PLUGINS_DIR="/usr/local/share/llmctrlx/plugins"
+
+# Or per-invocation with the -X flag
+llmctrlx chat -X /usr/local/share/llmctrlx/plugins -u "hello"
+```
+
+You can also copy only the plugins you want into a local directory:
 
 ```bash
 mkdir -p ~/.llmctrlx_plugins
 cp /usr/local/share/llmctrlx/plugins/logger.plugin.js ~/.llmctrlx_plugins/
 cp /usr/local/share/llmctrlx/plugins/prompt-guard.plugin.js ~/.llmctrlx_plugins/
+export LLMCTRLX_PLUGINS_DIR="~/.llmctrlx_plugins"
 ```
 
 `logger.plugin.js` and `prompt-guard.plugin.js` are great plugins to start off with.
+
+To explicitly disable plugins even when `LLMCTRLX_PLUGINS_DIR` is set, use the `-x` flag:
+
+```bash
+llmctrlx chat -x -u "hello"
+```
+
+> **Note:** `-x` (disable plugins) and `-X` (set plugins dir) are mutually exclusive.
 
 ## Tools
 
@@ -149,7 +171,7 @@ llmctrlx <command> [options]
 These options apply to most commands:
 
 - `-a, --api_url <url>`: The URL of your LLM provider. Default: `http://127.0.0.1:11434`
-- `-m, --model <name>`: Model to use. Default: `gemma4:e4b`
+- `-m, --model <name>`: Model to use. Default: `gemma4:e2b`
 - `-P, --provider <provider>`: Set the provider to use. Default: `ollama`. Options: `ollama`, `lmstudio`
 - `-K, --api_key <key>`: Set the API key for the cloud Ollama instance. Default: `''`
 - `-k, --session <name>`: Session key to use for continuing a conversation. Default: `default`
