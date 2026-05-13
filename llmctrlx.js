@@ -38,7 +38,7 @@ const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(_filenam
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = 'v0.7.90'
+const APP_VERSION = '0.7.90'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_HISTORY_FILE = process.env.LLMCTRLX_HISTORY_FILE || path.join(os.homedir(), '.llmctrlx_history.json')
@@ -245,14 +245,14 @@ async function main() {
     case 'version':
     case 'v':
       if(options.verbose) {
-        console.log(`${APP_NAME} ${APP_VERSION} - ${APP_TAGLINE}`)
+        console.log(`${APP_NAME} v${APP_VERSION} - ${APP_TAGLINE}`)
         console.log(`${APP_DESCRIPTION}`)
       } else {
-        console.log(`${APP_NAME} ${APP_VERSION}`)
+        console.log(`${APP_NAME} v${APP_VERSION}`)
       }
       break
     default:
-      console.log(`${APP_NAME} ${APP_VERSION}`)
+      console.log(`${APP_NAME} v${APP_VERSION}`)
       // Never document shortcuts in usage string to avoid making ugly output
       console.log(`
 Usage:
