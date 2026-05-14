@@ -43,7 +43,7 @@ const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and p
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_HISTORY_FILE = process.env.LLMCTRLX_HISTORY_FILE || path.join(os.homedir(), '.llmctrlx_history.json')
 const DEFAULT_API_KEY = process.env.__LLMCTRLX_OLLAMA_API_KEY || ''
-const DEFAULT_MAX_UPLOAD_FILE_SIZE = process.env.LLMCTRLX_MAX_UPLOAD_FILE_SIZE || 1024 * 1024 * 10 // 10 MB
+
 const DEFAULT_PROVIDER = process.env.LLMCTRLX_PROVIDER || 'ollama'
 const DEFAULT_SESSION = process.env.LLMCTRLX_SESSION || 'default'
 const DEFAULT_TOOLS_HISTORY_LENGTH = process.env.LLMCTRLX_TOOLS_HISTORY_LENGTH || 5
@@ -63,6 +63,16 @@ const DEFAULT_TOOLS_DIR = process.env.LLMCTRLX_TOOLS_DIR || null
 // --------------------
 const DEFAULT_PLUGINS_DIR = process.env.LLMCTRLX_PLUGINS_DIR || null
 
+
+// --------------------
+// Bug fix: max file upload size
+// --------------------
+// if it's set, it's an int; otherwise it's undefined; and int(undefined) === NaN, not 0!
+if (Number.isInteger(process.env.LLMCTRLX_MAX_UPLOAD_FILE_SIZE)) {
+  DEFAULT_MAX_UPLOAD_FILE_SIZE = parseInt(process.env.LLMCTRLX_MAX_UPLOAD_FILE_SIZE)
+} else {
+  DEFAULT_MAX_UPLOAD_FILE_SIZE = 1024 * 1024 * 10 // 10 MB
+}
 // --------------------
 // CLI parsing
 // --------------------
@@ -151,8 +161,8 @@ if (options.no_plugins && options.plugins_dir) {
 
 
 if (argv.includes('-k') || argv.includes('--session')) {
-  if (!options.session || options.session.length === undefined) {
-    console.error('Error: -k flag provided by no session name specified.')
+  if (!options.session || options.session.length === 0) {
+    console.error('Error: -k flag provided but no session name specified.')
     process.exit(1)
   }
 }
