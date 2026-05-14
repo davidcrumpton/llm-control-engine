@@ -36,12 +36,12 @@ Use the provided installer script:
 
 ```bash
 # Install for your current shell
-node install-completion.js
+node install-completion.ts
 
 # Or specify a shell
-node install-completion.js bash
-node install-completion.js zsh
-node install-completion.js fish
+node install-completion.ts bash
+node install-completion.ts zsh
+node install-completion.ts fish
 ```
 
 #### Manual Installation
