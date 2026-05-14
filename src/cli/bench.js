@@ -11,6 +11,7 @@ export async function cmdBench(llm, options) {
   // 1. Guard against undefined models
   if (!options.model) {
     console.error("Error: No models specified. Use --model='model1,model2'");
+    process.exitCode = 1
     return;
   }
 
@@ -28,6 +29,7 @@ export async function cmdBench(llm, options) {
       });
     } catch (err) {
       console.error("Error reading stdin:", err);
+      process.exitCode = 1
       return;
     }
   }
@@ -50,6 +52,7 @@ export async function cmdBench(llm, options) {
         prompt_eval_count: response.prompt_eval_count || 'N/A',
       };
     } catch (error) {
+      process.exitCode = 1
       return {
         model,
         status: 'failed',
