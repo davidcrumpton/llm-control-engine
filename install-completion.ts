@@ -147,7 +147,12 @@ function installFish(): void {
 function main(): void {
   // process.argv.slice(2) gives command line arguments passed after the script name.
   const args: string[] = process.argv.slice(2);
-  const shell: 'bash' | 'zsh' | 'fish' = args[0] || detectShell();
+  const SUPPORTED_SHELLS = ['bash', 'zsh', 'fish'] as const;
+  type Shell = typeof SUPPORTED_SHELLS[number];
+  const rawArg = args[0];
+  const shell: Shell = (SUPPORTED_SHELLS as readonly string[]).includes(rawArg)
+    ? (rawArg as Shell)
+    : detectShell();
 
   console.log(`Installing ${APP_NAME} completions for ${shell}...`);
 
