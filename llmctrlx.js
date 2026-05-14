@@ -50,6 +50,18 @@ const DEFAULT_TOOLS_HISTORY_LENGTH = process.env.LLMCTRLX_TOOLS_HISTORY_LENGTH |
 const DEFAULT_NUM_CTX = process.env.LLMCTRLX_NUM_CTX || 32768
 const DEFAULT_TIMEOUT = process.env.LLMCTRLX_TIMEOUT || 480
 
+let _DEFAULT_MAX_UPLOAD_FILE_SIZE = 1024 * 1024 * 10 // 10 MB
+// --------------------
+// Bug fix: max file upload size
+// --------------------
+// if it's set, it's an int; otherwise it's undefined; and int(undefined) === NaN, not 0!
+if (Number.isInteger(process.env.LLMCTRLX_MAX_UPLOAD_FILE_SIZE)) {
+  _DEFAULT_MAX_UPLOAD_FILE_SIZE = parseInt(process.env.LLMCTRLX_MAX_UPLOAD_FILE_SIZE)
+} else {
+  _DEFAULT_MAX_UPLOAD_FILE_SIZE = 1024 * 1024 * 10 // 10 MB
+}
+const DEFAULT_MAX_UPLOAD_FILE_SIZE = _DEFAULT_MAX_UPLOAD_FILE_SIZE
+
 // --------------------
 // Tools Directory
 // --------------------
@@ -64,15 +76,6 @@ const DEFAULT_TOOLS_DIR = process.env.LLMCTRLX_TOOLS_DIR || null
 const DEFAULT_PLUGINS_DIR = process.env.LLMCTRLX_PLUGINS_DIR || null
 
 
-// --------------------
-// Bug fix: max file upload size
-// --------------------
-// if it's set, it's an int; otherwise it's undefined; and int(undefined) === NaN, not 0!
-if (Number.isInteger(process.env.LLMCTRLX_MAX_UPLOAD_FILE_SIZE)) {
-  DEFAULT_MAX_UPLOAD_FILE_SIZE = parseInt(process.env.LLMCTRLX_MAX_UPLOAD_FILE_SIZE)
-} else {
-  DEFAULT_MAX_UPLOAD_FILE_SIZE = 1024 * 1024 * 10 // 10 MB
-}
 // --------------------
 // CLI parsing
 // --------------------
