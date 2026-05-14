@@ -64,4 +64,12 @@ assert_fails "chat: temperature out of valid range (negative)" \
 assert_fails "lmstudio chat: streaming" \
   llmctrlx chat -P lmstudio --stream -u "Say 'LMStudio stream OK'" -k "${SESSION_BASE}_stream"
 
+# 7. Empty stdin with chat command (regression test)
+assert_fails "chat: empty stdin" \
+  bash -c 'llmctrlx chat --stdin < /dev/null' -m mistral:latest
+
+# 8. LLMCTRLX_MAX_UPLOAD_FILE_SIZE=x with chat command (regression test)
+assert_fails "chat: LLMCTRLX_MAX_UPLOAD_FILE_SIZE=x" \
+  bash -c 'LLMCTRLX_MAX_UPLOAD_FILE_SIZE=x llmctrlx chat' -m mistral:latest
+
 print_assert_summary

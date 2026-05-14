@@ -18,4 +18,17 @@ assert_fails "embed: non-existent file" \
 assert_fails "embed: empty stdin" \
   bash -c 'llmctrlx embed --stdin < /dev/null' -m mistral:latest
 
+# 4. LLMCTRLX_MAX_UPLOAD_FILE_SIZE=x
+assert_fails "embed: LLMCTRLX_MAX_UPLOAD_FILE_SIZE=x" \
+  bash -c 'LLMCTRLX_MAX_UPLOAD_FILE_SIZE=x llmctrlx embed --stdin < /dev/null' -m mistral:latest
+
+# 5. --no-stream with non-existent file
+assert_fails "embed: --no-stream with non-existent file" \
+  llmctrlx embed -f /non/existent/file -m mistral:latest --no-stream
+
+# 6. --no-stream with empty stdin
+assert_fails "embed: --no-stream with empty stdin" \
+  bash -c 'llmctrlx embed --stdin < /dev/null --no-stream' -m mistral:latest
+
+
 print_assert_summary

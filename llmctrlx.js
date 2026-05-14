@@ -38,7 +38,7 @@ const _dirname = typeof __dirname !== 'undefined' ? __dirname : dirname(_filenam
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.7.91'
+const APP_VERSION = '0.7.92'
 const APP_TAGLINE = 'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION = "Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis."
 const DEFAULT_HISTORY_FILE = process.env.LLMCTRLX_HISTORY_FILE || path.join(os.homedir(), '.llmctrlx_history.json')
@@ -50,17 +50,16 @@ const DEFAULT_TOOLS_HISTORY_LENGTH = process.env.LLMCTRLX_TOOLS_HISTORY_LENGTH |
 const DEFAULT_NUM_CTX = process.env.LLMCTRLX_NUM_CTX || 32768
 const DEFAULT_TIMEOUT = process.env.LLMCTRLX_TIMEOUT || 480
 
-let _DEFAULT_MAX_UPLOAD_FILE_SIZE = 1024 * 1024 * 10 // 10 MB
-// --------------------
-// Bug fix: max file upload size
-// --------------------
-// if it's set, it's an int; otherwise it's undefined; and int(undefined) === NaN, not 0!
-if (Number.isInteger(process.env.LLMCTRLX_MAX_UPLOAD_FILE_SIZE)) {
-  _DEFAULT_MAX_UPLOAD_FILE_SIZE = parseInt(process.env.LLMCTRLX_MAX_UPLOAD_FILE_SIZE)
-} else {
-  _DEFAULT_MAX_UPLOAD_FILE_SIZE = 1024 * 1024 * 10 // 10 MB
+let DEFAULT_MAX_UPLOAD_FILE_SIZE = 1024 * 1024 * 10 // 10 MB
+const envValue = process.env.LLMCTRLX_MAX_UPLOAD_FILE_SIZE;
+if (envValue !== undefined) {
+  if (/^\d+$/.test(envValue)) {
+    DEFAULT_MAX_UPLOAD_FILE_SIZE = parseInt(envValue, 10);
+  } else {
+    console.error('LLMCTRLX_MAX_UPLOAD_FILE_SIZE must be an integer');
+    process.exit(1);
+  }
 }
-const DEFAULT_MAX_UPLOAD_FILE_SIZE = _DEFAULT_MAX_UPLOAD_FILE_SIZE
 
 // --------------------
 // Tools Directory
