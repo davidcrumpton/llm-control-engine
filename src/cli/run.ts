@@ -140,10 +140,7 @@ async function executeCommand(
 ): Promise<string> {
   record(recorder, "markExecStart");
 
-  const {
-    stdout,
-    stderr,
-  } = await execFileAsync(executable, args, {
+  const { stdout, stderr } = await execFileAsync(executable, args, {
     timeout: EXEC_TIMEOUT_MS,
     maxBuffer: MAX_OUTPUT_BYTES,
     windowsHide: true,

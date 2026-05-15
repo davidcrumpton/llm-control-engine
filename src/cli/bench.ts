@@ -56,7 +56,8 @@ export async function cmdBench(llm: LLMProvider, options: CLIOptions) {
         prompt_eval_count: response.prompt_eval_count || "N/A",
       };
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       process.exitCode = 1;
       return {
         model,

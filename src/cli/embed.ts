@@ -55,7 +55,11 @@ export async function cmdEmbed(llm: LLMProvider, options: CLIOptions) {
           });
           process.stdin.on("error", reject);
         });
-        const embedding = await performEmbedding(llm, model!, content as string);
+        const embedding = await performEmbedding(
+          llm,
+          model!,
+          content as string,
+        );
         return { file: "stdin", embedding };
       })();
       tasks.push(stdinTask);

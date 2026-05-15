@@ -75,7 +75,9 @@ export async function cmdChat(
     options.provider,
   );
   const messages = compactMessages([
-    ...(options.system ? [{ role: "system" as const, content: options.system }] : []),
+    ...(options.system
+      ? [{ role: "system" as const, content: options.system }]
+      : []),
     ...historyWindow,
     ...fileMessages,
     { role: "user" as const, content: userContent },
@@ -207,7 +209,10 @@ async function processFiles(
       msgs.push(buildImageMessage(file, img, provider.toLowerCase()));
     } else {
       const content = await fs.readFile(file, "utf8");
-      msgs.push({ role: "user" as const, content: `File: ${file}\n${content}` });
+      msgs.push({
+        role: "user" as const,
+        content: `File: ${file}\n${content}`,
+      });
     }
   }
   return msgs;

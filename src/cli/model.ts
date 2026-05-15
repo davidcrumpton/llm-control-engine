@@ -26,7 +26,9 @@ export async function cmdModel(llm: LLMProvider, options: CLIOptions) {
     delete: { method: "delete", label: "delete" },
   };
 
-  const actionKey = Object.keys(actionMap).find((key) => options[key]) as keyof typeof actionMap | undefined;
+  const actionKey = Object.keys(actionMap).find((key) => options[key]) as
+    | keyof typeof actionMap
+    | undefined;
 
   if (actionKey) {
     const action = actionMap[actionKey];

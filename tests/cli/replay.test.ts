@@ -88,6 +88,7 @@ describe("Recording and Replay", () => {
       user: "diff test",
       model: "test-model",
       record: recordFile,
+      session: "default",
     };
 
     // Record
@@ -129,6 +130,7 @@ describe("Recording and Replay", () => {
       user: "diff mismatch test",
       model: "test-model",
       record: recordFile,
+      session: "default",
     };
 
     // Record

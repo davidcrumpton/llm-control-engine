@@ -16,10 +16,7 @@ export async function cmdTools(options: CLIOptions, toolsDir: string | null) {
         .map((t: string) => t.trim())
         .filter(Boolean)
     : null;
-  const tools = await loadTools(
-    toolsDir ?? undefined,
-    requestedTags ?? undefined,
-  );
+  const tools = await loadTools(toolsDir ?? undefined, requestedTags);
 
   // 1. Handle Empty State
   if (tools.length === 0) {

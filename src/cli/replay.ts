@@ -119,7 +119,9 @@ async function reExecuteRun(
   recorder.markLlmStart();
   const res = await llm.chat({
     model: inputs.model,
-    messages: [{ role: "user" as const, content: `Command output:\n${stdout}` }],
+    messages: [
+      { role: "user" as const, content: `Command output:\n${stdout}` },
+    ],
   });
 
   if (Symbol.asyncIterator in res) {
@@ -152,7 +154,8 @@ async function reExecuteChat(
   // Reconstruct the exact message array from the snapshot so this re-execution
   // is identical to the original regardless of how live history has grown since.
   const messages = [];
-  if (inputs.system) messages.push({ role: "system" as const, content: inputs.system });
+  if (inputs.system)
+    messages.push({ role: "system" as const, content: inputs.system });
   if (inputs.history_snapshot?.length)
     messages.push(...inputs.history_snapshot);
   messages.push({ role: "user" as const, content: inputs.user });
@@ -160,7 +163,8 @@ async function reExecuteChat(
   const chatOptions = {};
   if (inputs.parameters?.temperature)
     (chatOptions as any).temperature = inputs.parameters.temperature;
-  if (inputs.parameters?.top_p) (chatOptions as any).top_p = inputs.parameters.top_p;
+  if (inputs.parameters?.top_p)
+    (chatOptions as any).top_p = inputs.parameters.top_p;
   if (inputs.parameters?.num_ctx)
     (chatOptions as any).num_ctx = inputs.parameters.num_ctx;
 
@@ -181,7 +185,9 @@ async function reExecuteChat(
   } else {
     const effectiveToolsDir = inputs.toolsDir || toolsDir;
     const registry = await createPluginRegistry(effectiveToolsDir);
-    const requestedTags = (inputs.tags as string | undefined)?.split(",").map((t: string) => t.trim());
+    const requestedTags = (inputs.tags as string | undefined)
+      ?.split(",")
+      .map((t: string) => t.trim());
 
     let tools = registry.list("tool");
     if (requestedTags) {
@@ -192,7 +198,10 @@ async function reExecuteChat(
       );
     }
 
-    messages.unshift({ role: "system" as const, content: buildToolPrompt(tools) });
+    messages.unshift({
+      role: "system" as const,
+      content: buildToolPrompt(tools),
+    });
     llmResponse = await runWithTools(
       llm,
       inputs.model,

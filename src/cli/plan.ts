@@ -113,7 +113,9 @@ function normalizeAndValidatePlan(plan: any, planFile: string): Plan {
   });
 
   validatePolicy(plan);
-  (plan.steps || []).forEach((step: PlanStep) => validateStep(step, plan.policy || {}));
+  (plan.steps || []).forEach((step: PlanStep) =>
+    validateStep(step, plan.policy || {}),
+  );
 
   return plan;
 }
@@ -169,7 +171,10 @@ function safeEnvSubset() {
   const safe: Record<string, string> = {};
   // Also include LC_* variables for localization
   for (const key in process.env) {
-    if ((ALLOWED_ENV_KEYS.includes(key) || key.startsWith("LC_")) && process.env[key] !== undefined) {
+    if (
+      (ALLOWED_ENV_KEYS.includes(key) || key.startsWith("LC_")) &&
+      process.env[key] !== undefined
+    ) {
       safe[key] = process.env[key] as string;
     }
   }
@@ -196,7 +201,10 @@ function mergeVars(planVars = {}, cliVars = {}, envVars = {}) {
  * @returns {string}
  */
 function interpolateString(str: string, vars: Record<string, string>): string {
-  return str.replace(/\{\{(\w+)\}\}/g, (_: string, key: string) => vars[key] ?? `{{${key}}}`);
+  return str.replace(
+    /\{\{(\w+)\}\}/g,
+    (_: string, key: string) => vars[key] ?? `{{${key}}}`,
+  );
 }
 
 // ─── Orchestration Helpers ───────────────────────────────────────────────────
@@ -415,7 +423,10 @@ async function executeStepAction(
         }
       });
     }
-    stepMessages.push({ role: "user" as const, content: step.prompt as string });
+    stepMessages.push({
+      role: "user" as const,
+      content: step.prompt as string,
+    });
     try {
       const promptOutput = await runWithoutTools(llm, planModel, stepMessages);
       return { stdout: promptOutput, stderr: "", exitCode: 0 };
@@ -525,7 +536,8 @@ async function generateLegacyReport(
   const systemPrompt = options.system || plan.system;
   const provider = (options.provider || "ollama").toLowerCase();
 
-  if (systemPrompt) messages.push({ role: "system" as const, content: systemPrompt });
+  if (systemPrompt)
+    messages.push({ role: "system" as const, content: systemPrompt });
 
   if (plan.attachments && plan.attachments.length > 0) {
     messages.push(
@@ -556,7 +568,10 @@ async function generateLegacyReport(
  * @param {Object} planOutputs
  * @param {Object} contextData
  */
-async function processOutputs(planOutputs: any, contextData: Record<string, any>) {
+async function processOutputs(
+  planOutputs: any,
+  contextData: Record<string, any>,
+) {
   if (!planOutputs?.save) return;
   for (const saveCmd of planOutputs.save) {
     const stepRes = contextData[saveCmd.step];
@@ -639,7 +654,9 @@ export async function cmdPlan(
     const contextData: Record<string, any> = {};
     const hasToolSteps = (plan.steps || []).some((s) => s.type === "tool");
     const loadedTools = hasToolSteps
-      ? await loadTools(options.tools_dir || (process.env.LLMCTRLX_TOOLS_DIR as string))
+      ? await loadTools(
+          options.tools_dir || (process.env.LLMCTRLX_TOOLS_DIR as string),
+        )
       : [];
 
     // Execute steps
