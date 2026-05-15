@@ -11,10 +11,8 @@
  *   await hooks.complete(requestId, final);
  */
 
-// @ts-ignore
-import { HookManager } from "./hook-manager.ts";
-// @ts-ignore
-import { HookContext, HookMeta } from "./types.ts";
+import { HookManager } from "./hook-manager.js";
+import { HookContext, HookMeta } from "./types.js";
 import { randomUUID } from "node:crypto";
 
 // ---------------------------------------------------------------------------

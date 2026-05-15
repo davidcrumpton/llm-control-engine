@@ -15,13 +15,10 @@ export {
   PluginMeta,
   HookPlugin,
   TapFunction,
-  // @ts-ignore
-} from "./types.ts";
+} from "./types.js";
 
-// @ts-ignore
-export { HookManager, HookLogger } from "./hook-manager.ts";
-// @ts-ignore
-export { PluginLoader, LoaderOptions } from "./plugin-loader.ts";
+export { HookManager, HookLogger } from "./hook-manager.js";
+export { PluginLoader, LoaderOptions } from "./plugin-loader.js";
 
 export {
   EngineHookIntegration,
@@ -29,5 +26,4 @@ export {
   InferencePayload,
   ResponsePayload,
   ErrorPayload,
-  // @ts-ignore
-} from "./engine-hooks.ts";
+} from "./engine-hooks.js";

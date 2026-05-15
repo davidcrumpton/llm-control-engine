@@ -31,9 +31,8 @@ import {
   HookManager,
   PluginLoader,
   EngineHookIntegration,
-} from './dist/plugins/index.js'
-// @ts-ignore
-import type { CLIOptions, LLMProvider, Provider } from './src/types.ts'
+} from './src/plugins/index.js'
+import type { CLIOptions, LLMProvider, Provider } from './src/types.js'
 
 // --------------------
 // Setup paths relative to script location
@@ -54,7 +53,7 @@ const _dirname =
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.8.04'
+const APP_VERSION = '0.8.05'
 const APP_TAGLINE =
   'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION =

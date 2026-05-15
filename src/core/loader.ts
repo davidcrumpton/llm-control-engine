@@ -15,8 +15,7 @@ import { pathToFileURL } from "url";
 import { createRequire } from "module";
 import { validateTool } from "./utils.js";
 import { Registry } from "./registry.js";
-// @ts-ignore
-import { Plugin } from "../types.ts";
+import { Plugin } from "../types.js";
 
 const JS_EXTENSIONS = [".js", ".mjs", ".cjs", ".ts"];
 
@@ -186,7 +185,7 @@ const CORE_FILES = [
   "index.ts",
   "index.js",
   "plugin-loader.ts",
-  "plugin-loader.ts",
+  "plugin-loader.js",
   "engine-hooks.ts",
   "engine-hooks.js",
   "hook-manager.ts",
@@ -194,7 +193,7 @@ const CORE_FILES = [
   "types.ts",
   "types.js",
   "loader.ts",
-  "loader.ts",
+  "loader.js",
 ];
 
 /**

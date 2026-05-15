@@ -24,8 +24,7 @@ import {
   HOOK_EVENTS,
   HookPriority,
 } from "./types.js";
-// @ts-ignore
-import { HookManager, HookLogger } from "./hook-manager.ts";
+import { HookManager, HookLogger } from "./hook-manager.js";
 
 // ---------------------------------------------------------------------------
 // Path-confinement helper
@@ -175,7 +174,7 @@ export class PluginLoader {
       "index.ts",
       "index.js",
       "plugin-loader.ts",
-      "plugin-loader.ts",
+      "plugin-loader.js",
       "engine-hooks.ts",
       "engine-hooks.js",
       "hook-manager.ts",

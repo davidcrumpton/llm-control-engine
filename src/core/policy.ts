@@ -5,8 +5,7 @@
  * before execution. Uses glob-style pattern matching for flexible constraints.
  */
 
-// @ts-ignore
-import { Plan, PlanPolicy, PlanStep } from "../types.ts";
+import { Plan, PlanPolicy, PlanStep } from "../types.js";
 
 /**
  * Validates the global plan policy before execution.
