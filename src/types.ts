@@ -79,6 +79,7 @@ export interface BasePlugin {
 export interface ToolPlugin extends BasePlugin {
   type: "tool";
   run(args: Record<string, unknown>): Promise<string>;
+  description: string;
   parameters?: Record<string, unknown>;
   tags?: string[];
   policies?: {

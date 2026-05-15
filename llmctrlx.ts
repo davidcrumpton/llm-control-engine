@@ -53,7 +53,7 @@ const _dirname =
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.8.14'
+const APP_VERSION = '0.8.16'
 const APP_TAGLINE =
   'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION =
@@ -176,10 +176,10 @@ interface GetotsOptions extends Record<string, unknown> {
   __api_key?: string
   tags?: string
   verbose?: boolean
-  history_length?: number | string
-  num_ctx?: number | string
+  history_length: number | string
+  num_ctx: number | string
   record?: string
-  timeout?: number | string
+  timeout: number | string
   history_file?: string
   json?: boolean
   stream?: boolean
@@ -268,6 +268,13 @@ const options: GetotsOptions = getopts(argv.slice(1), {
     process.exit(1)
   },
 })
+
+// Parse numeric options to ensure they match CLIOptions
+options.num_ctx = parseInt(String(options.num_ctx), 10)
+options.timeout = parseInt(String(options.timeout), 10)
+options.history_length = parseInt(String(options.history_length), 10)
+
+const cliOptions = options as unknown as CLIOptions
 
 // Check for -f flag with no files for chat command
 if (command === 'chat' && (argv.includes('-f') || argv.includes('--files'))) {
@@ -361,7 +368,7 @@ async function main(): Promise<void> {
     case 'c':
       await cmdChat(
         llm,
-        options as any,
+        cliOptions,
         DEFAULT_HISTORY_FILE,
         toolsDir,
         DEFAULT_MAX_UPLOAD_FILE_SIZE,
@@ -371,44 +378,44 @@ async function main(): Promise<void> {
     case 'models':
     case 'model':
     case 'm':
-      await cmdModel(llm, options as any)
+      await cmdModel(llm, cliOptions)
       break
     case 'embed':
     case 'e':
-      await cmdEmbed(llm, options as any)
+      await cmdEmbed(llm, cliOptions)
       break
     case 'bench':
     case 'b':
-      await cmdBench(llm, options as any)
+      await cmdBench(llm, cliOptions)
       break
     case 'run':
     case 'r':
-      await cmdRun(llm, options as any, DEFAULT_HISTORY_FILE, engineHooks)
+      await cmdRun(llm, cliOptions, DEFAULT_HISTORY_FILE, engineHooks)
       break
     case 'plan':
     case 'p':
-      await cmdPlan(llm, options as any, DEFAULT_MAX_UPLOAD_FILE_SIZE)
+      await cmdPlan(llm, cliOptions, DEFAULT_MAX_UPLOAD_FILE_SIZE)
       break
     case 'replay':
-      await cmdReplay(llm, options as any, toolsDir)
+      await cmdReplay(llm, cliOptions, toolsDir)
       break
     case 'tools':
     case 't':
-      await cmdTools(options as any, toolsDir)
+      await cmdTools(cliOptions, toolsDir)
       break
     case 'plugins':
     case 'pl':
       await cmdPlugins(
-        options as any,
+        cliOptions,
         options.no_plugins
           ? null
-          : options.plugins_dir || DEFAULT_PLUGINS_DIR
+          : (options.plugins_dir as string) || DEFAULT_PLUGINS_DIR
       )
       break
     case 'history':
     case 'hist':
     case 'h':
-      cmdHistory(options as any, DEFAULT_HISTORY_FILE)
+      cmdHistory(cliOptions, DEFAULT_HISTORY_FILE)
       break
     case 'completion':
     case 'comp':

@@ -51,8 +51,7 @@ export class Registry {
     }
 
     // 2. Extract and validate required properties
-    const type = (plugin as any).type as unknown;
-    const name = (plugin as any).name as unknown;
+    const { type, name } = plugin;
 
     if (typeof type !== "string" || !type) {
       throw new Error(

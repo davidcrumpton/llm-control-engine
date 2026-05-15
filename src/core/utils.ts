@@ -19,18 +19,25 @@ import type { LLMMessage, MessageContent } from "../types.js";
 // Existing utilities (unchanged)
 // ---------------------------------------------------------------------------
 
+export interface ChatOpts {
+  json?: boolean;
+  temperature?: number;
+  top_p?: number;
+  num_ctx?: number | string;
+  timeout?: number | string;
+}
+
 /**
  * Build options object for LLM chat requests
- * @param {Object} opts - Options object with optional json, temperature, top_p
- * @returns {Object}
+ * @param opts - Options object with optional json, temperature, top_p
  */
-export function buildOptions(opts: any): Record<string, any> {
-  const out: Record<string, any> = {};
+export function buildOptions(opts: ChatOpts): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
   if (opts.json) out.json = true;
   if (opts.temperature) out.temperature = opts.temperature;
   if (opts.top_p) out.top_p = opts.top_p;
-  if (opts.num_ctx) out.num_ctx = parseInt(opts.num_ctx, 10);
-  if (opts.timeout) out.timeout = parseInt(opts.timeout, 10);
+  if (opts.num_ctx) out.num_ctx = parseInt(String(opts.num_ctx), 10);
+  if (opts.timeout) out.timeout = parseInt(String(opts.timeout), 10);
   return out;
 }
 
@@ -60,8 +67,7 @@ export function isImage(file: string): boolean {
 
 /**
  * Extract JSON from text, handling markdown code blocks and malformed JSON
- * @param {string} text
- * @returns {Object|null}
+ * @param text
  */
 export function extractJSON(text: string): any {
   const codeBlockMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
@@ -104,12 +110,16 @@ export function extractJSON(text: string): any {
 
 /**
  * Validate that tool arguments satisfy the tool's parameter schema
- * @param {Object} tool - Tool with parameters schema
- * @param {Object} args - Arguments to validate
- * @throws {Error} if required arguments are missing
+ * @param tool - Tool with parameters schema
+ * @param args - Arguments to validate
+ * @throws if required arguments are missing
  */
-export function validateArgs(tool: any, args: Record<string, any>): void {
+export function validateArgs(
+  tool: { parameters?: any },
+  args: Record<string, unknown> = {},
+): void {
   const schema = tool.parameters;
+  if (!schema) return;
   const properties = schema.properties || schema;
   const requiredList = Array.isArray(schema.required) ? schema.required : [];
 
@@ -123,10 +133,9 @@ export function validateArgs(tool: any, args: Record<string, any>): void {
 
 /**
  * Validate that a tool object has all required fields
- * @param {Object} tool   - Tool to validate
- * @param {string} source - Source file path (for error messages)
- * @returns {Object}
- * @throws {Error}
+ * @param tool   - Tool to validate
+ * @param source - Source file path (for error messages)
+ * @throws
  */
 export function validateTool(tool: any, source: string): any {
   if (!tool || typeof tool !== "object") {
@@ -251,15 +260,17 @@ const DEFAULT_SENSITIVE_PARAM_KEYS = new Set([
  * Properties whose names (lowercased) match `sensitiveKeys`, or whose
  * definition has `sensitive: true`, are replaced with a placeholder.
  *
- * @param {Object} parameters       - Raw parameter schema.
- * @param {Set<string>} sensitiveKeys
- * @returns {Object}                - Redacted schema safe for the LLM.
+ * @param parameters       - Raw parameter schema.
+ * @param sensitiveKeys
  */
-function redactParameters(parameters: any, sensitiveKeys: Set<string>): any {
+function redactParameters(
+  parameters: any,
+  sensitiveKeys: Set<string>,
+): Record<string, unknown> | null {
   if (!parameters || typeof parameters !== "object") return parameters;
 
   const properties = parameters.properties || parameters;
-  const redacted: Record<string, any> = {};
+  const redacted: Record<string, unknown> = {};
 
   for (const [key, def] of Object.entries(properties) as [string, any][]) {
     if (sensitiveKeys.has(key.toLowerCase()) || def?.sensitive === true) {
@@ -282,9 +293,8 @@ function redactParameters(parameters: any, sensitiveKeys: Set<string>): any {
 /**
  * Build the system prompt that instructs the model on tool usage.
  *
- * @param {Array}       tools             - Array of available tools.
- * @param {Set<string>} [sensitiveKeys]   - Additional sensitive param names to redact.
- * @returns {string}
+ * @param tools             - Array of available tools.
+ * @param [sensitiveKeys]   - Additional sensitive param names to redact.
  */
 export function buildToolPrompt(
   tools: any[],
@@ -328,10 +338,9 @@ ${tools
 /**
  * Build an image message in the correct format for the active provider.
  *
- * @param {string} filePath - Path to the image file
- * @param {string} imgData  - Base64-encoded image data
- * @param {string} provider - 'lmstudio' | 'ollama'
- * @returns {Object}
+ * @param filePath - Path to the image file
+ * @param imgData  - Base64-encoded image data
+ * @param provider - 'lmstudio' | 'ollama'
  */
 export function buildImageMessage(
   filePath: string,
@@ -356,7 +365,11 @@ export function buildImageMessage(
   }
 
   // Ollama default
-  return { role: "user", content: label, images: [imgData] } as any;
+  return {
+    role: "user",
+    content: label,
+    images: [imgData],
+  } as unknown as LLMMessage;
 }
 
 /**

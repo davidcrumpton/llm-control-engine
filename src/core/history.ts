@@ -77,9 +77,6 @@ function sanitiseMessage(msg: unknown): ChatMessage | null {
  */
 function validateHistory(parsed: unknown): HistoryRecord {
   if (!isPlainObject(parsed)) {
-    if (Object.keys(parsed as any).length === 0) {
-      return {};
-    }
     console.warn(
       "WARN: History file does not contain a valid object; starting with empty history.",
     );
@@ -164,10 +161,11 @@ export function getSession(
   history: HistoryRecord,
   key: string,
 ): HistorySession {
-  if (!history[key] || !isPlainObject(history[key])) {
-    history[key] = { session: key, messages: [] };
+  let session = history[key];
+  if (!session || !isPlainObject(session)) {
+    session = { session: key, messages: [] };
+    history[key] = session;
   } else {
-    const session = history[key] as any;
     // Ensure session always has a valid messages array.
     if (!Array.isArray(session.messages)) {
       session.messages = [];
@@ -176,7 +174,7 @@ export function getSession(
       session.session = key;
     }
   }
-  return history[key];
+  return session;
 }
 
 /**

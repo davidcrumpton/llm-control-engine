@@ -1,8 +1,9 @@
 /// tests/fixtures/tools/sample-tool.ts
 // A valid tool module used by the dynamic tool loader tests
-import type { ToolDefinition } from "../../../src/core/types.js";
+import type { ToolPlugin } from "../../../src/types.js";
 
-const sampleTool: ToolDefinition = {
+const sampleTool: ToolPlugin = {
+  type: "tool",
   name: "sample-tool",
   description: "A sample tool for testing the dynamic loader",
   parameters: {
@@ -20,11 +21,12 @@ const sampleTool: ToolDefinition = {
     },
     required: ["query"],
   },
-  execute: async (params: { query: string; limit?: number }) => {
-    return {
-      results: [`result for "${params.query}"`],
+  run: async (params: Record<string, unknown>) => {
+    const query = params.query as string;
+    return JSON.stringify({
+      results: [`result for "${query}"`],
       total: 1,
-    };
+    });
   },
 };
 

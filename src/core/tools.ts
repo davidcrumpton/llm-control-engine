@@ -122,7 +122,14 @@ export async function runWithTools(
 ): Promise<string> {
   // Extract the recorder callback before forwarding chatOptions to llm.chat()
   // so the provider never sees an unrecognised key.
-  const { onToolCall, ...llmChatOptions } = chatOptions as any;
+  const { onToolCall, ...llmChatOptions } = chatOptions as {
+    onToolCall?: (
+      tool: string,
+      args: Record<string, unknown>,
+      result: string,
+    ) => void;
+    [key: string]: unknown;
+  };
 
   const toolHistory: ToolHistory[] = [];
   let loopCount = 0;
@@ -177,7 +184,7 @@ export async function runWithTools(
             tools,
             messages,
             model,
-          } as any,
+          },
         );
 
         if (policyResult) {
