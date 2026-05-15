@@ -1,125 +1,132 @@
-import { existsSync } from 'fs'
-import { readdir, readFile } from 'fs/promises'
-import path from 'path'
-import type { CLIOptions } from '../types.js'
+import { existsSync } from "fs";
+import { readdir, readFile } from "fs/promises";
+import path from "path";
+import type { CLIOptions } from "../types.js";
 
-const PLUGIN_EXT_REGEX = /\.plugin\.(ts|js)$/
+const PLUGIN_EXT_REGEX = /\.plugin\.(ts|js)$/;
 
 /**
  * Discover plugin files in a directory
  */
 async function discoverPlugins(pluginsDir: string | null): Promise<any[]> {
-  if (!pluginsDir || !existsSync(pluginsDir)) return []
-// ... (omitted for brevity in chunk but I'll provide full replacement)
+  if (!pluginsDir || !existsSync(pluginsDir)) return [];
+  // ... (omitted for brevity in chunk but I'll provide full replacement)
 
   try {
-    const entries = await readdir(pluginsDir, { withFileTypes: true })
-    
+    const entries = await readdir(pluginsDir, { withFileTypes: true });
+
     const pluginPromises = entries.map(async (entry) => {
-      const fullPath = path.join(pluginsDir, entry.name)
+      const fullPath = path.join(pluginsDir, entry.name);
 
       if (entry.isDirectory()) {
-        const files = await readdir(fullPath)
+        const files = await readdir(fullPath);
         return files
-          .filter(f => PLUGIN_EXT_REGEX.test(f))
-          .map(file => ({
+          .filter((f) => PLUGIN_EXT_REGEX.test(f))
+          .map((file) => ({
             name: entry.name,
             file,
             path: path.join(fullPath, file),
-            type: 'hook-plugin'
-          }))
-      } 
-
-      if (PLUGIN_EXT_REGEX.test(entry.name)) {
-        return [{
-          name: entry.name.replace(PLUGIN_EXT_REGEX, ''),
-          file: entry.name,
-          path: fullPath,
-          type: 'hook-plugin'
-        }]
+            type: "hook-plugin",
+          }));
       }
 
-      return []
-    })
+      if (PLUGIN_EXT_REGEX.test(entry.name)) {
+        return [
+          {
+            name: entry.name.replace(PLUGIN_EXT_REGEX, ""),
+            file: entry.name,
+            path: fullPath,
+            type: "hook-plugin",
+          },
+        ];
+      }
 
-    const results = await Promise.all(pluginPromises)
-    return results.flat()
-  } catch (err) {
-    console.error(` Error discovering plugins: ${err.message}`)
-    return []
+      return [];
+    });
+
+    const results = await Promise.all(pluginPromises);
+    return results.flat();
+  } catch (err: any) {
+    console.error(` Error discovering plugins: ${err.message}`);
+    return [];
   }
 }
 
 /**
  * Read plugin metadata with improved regex
  */
-async function readPluginMetadata(filePath) {
+async function readPluginMetadata(filePath: string) {
   try {
-    const content = await readFile(filePath, 'utf-8')
-    
+    const content = await readFile(filePath, "utf-8");
+
     // Improved description match: looks for JSDoc or standard comments
-    const descMatch = content.match(/\/\*\*?[\s\S]*?\*\s*(.+?)(?:\n|\*\/)/)
-    const versionMatch = content.match(/version[:\s]+['"`]([^'"`\s]+)['"`]/i)
+    const descMatch = content.match(/\/\*\*?[\s\S]*?\*\s*(.+?)(?:\n|\*\/)/);
+    const versionMatch = content.match(/version[:\s]+['"`]([^'"`\s]+)['"`]/i);
 
     return {
-      description: descMatch ? descMatch[1].trim() : 'No description',
-      version: versionMatch ? versionMatch[1] : 'unknown'
-    }
+      description: descMatch ? descMatch[1].trim() : "No description",
+      version: versionMatch ? versionMatch[1] : "unknown",
+    };
   } catch {
-    return { description: 'No description', version: 'unknown' }
+    return { description: "No description", version: "unknown" };
   }
 }
 
 /**
  * Handle plugins command
  */
-export async function cmdPlugins(options: CLIOptions, pluginsDir: string | null) {
-  const plugins = await discoverPlugins(pluginsDir)
+export async function cmdPlugins(
+  options: CLIOptions,
+  pluginsDir: string | null,
+) {
+  const plugins = await discoverPlugins(pluginsDir);
 
   if (plugins.length === 0) {
-    console.error('No plugins found.')
+    console.error("No plugins found.");
   }
 
   // Enrich plugins with metadata in parallel
   const enrichedPlugins = await Promise.all(
-    plugins.map(async (p) => ({ ...p, ...(await readPluginMetadata(p.path)) }))
-  )
+    plugins.map(async (p) => ({ ...p, ...(await readPluginMetadata(p.path)) })),
+  );
 
   if (options.json) {
-    console.log(JSON.stringify(enrichedPlugins, null, 2))
-    return
+    console.log(JSON.stringify(enrichedPlugins, null, 2));
+    return;
   }
 
   // Filter if a specific plugin is requested via --show <name>
-  const showName = typeof options.show === 'string' ? options.show : null
-  const toDisplay = showName 
-    ? enrichedPlugins.filter(p => p.name === showName) 
-    : enrichedPlugins
+  const showName = typeof options.show === "string" ? options.show : null;
+  const toDisplay = showName
+    ? enrichedPlugins.filter((p) => p.name === showName)
+    : enrichedPlugins;
 
   if (showName && toDisplay.length === 0) {
-    throw new Error(`Plugin '${showName}' not found.`)
+    throw new Error(`Plugin '${showName}' not found.`);
   }
 
-  displayPlugins(toDisplay, !!options.show)
+  displayPlugins(toDisplay, !!options.show);
 }
 
 /**
  * Clean UI Output
  */
-function displayPlugins(plugins, verbose = false) {
+function displayPlugins(plugins: any[], verbose = false) {
   if (!verbose) {
-    console.log(`\nFound ${plugins.length} plugin(s):`)
-    plugins.forEach(p => {
-      console.log(`  - ${p.name.padEnd(15)} [${p.version}] (${p.type}) — ${p.description}`)
-    })
+    console.log(`\nFound ${plugins.length} plugin(s):`);
+    plugins.forEach((p: any) => {
+      console.log(
+        `  - ${p.name.padEnd(15)} [${p.version}] (${p.type}) — ${p.description}`,
+      );
+    });
   } else {
-    plugins.forEach(p => {
-      console.log(`\nPlugin: ${p.name}`)
-      console.log(`  File:    ${p.file}`)
-      console.log(`  Path:    ${p.path}`)
-      console.log(`  Type:    ${p.type}`)
-      console.log(`  Version: ${p.version}`)
-      console.log(`  Desc:    ${p.description}`)
-    })
+    plugins.forEach((p: any) => {
+      console.log(`\nPlugin: ${p.name}`);
+      console.log(`  File:    ${p.file}`);
+      console.log(`  Path:    ${p.path}`);
+      console.log(`  Type:    ${p.type}`);
+      console.log(`  Version: ${p.version}`);
+      console.log(`  Desc:    ${p.description}`);
+    });
   }
 }

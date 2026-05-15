@@ -10,10 +10,10 @@
  *     system prompt so secrets / credentials are not leaked to the LLM.
  */
 
-import fs from 'fs'
-import path from 'path'
-import os from 'os'
-import type { LLMMessage, MessageContent } from '../types.js'
+import fs from "fs";
+import path from "path";
+import os from "os";
+import type { LLMMessage, MessageContent } from "../types.js";
 
 // ---------------------------------------------------------------------------
 // Existing utilities (unchanged)
@@ -25,13 +25,13 @@ import type { LLMMessage, MessageContent } from '../types.js'
  * @returns {Object}
  */
 export function buildOptions(opts: any): Record<string, any> {
-  const out: Record<string, any> = {}
-  if (opts.json)        out.json        = true
-  if (opts.temperature) out.temperature = opts.temperature
-  if (opts.top_p)       out.top_p       = opts.top_p
-  if (opts.num_ctx)     out.num_ctx     = parseInt(opts.num_ctx, 10)
-  if (opts.timeout)     out.timeout     = parseInt(opts.timeout, 10)
-  return out
+  const out: Record<string, any> = {};
+  if (opts.json) out.json = true;
+  if (opts.temperature) out.temperature = opts.temperature;
+  if (opts.top_p) out.top_p = opts.top_p;
+  if (opts.num_ctx) out.num_ctx = parseInt(opts.num_ctx, 10);
+  if (opts.timeout) out.timeout = parseInt(opts.timeout, 10);
+  return out;
 }
 
 /**
@@ -41,9 +41,9 @@ export function buildOptions(opts: any): Record<string, any> {
  * @throws {Error} if file size exceeds maximum
  */
 export function validateFileSize(file: string, maxSize: number): void {
-  const stats = fs.statSync(file)
+  const stats = fs.statSync(file);
   if (stats.size > maxSize) {
-    throw new Error('File size exceeds the maximum upload file size')
+    throw new Error("File size exceeds the maximum upload file size");
   }
 }
 
@@ -53,8 +53,9 @@ export function validateFileSize(file: string, maxSize: number): void {
  * @returns {boolean}
  */
 export function isImage(file: string): boolean {
-  return ['.png', '.jpg', '.jpeg', '.webp']
-    .includes(path.extname(file).toLowerCase())
+  return [".png", ".jpg", ".jpeg", ".webp"].includes(
+    path.extname(file).toLowerCase(),
+  );
 }
 
 /**
@@ -63,31 +64,42 @@ export function isImage(file: string): boolean {
  * @returns {Object|null}
  */
 export function extractJSON(text: string): any {
-  const codeBlockMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/)
+  const codeBlockMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
   if (codeBlockMatch) {
-    try { return JSON.parse(codeBlockMatch[1]) } catch { /* fall through */ }
+    try {
+      return JSON.parse(codeBlockMatch[1]);
+    } catch {
+      /* fall through */
+    }
   }
 
-  let firstBrace = text.indexOf('{')
-  if (firstBrace === -1) return null
+  let firstBrace = text.indexOf("{");
+  if (firstBrace === -1) return null;
 
-  let str = text.slice(firstBrace)
-  let depth = 0
-  let lastBrace = -1
+  let str = text.slice(firstBrace);
+  let depth = 0;
+  let lastBrace = -1;
 
   for (let i = 0; i < str.length; i++) {
-    if      (str[i] === '{') depth++
-    else if (str[i] === '}') {
-      depth--
-      if (depth === 0) { lastBrace = i; break }
+    if (str[i] === "{") depth++;
+    else if (str[i] === "}") {
+      depth--;
+      if (depth === 0) {
+        lastBrace = i;
+        break;
+      }
     }
   }
 
   if (lastBrace !== -1) {
-    try { return JSON.parse(str.slice(0, lastBrace + 1)) } catch { return null }
+    try {
+      return JSON.parse(str.slice(0, lastBrace + 1));
+    } catch {
+      return null;
+    }
   }
 
-  return null
+  return null;
 }
 
 /**
@@ -97,14 +109,14 @@ export function extractJSON(text: string): any {
  * @throws {Error} if required arguments are missing
  */
 export function validateArgs(tool: any, args: Record<string, any>): void {
-  const schema = tool.parameters
-  const properties  = schema.properties || schema
-  const requiredList = Array.isArray(schema.required) ? schema.required : []
+  const schema = tool.parameters;
+  const properties = schema.properties || schema;
+  const requiredList = Array.isArray(schema.required) ? schema.required : [];
 
   for (const key in properties) {
-    const isRequired = properties[key].required || requiredList.includes(key)
+    const isRequired = properties[key].required || requiredList.includes(key);
     if (isRequired && !(key in args)) {
-      throw new Error(`Missing required param: ${key}`)
+      throw new Error(`Missing required param: ${key}`);
     }
   }
 }
@@ -117,45 +129,50 @@ export function validateArgs(tool: any, args: Record<string, any>): void {
  * @throws {Error}
  */
 export function validateTool(tool: any, source: string): any {
-  if (!tool || typeof tool !== 'object') {
-    throw new Error(`Invalid tool export from ${source}`)
+  if (!tool || typeof tool !== "object") {
+    throw new Error(`Invalid tool export from ${source}`);
   }
-  if (!tool.name || typeof tool.name !== 'string') {
-    throw new Error(`Tool missing valid 'name' in ${source}`)
+  if (!tool.name || typeof tool.name !== "string") {
+    throw new Error(`Tool missing valid 'name' in ${source}`);
   }
-  if (!tool.description || typeof tool.description !== 'string') {
-    throw new Error(`Tool '${tool.name}' missing 'description'`)
+  if (!tool.description || typeof tool.description !== "string") {
+    throw new Error(`Tool '${tool.name}' missing 'description'`);
   }
-  if (!tool.parameters || typeof tool.parameters !== 'object') {
-    throw new Error(`Tool '${tool.name}' missing 'parameters'`)
+  if (!tool.parameters || typeof tool.parameters !== "object") {
+    throw new Error(`Tool '${tool.name}' missing 'parameters'`);
   }
-  if (typeof tool.run !== 'function') {
-    throw new Error(`Tool '${tool.name}' missing 'run()'`)
+  if (typeof tool.run !== "function") {
+    throw new Error(`Tool '${tool.name}' missing 'run()'`);
   }
   if (tool.version) {
-    if (typeof tool.version !== 'string') {
-      throw new Error(`Tool '${tool.name}' version must be a string`)
+    if (typeof tool.version !== "string") {
+      throw new Error(`Tool '${tool.name}' version must be a string`);
     }
     if (!/^v?[0-9]+\.[0-9]+\.[0-9]+$/.test(tool.version)) {
-      throw new Error(`Tool '${tool.name}' version must match regex /^v?[0-9]+\\.[0-9]+\\.[0-9]+$/`)
+      throw new Error(
+        `Tool '${tool.name}' version must match regex /^v?[0-9]+\\.[0-9]+\\.[0-9]+$/`,
+      );
     }
   } else {
-    throw new Error(`Tool '${tool.name}' missing version`)
+    throw new Error(`Tool '${tool.name}' missing version`);
   }
   if (tool.tags !== undefined) {
-    if (!Array.isArray(tool.tags) || !tool.tags.every((t: any) => typeof t === 'string')) {
-      throw new Error(`Tool '${tool.name}' tags must be an array of strings`)
+    if (
+      !Array.isArray(tool.tags) ||
+      !tool.tags.every((t: any) => typeof t === "string")
+    ) {
+      throw new Error(`Tool '${tool.name}' tags must be an array of strings`);
     }
   }
   if (tool.policies !== undefined) {
-    if (typeof tool.policies !== 'object' || Array.isArray(tool.policies)) {
-      throw new Error(`Tool '${tool.name}' policies must be an object`)
+    if (typeof tool.policies !== "object" || Array.isArray(tool.policies)) {
+      throw new Error(`Tool '${tool.name}' policies must be an object`);
     }
     if (tool.policies.requires && !Array.isArray(tool.policies.requires)) {
-      throw new Error(`Tool '${tool.name}' policies.requires must be an array`)
+      throw new Error(`Tool '${tool.name}' policies.requires must be an array`);
     }
   }
-  return tool
+  return tool;
 }
 
 // ---------------------------------------------------------------------------
@@ -166,7 +183,7 @@ export function validateTool(tool: any, source: string): any {
  * The default allowed base directory for history files.
  * Override by passing a custom `allowedBase` to validateHistoryPath().
  */
-const DEFAULT_HISTORY_BASE = path.resolve(os.homedir(), '.llmctrlx')
+const DEFAULT_HISTORY_BASE = path.resolve(os.homedir(), ".llmctrlx");
 
 /**
  * Validate that a history file path resolves inside `allowedBase`.
@@ -180,20 +197,23 @@ const DEFAULT_HISTORY_BASE = path.resolve(os.homedir(), '.llmctrlx')
  * @returns {string} The resolved, safe absolute path.
  * @throws {Error}  If the resolved path escapes allowedBase.
  */
-export function validateHistoryPath(filePath: string, allowedBase: string = DEFAULT_HISTORY_BASE): string {
-  const resolvedBase = path.resolve(allowedBase)
-  const resolvedFile = path.resolve(filePath)
+export function validateHistoryPath(
+  filePath: string,
+  allowedBase: string = DEFAULT_HISTORY_BASE,
+): string {
+  const resolvedBase = path.resolve(allowedBase);
+  const resolvedFile = path.resolve(filePath);
 
   if (
     !resolvedFile.startsWith(resolvedBase + path.sep) &&
     resolvedFile !== resolvedBase
   ) {
     throw new Error(
-      `History file path '${filePath}' is outside the allowed directory '${resolvedBase}'.`
-    )
+      `History file path '${filePath}' is outside the allowed directory '${resolvedBase}'.`,
+    );
   }
 
-  return resolvedFile
+  return resolvedFile;
 }
 
 // ---------------------------------------------------------------------------
@@ -208,10 +228,22 @@ export function validateHistoryPath(filePath: string, allowedBase: string = DEFA
  * definitions to opt in to redaction.
  */
 const DEFAULT_SENSITIVE_PARAM_KEYS = new Set([
-  'password', 'passwd', 'secret', 'token', 'apikey', 'api_key',
-  'authorization', 'auth', 'credential', 'private_key', 'access_key',
-  'access_token', 'refresh_token', 'session_token', 'bearer',
-])
+  "password",
+  "passwd",
+  "secret",
+  "token",
+  "apikey",
+  "api_key",
+  "authorization",
+  "auth",
+  "credential",
+  "private_key",
+  "access_key",
+  "access_token",
+  "refresh_token",
+  "session_token",
+  "bearer",
+]);
 
 /**
  * Produce a redacted copy of a parameter schema for inclusion in a prompt.
@@ -224,24 +256,27 @@ const DEFAULT_SENSITIVE_PARAM_KEYS = new Set([
  * @returns {Object}                - Redacted schema safe for the LLM.
  */
 function redactParameters(parameters: any, sensitiveKeys: Set<string>): any {
-  if (!parameters || typeof parameters !== 'object') return parameters
+  if (!parameters || typeof parameters !== "object") return parameters;
 
-  const properties = parameters.properties || parameters
-  const redacted: Record<string, any> = {}
+  const properties = parameters.properties || parameters;
+  const redacted: Record<string, any> = {};
 
   for (const [key, def] of Object.entries(properties) as [string, any][]) {
     if (sensitiveKeys.has(key.toLowerCase()) || def?.sensitive === true) {
-      redacted[key] = { type: def?.type || 'string', description: '[redacted]' }
+      redacted[key] = {
+        type: def?.type || "string",
+        description: "[redacted]",
+      };
     } else {
-      redacted[key] = def
+      redacted[key] = def;
     }
   }
 
   // Preserve the top-level schema shape (required, etc.)
   if (parameters.properties) {
-    return { ...parameters, properties: redacted }
+    return { ...parameters, properties: redacted };
   }
-  return redacted
+  return redacted;
 }
 
 /**
@@ -251,11 +286,14 @@ function redactParameters(parameters: any, sensitiveKeys: Set<string>): any {
  * @param {Set<string>} [sensitiveKeys]   - Additional sensitive param names to redact.
  * @returns {string}
  */
-export function buildToolPrompt(tools: any[], sensitiveKeys: Set<string> = new Set()): string {
+export function buildToolPrompt(
+  tools: any[],
+  sensitiveKeys: Set<string> = new Set(),
+): string {
   const allSensitiveKeys = new Set([
     ...DEFAULT_SENSITIVE_PARAM_KEYS,
-    ...Array.from(sensitiveKeys).map(k => k.toLowerCase()),
-  ])
+    ...Array.from(sensitiveKeys).map((k) => k.toLowerCase()),
+  ]);
 
   return `
 You MUST respond with ONLY valid JSON when calling a tool.
@@ -275,14 +313,16 @@ Tool call format:
 }
 
 Available tools:
-${tools.map(t => {
-  const safeParams = redactParameters(t.parameters, allSensitiveKeys)
-  return `
+${tools
+  .map((t) => {
+    const safeParams = redactParameters(t.parameters, allSensitiveKeys);
+    return `
 - ${t.name}: ${t.description}
   parameters: ${JSON.stringify(safeParams)}
-`
-}).join('\n')}
-`
+`;
+  })
+  .join("\n")}
+`;
 }
 
 /**
@@ -293,23 +333,30 @@ ${tools.map(t => {
  * @param {string} provider - 'lmstudio' | 'ollama'
  * @returns {Object}
  */
-export function buildImageMessage(filePath: string, imgData: string, provider: string): LLMMessage {
-  const label = `Attached image: ${path.basename(filePath)}`
+export function buildImageMessage(
+  filePath: string,
+  imgData: string,
+  provider: string,
+): LLMMessage {
+  const label = `Attached image: ${path.basename(filePath)}`;
 
-  if (provider === 'lmstudio') {
-    const ext = path.extname(filePath).slice(1).toLowerCase()
-    const mimeType = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`
+  if (provider === "lmstudio") {
+    const ext = path.extname(filePath).slice(1).toLowerCase();
+    const mimeType = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
     return {
-      role: 'user',
+      role: "user",
       content: [
-        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imgData}` } },
-        { type: 'text', text: label }
-      ] as MessageContent[]
-    }
+        {
+          type: "image_url",
+          image_url: { url: `data:${mimeType};base64,${imgData}` },
+        },
+        { type: "text", text: label },
+      ] as MessageContent[],
+    };
   }
 
   // Ollama default
-  return { role: 'user', content: label, images: [imgData] } as any
+  return { role: "user", content: label, images: [imgData] } as any;
 }
 
 /**
@@ -319,33 +366,51 @@ export function buildImageMessage(filePath: string, imgData: string, provider: s
  * @returns {Array} New compacted message array.
  */
 export function compactMessages(messages: LLMMessage[]): LLMMessage[] {
-  if (!messages || messages.length === 0) return []
+  if (!messages || messages.length === 0) return [];
 
-  const compacted: LLMMessage[] = []
-  let current: LLMMessage | null = null
+  const compacted: LLMMessage[] = [];
+  let current: LLMMessage | null = null;
 
   for (const msg of messages) {
     if (!current || current.role !== msg.role) {
-      current = { ...msg }
-      compacted.push(current)
+      current = { ...msg };
+      compacted.push(current);
     } else {
       // Merge content
-      if (typeof current.content === 'string' && typeof msg.content === 'string') {
-        current.content += '\n\n' + msg.content
+      if (
+        typeof current.content === "string" &&
+        typeof msg.content === "string"
+      ) {
+        current.content += "\n\n" + msg.content;
       } else if (Array.isArray(current.content) && Array.isArray(msg.content)) {
-        current.content.push(...msg.content)
-      } else if (Array.isArray(current.content) && typeof msg.content === 'string') {
-        (current.content as MessageContent[]).push({ type: 'text', text: msg.content })
-      } else if (typeof current.content === 'string' && Array.isArray(msg.content)) {
-        current.content = [{ type: 'text', text: current.content }, ...msg.content] as MessageContent[]
+        current.content.push(...msg.content);
+      } else if (
+        Array.isArray(current.content) &&
+        typeof msg.content === "string"
+      ) {
+        (current.content as MessageContent[]).push({
+          type: "text",
+          text: msg.content,
+        });
+      } else if (
+        typeof current.content === "string" &&
+        Array.isArray(msg.content)
+      ) {
+        current.content = [
+          { type: "text", text: current.content },
+          ...msg.content,
+        ] as MessageContent[];
       }
 
       // Merge images if present
       if ((msg as any).images) {
-        (current as any).images = [...((current as any).images || []), ...(msg as any).images]
+        (current as any).images = [
+          ...((current as any).images || []),
+          ...(msg as any).images,
+        ];
       }
     }
   }
 
-  return compacted
+  return compacted;
 }

@@ -113,6 +113,7 @@
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/gitlab": "^13.2.0",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.19.39",
     "@vitest/coverage-v8": "^2.1.0",
     "@yao-pkg/pkg": "^6.19.0",

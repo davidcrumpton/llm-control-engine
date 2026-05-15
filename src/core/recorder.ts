@@ -59,6 +59,7 @@ export class Recorder {
   events: SessionEvent[];
   outputs: SessionOutputs;
   timestamps: SessionTimestamps;
+  isSaved: boolean;
 
   /**
    * Create a new session recorder.
@@ -75,6 +76,7 @@ export class Recorder {
     this.events = [];
     this.outputs = {};
     this.timestamps = {};
+    this.isSaved = false;
   }
 
   // ── Timestamp helpers ──────────────────────────────────────────────────────
@@ -171,6 +173,7 @@ export class Recorder {
       JSON.stringify(this.toJSON(), null, 2),
       "utf8",
     );
+    this.isSaved = true;
   }
 }
 

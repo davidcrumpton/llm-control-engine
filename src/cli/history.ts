@@ -1,8 +1,8 @@
 /**
  * History command handler for llmctrlx
  */
-import { loadHistory, saveHistory, getSession } from '../core/history.js';
-import type { CLIOptions } from '../types.js'
+import { loadHistory, saveHistory, getSession } from "../core/history.js";
+import type { CLIOptions } from "../types.js";
 
 /**
  * Handle history command
@@ -15,14 +15,17 @@ export function cmdHistory(options: CLIOptions, historyFile: string) {
   // 1. Destructive Actions (Purge/Delete)
   if (options.purge) {
     saveHistory(historyFile, {});
-    return console.log('History purged successfully.');
+    return console.log("History purged successfully.");
   }
 
   if (options.delete) {
-    const sessionKey = typeof options.delete === 'string' ? options.delete : options.session;
-    
+    const sessionKey =
+      typeof options.delete === "string" ? options.delete : options.session;
+
     if (!sessionKey) {
-      return console.error('Error: Please specify a session to delete with --delete <session_name>');
+      return console.error(
+        "Error: Please specify a session to delete with --delete <session_name>",
+      );
     }
     if (!historyData[sessionKey]) {
       return console.error(`Error: Session not found: ${sessionKey}`);
@@ -40,11 +43,12 @@ export function cmdHistory(options: CLIOptions, historyFile: string) {
 
   if (options.list) {
     const keys = Object.keys(historyData);
-    return console.log(keys.length ? keys.join('\n') : 'No sessions found.');
+    return console.log(keys.length ? keys.join("\n") : "No sessions found.");
   }
 
   if (options.show || options.session) {
     const sessionKey = options.session || options.show;
+    if (!sessionKey) return;
     const session = getSession(historyData, sessionKey);
 
     if (!session?.messages?.length) {

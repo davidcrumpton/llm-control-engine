@@ -3,5 +3,5 @@
  * Exports all provider classes
  */
 
-export { OllamaProvider } from './ollama.js'
-export { LMStudioProvider } from './lmstudio.js'
+export { OllamaProvider } from "./ollama.js";
+export { LMStudioProvider } from "./lmstudio.js";

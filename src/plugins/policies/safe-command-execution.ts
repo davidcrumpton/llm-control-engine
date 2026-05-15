@@ -18,30 +18,86 @@
  *  4. All checks use exact word boundaries on the normalised form.
  */
 
-import type { PolicyContext, PolicyResult, PolicyPlugin } from '../../types.js'
+import type { PolicyContext, PolicyResult, PolicyPlugin } from "../../types.js";
 
 // Executables that are never permitted, regardless of context.
 const BLOCKED_EXECUTABLES = new Set([
-  'sudo', 'doas', 'su',
-  'rm', 'rmdir', 'shred', 'unlink',
-  'shutdown', 'reboot', 'halt', 'poweroff', 'init', 'telinit',
-  'mkfs', 'fdisk', 'parted', 'dd',
-  'chmod', 'chown', 'chgrp', 'chsh', 'passwd', 'usermod', 'useradd', 'userdel',
-  'mount', 'umount',
-  'iptables', 'ip6tables', 'nft', 'ufw', 'firewall-cmd',
-  'nc', 'netcat', 'ncat',
-  'curl', 'wget', 'fetch',
-  'bash', 'sh', 'dash', 'zsh', 'fish', 'ksh', 'csh', 'tcsh',
-  'python', 'python3', 'ruby', 'perl', 'node', 'lua', 'php',
+  "sudo",
+  "doas",
+  "su",
+  "rm",
+  "rmdir",
+  "shred",
+  "unlink",
+  "shutdown",
+  "reboot",
+  "halt",
+  "poweroff",
+  "init",
+  "telinit",
+  "mkfs",
+  "fdisk",
+  "parted",
+  "dd",
+  "chmod",
+  "chown",
+  "chgrp",
+  "chsh",
+  "passwd",
+  "usermod",
+  "useradd",
+  "userdel",
+  "mount",
+  "umount",
+  "iptables",
+  "ip6tables",
+  "nft",
+  "ufw",
+  "firewall-cmd",
+  "nc",
+  "netcat",
+  "ncat",
+  "curl",
+  "wget",
+  "fetch",
+  "bash",
+  "sh",
+  "dash",
+  "zsh",
+  "fish",
+  "ksh",
+  "csh",
+  "tcsh",
+  "python",
+  "python3",
+  "ruby",
+  "perl",
+  "node",
+  "lua",
+  "php",
   // Add further blocked names as needed.
-])
+]);
 
 // Shell metacharacters that must never appear in any argument value.
 // Checked as individual code points to avoid JSON-escape bypass.
 const SHELL_META_CHARS = new Set([
-  ';', '|', '&', '`', '$', '(', ')', '<', '>', '{', '}',
-  '!', '\\', '\n', '\r', '\t',
-])
+  ";",
+  "|",
+  "&",
+  "`",
+  "$",
+  "(",
+  ")",
+  "<",
+  ">",
+  "{",
+  "}",
+  "!",
+  "\\",
+  "\n",
+  "\r",
+  "\t",
+]);
 
 /**
  * Return the NFKC-normalised, lower-cased form of a string.
@@ -49,7 +105,7 @@ const SHELL_META_CHARS = new Set([
  * (fullwidth letters, superscripts, etc.) to their ASCII equivalents.
  */
 function normalise(str: string): string {
-  return String(str).normalize('NFKC').toLowerCase()
+  return String(str).normalize("NFKC").toLowerCase();
 }
 
 /**
@@ -60,35 +116,35 @@ function normalise(str: string): string {
  * @returns {string|null}
  */
 function checkValue(value: string): string | null {
-  const str = String(value)
-  const norm = normalise(str)
+  const str = String(value);
+  const norm = normalise(str);
 
   // 1. Shell metacharacter check (code-point level, not regex-over-JSON)
   for (const ch of str) {
     if (SHELL_META_CHARS.has(ch)) {
-      return `Shell metacharacter '${ch}' is not permitted.`
+      return `Shell metacharacter '${ch}' is not permitted.`;
     }
   }
 
   // 2. Blocked-executable / keyword check on normalised form.
   //    Wrap in word boundaries so "normal" doesn't match "rm" etc.
   for (const blocked of BLOCKED_EXECUTABLES) {
-    const normBlocked = normalise(blocked)
+    const normBlocked = normalise(blocked);
     // Match as a whole word: preceded/followed by non-word char or string edge.
-    const pattern = new RegExp(`(?:^|\\W)${normBlocked}(?:\\W|$)`)
+    const pattern = new RegExp(`(?:^|\\W)${normBlocked}(?:\\W|$)`);
     if (pattern.test(norm)) {
-      return `Blocked command or keyword '${blocked}' detected.`
+      return `Blocked command or keyword '${blocked}' detected.`;
     }
   }
 
-  return null
+  return null;
 }
 
 const plugin: PolicyPlugin = {
-  type: 'policy',
-  name: 'safe-command-execution',
+  type: "policy",
+  name: "safe-command-execution",
   // @ts-ignore
-  description: 'Block unsafe command execution patterns before tools run.',
+  description: "Block unsafe command execution patterns before tools run.",
 
   /**
    * Called once when the policy is loaded.  No mutable state needed now that
@@ -100,33 +156,36 @@ const plugin: PolicyPlugin = {
    * @param {PolicyContext} context
    * @returns {Promise<PolicyResult|null>}
    */
-  async onBeforeToolRun({ tool, args }: PolicyContext): Promise<PolicyResult | null> {
+  async onBeforeToolRun({
+    tool,
+    args,
+  }: PolicyContext): Promise<PolicyResult | null> {
     // Check the tool name itself.
-    const nameReason = checkValue(tool.name)
+    const nameReason = checkValue(tool.name);
     if (nameReason) {
       return {
         allow: false,
         message: `Unsafe tool name blocked by policy: ${nameReason}`,
-      }
+      };
     }
 
     // Recursively walk every argument value (supports nested objects/arrays).
-    const violations = collectViolations(args, '')
+    const violations = collectViolations(args, "");
 
     if (violations.length > 0) {
       return {
         allow: false,
         message:
           `Unsafe argument(s) blocked by policy for tool '${tool.name}': ` +
-          violations.join('; '),
-      }
+          violations.join("; "),
+      };
     }
 
-    return null
+    return null;
   },
-}
+};
 
-export default plugin
+export default plugin;
 
 /**
  * Recursively collect policy violations from an argument object.
@@ -136,32 +195,32 @@ export default plugin
  * @returns {string[]}      - List of violation descriptions.
  */
 function collectViolations(value: any, keyPath: string): string[] {
-  const violations: string[] = []
+  const violations: string[] = [];
 
-  if (value === null || value === undefined) return violations
+  if (value === null || value === undefined) return violations;
 
-  if (typeof value === 'string' || typeof value === 'number') {
-    const reason = checkValue(String(value))
+  if (typeof value === "string" || typeof value === "number") {
+    const reason = checkValue(String(value));
     if (reason) {
-      violations.push(`[${keyPath || 'root'}] ${reason}`)
+      violations.push(`[${keyPath || "root"}] ${reason}`);
     }
-    return violations
+    return violations;
   }
 
   if (Array.isArray(value)) {
     for (let i = 0; i < value.length; i++) {
-      violations.push(...collectViolations(value[i], `${keyPath}[${i}]`))
+      violations.push(...collectViolations(value[i], `${keyPath}[${i}]`));
     }
-    return violations
+    return violations;
   }
 
-  if (typeof value === 'object') {
+  if (typeof value === "object") {
     for (const [k, v] of Object.entries(value)) {
-      const childPath = keyPath ? `${keyPath}.${k}` : k
-      violations.push(...collectViolations(v, childPath))
+      const childPath = keyPath ? `${keyPath}.${k}` : k;
+      violations.push(...collectViolations(v, childPath));
     }
-    return violations
+    return violations;
   }
 
-  return violations
+  return violations;
 }

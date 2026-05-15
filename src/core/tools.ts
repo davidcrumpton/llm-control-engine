@@ -59,6 +59,11 @@ export async function runWithoutTools(
     "You do not have access to any tools. Notify user that tools are not available. If user asks";
   messages.unshift({ role: "system", content: systemPrompt });
   const res = await llm.chat({ model, messages, options: chatOptions });
+
+  if (Symbol.asyncIterator in res) {
+    throw new Error("Streaming not supported in runWithoutTools");
+  }
+
   return getMessageText(res);
 }
 
@@ -129,6 +134,11 @@ export async function runWithTools(
       messages,
       options: llmChatOptions,
     });
+
+    if (Symbol.asyncIterator in res) {
+      throw new Error("Streaming not supported in runWithTools");
+    }
+
     const content = getMessageText(res);
 
     try {

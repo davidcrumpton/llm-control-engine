@@ -28,6 +28,7 @@ export interface LLMMessage {
   role: MessageRole;
   content: string | MessageContent[];
   thinking?: string;
+  images?: string[];
 }
 
 export interface ChatChoice {
@@ -42,6 +43,8 @@ export interface LLMResponse {
   };
   model?: string;
   choices?: ChatChoice[];
+  eval_count?: number | string;
+  prompt_eval_count?: number | string;
 }
 
 export interface ChatParams {
@@ -57,7 +60,7 @@ export interface LLMProvider {
   defaultModel: string;
   capabilities: string[];
 
-  chat(params: ChatParams): Promise<LLMResponse>;
+  chat(params: ChatParams): Promise<LLMResponse | AsyncIterable<LLMResponse>>;
   list(): Promise<{ models: string[] }>;
   show?(params: { model: string }): Promise<unknown>;
   pull?(params: { model: string }): Promise<void>;
@@ -237,10 +240,10 @@ export interface Plan {
   steps?: PlanStep[];
   attachments?: string[];
   prompt?: string;
-  output?: { format?: string, save?: string };
-  outputs?: { save?: { step: string, to: string }[] };
+  output?: { format?: string; save?: string };
+  outputs?: { save?: { step: string; to: string }[] };
   system?: string;
-  flow?: { on_error?: 'stop' | 'continue' };
+  flow?: { on_error?: "stop" | "continue" };
 }
 
 // ─── CLI and Configuration Types ─────────────────────────────────────────────
