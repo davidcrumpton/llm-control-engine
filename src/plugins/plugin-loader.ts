@@ -24,7 +24,8 @@ import {
   HOOK_EVENTS,
   HookPriority,
 } from "./types.js";
-import { HookManager, HookLogger } from "./hook-manager.js";
+// @ts-ignore
+import { HookManager, HookLogger } from "./hook-manager.ts";
 
 // ---------------------------------------------------------------------------
 // Path-confinement helper

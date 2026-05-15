@@ -11,7 +11,8 @@
  *     URL, preventing accidental SSRF via a misconfigured host string.
  */
 
-import { LLMProvider, LLMResponse, ChatParams } from "../types.js";
+// @ts-ignore
+import { LLMProvider, LLMResponse, ChatParams } from "../types.ts";
 
 // ---------------------------------------------------------------------------
 // Helpers

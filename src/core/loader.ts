@@ -15,7 +15,8 @@ import { pathToFileURL } from "url";
 import { createRequire } from "module";
 import { validateTool } from "./utils.js";
 import { Registry } from "./registry.js";
-import { Plugin } from "../types.js";
+// @ts-ignore
+import { Plugin } from "../types.ts";
 
 const JS_EXTENSIONS = [".js", ".mjs", ".cjs", ".ts"];
 

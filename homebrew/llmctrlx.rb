@@ -1,7 +1,7 @@
 class Llmctrlx < Formula
   desc "LLM Control Engine - local LLM orchestration and execution CLI with tool and plugin support"
   homepage "https://github.com/davidcrumpton/llm-control-engine"
-  url "https://registry.npmjs.org/llmctrlx/-/llmctrlx-0.8.00.tgz"
+  url "https://registry.npmjs.org/llmctrlx/-/llmctrlx-0.8.04.tgz"
   sha256 "..."
   license "Apache-2.0"
 

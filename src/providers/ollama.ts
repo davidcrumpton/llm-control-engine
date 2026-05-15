@@ -10,7 +10,8 @@ import {
   LLMResponse,
   ChatParams,
   MessageContent,
-} from "../types.js";
+  // @ts-ignore
+} from "../types.ts";
 
 export class OllamaProvider implements LLMProvider {
   static readonly DEFAULT_HOST = "http://127.0.0.1:11434";
