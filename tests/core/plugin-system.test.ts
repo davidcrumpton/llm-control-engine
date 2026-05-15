@@ -86,6 +86,9 @@ describe("Plugin system", () => {
 
     const llm = {
       chat: vi.fn(),
+      defaultModel: 'test-model',
+      capabilities: ['chat'],
+      list: vi.fn(),
     };
 
     llm.chat

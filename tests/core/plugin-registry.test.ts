@@ -44,7 +44,7 @@ describe("Plugin registry and runtime", () => {
   });
 
   it("should enforce the safe-command-execution policy in runWithTools", async () => {
-    const tool = {
+    const tool: any = {
       type: "tool",
       name: "legacy-shell",
       description: "Legacy shell wrapper",
@@ -54,7 +54,7 @@ describe("Plugin registry and runtime", () => {
       run: async ({ command }: { command: any }) => `executed ${command}`,
     };
 
-    const policy = {
+    const policy: any = {
       type: "policy",
       name: "safe-command-execution",
       onBeforeToolRun: async ({ tool, args }: { tool: any; args: any }) => {
@@ -72,8 +72,11 @@ describe("Plugin registry and runtime", () => {
       },
     };
 
-    const llm = {
+    const llm: any = {
       chat: vi.fn(),
+      defaultModel: 'test-model',
+      capabilities: ['chat'],
+      list: vi.fn(),
     };
 
     llm.chat

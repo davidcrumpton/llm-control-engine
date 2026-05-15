@@ -14,6 +14,8 @@ import path from 'path'
 import { pathToFileURL } from 'url'
 import { createRequire } from 'module'
 import { validateTool } from './utils.js'
+import { Registry } from './registry.js'
+import { Plugin } from '../types.js'
 
 const JS_EXTENSIONS = ['.js', '.mjs', '.cjs', '.ts']
 
@@ -26,17 +28,17 @@ const JS_EXTENSIONS = ['.js', '.mjs', '.cjs', '.ts']
  * Both are resolved to their canonical absolute forms before comparison,
  * so symlinks and `..` components cannot escape.
  *
- * @param {string} root   - Trusted base directory (need not end with '/').
- * @param {string} target - Path to validate.
  * @throws {Error} if target lies outside root.
  */
-function assertConfined(root, target) {
-  const resolvedRoot   = path.resolve(root)
+function assertConfined(root: string, target: string): void {
+  const resolvedRoot = path.resolve(root)
   const resolvedTarget = path.resolve(target)
 
   // Use a trailing separator so '/safe-dir-extra' doesn't match '/safe-dir'.
-  if (!resolvedTarget.startsWith(resolvedRoot + path.sep) &&
-      resolvedTarget !== resolvedRoot) {
+  if (
+    !resolvedTarget.startsWith(resolvedRoot + path.sep) &&
+    resolvedTarget !== resolvedRoot
+  ) {
     throw new Error(
       `Path traversal detected: '${target}' is outside the allowed root '${root}'.`
     )
@@ -47,7 +49,7 @@ function assertConfined(root, target) {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function isPluginFile(filePath) {
+function isPluginFile(filePath: string): boolean {
   if (filePath.endsWith('.d.ts')) return false
   return JS_EXTENSIONS.includes(path.extname(filePath))
 }
@@ -58,7 +60,7 @@ function isPluginFile(filePath) {
  * binary, which intercepts import() and throws
  * ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING.
  */
-async function importPlugin(filePath) {
+async function importPlugin(filePath: string): Promise<any> {
   try {
     const mod = await import(pathToFileURL(filePath).href)
     return mod.default || mod
@@ -66,8 +68,9 @@ async function importPlugin(filePath) {
     // pkg-compiled binaries block dynamic import() of external filesystem paths.
     // Fall back to a synchronous CJS loader that transforms ESM syntax.
     if (
-      err.code === 'ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING' ||
-      (err.message && err.message.includes('dynamic import callback'))
+      (err as any).code === 'ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING' ||
+      ((err as any).message &&
+        (err as any).message.includes('dynamic import callback'))
     ) {
       return loadPluginCJS(filePath)
     }
@@ -85,11 +88,8 @@ async function importPlugin(filePath) {
  *   import X from 'Y'          → const X = require('Y')
  *   import { a, b } from 'Y'  → const { a, b } = require('Y')
  *   export default { … }       → module.exports = { … }
- *
- * @param {string} filePath - Absolute path to the tool/plugin .js file.
- * @returns {Object} The plugin's default export.
  */
-function loadPluginCJS(filePath) {
+function loadPluginCJS(filePath: string): any {
   const source = fs.readFileSync(filePath, 'utf8')
 
   // Transform ESM import/export syntax to CJS equivalents.
@@ -112,18 +112,24 @@ function loadPluginCJS(filePath) {
     // export default <expr>
     .replace(/^export\s+default\s+/m, 'module.exports = ')
     // bare re-exports — strip silently (rare in tools)
-    .replace(/^export\s+\{[^}]*\}\s*from\s*['"][^'"]+['"]\s*;?\s*$/gm, '')
+    .replace(
+      /^export\s+\{[^}]*\}\s*from\s*['"][^'"]+['"]\s*;?\s*$/gm,
+      ''
+    )
     // named exports — strip the keyword
     .replace(/^export\s+(const|let|var|function|class|async)\s+/gm, '$1 ')
 
   const requireFn = createRequire(filePath)
-  const mod = { exports: {} }
+  const mod: any = { exports: {} }
   const dir = path.dirname(filePath)
 
   // Wrap in a function so that top-level const/let are scoped correctly.
-  // eslint-disable-next-line no-new-func
   const fn = new Function(
-    'require', 'module', 'exports', '__dirname', '__filename',
+    'require',
+    'module',
+    'exports',
+    '__dirname',
+    '__filename',
     transformed
   )
   fn(requireFn, mod, mod.exports, dir, filePath)
@@ -131,7 +137,7 @@ function loadPluginCJS(filePath) {
   return mod.exports
 }
 
-function normalizePlugin(plugin) {
+function normalizePlugin(plugin: any): Plugin | null {
   if (!plugin || typeof plugin !== 'object') return null
 
   const normalized = { ...plugin }
@@ -148,7 +154,11 @@ function normalizePlugin(plugin) {
   return normalized
 }
 
-async function loadPluginFile(filePath, registry, ctx) {
+async function loadPluginFile(
+  filePath: string,
+  registry: Registry,
+  ctx: Record<string, unknown>
+): Promise<void> {
   try {
     const plugin = normalizePlugin(await importPlugin(filePath))
     if (!plugin) return
@@ -156,17 +166,18 @@ async function loadPluginFile(filePath, registry, ctx) {
     // Silently skip files that don't look like plugins (missing name or type)
     if (!plugin.name || !plugin.type) return
 
-    plugin.init?.(ctx)
+    ;(plugin as any).init?.(ctx)
 
     if (plugin.type === 'tool') {
-      validateTool(plugin, filePath)
+      validateTool(plugin as any, filePath)
     }
 
     registry.register(plugin)
   } catch (err) {
     // If we get here, it means the file looked like a plugin (had name and type)
     // but failed to load, initialize, or validate. This should be reported.
-    console.error(`Error loading plugin ${filePath}: ${err.message}`)
+    const message = err instanceof Error ? err.message : String(err)
+    console.error(`Error loading plugin ${filePath}: ${message}`)
   }
 }
 
@@ -186,18 +197,22 @@ const CORE_FILES = [
   'types.ts',
   'types.js',
   'loader.js',
-  'loader.ts'
+  'loader.ts',
 ]
 
 /**
  * Recursively load all plugin files from `dir`, confining every resolved
  * path inside `dir` to prevent traversal attacks.
  *
- * @param {string}   dir      - Directory to scan.
- * @param {Registry} registry - Plugin registry to populate.
- * @param {Object}   ctx      - Loader context passed to plugin init().
+ * @param dir - Directory to scan.
+ * @param registry - Plugin registry to populate.
+ * @param ctx - Loader context passed to plugin init().
  */
-export async function loadPluginsFromDir(dir, registry, ctx) {
+export async function loadPluginsFromDir(
+  dir: string | undefined,
+  registry: Registry,
+  ctx: Record<string, unknown>
+): Promise<void> {
   if (!dir || !fs.existsSync(dir)) return
 
   // Resolve the root once so all child checks use the same canonical base.
@@ -215,13 +230,14 @@ export async function loadPluginsFromDir(dir, registry, ctx) {
     try {
       assertConfined(root, fullPath)
     } catch (err) {
-      console.error(`Skipping '${entry}': ${err.message}`)
+      const message = err instanceof Error ? err.message : String(err)
+      console.error(`Skipping '${entry}': ${message}`)
       continue
     }
 
     // Stat after confinement so we don't follow a symlink that was just
     // validated by name but points elsewhere.
-    let stat
+    let stat: fs.Stats
     try {
       // lstatSync — does NOT follow symlinks; reveals the link itself.
       stat = fs.lstatSync(fullPath)
@@ -231,12 +247,13 @@ export async function loadPluginsFromDir(dir, registry, ctx) {
 
     if (stat.isSymbolicLink()) {
       // Resolve the symlink target and re-assert confinement.
-      let realPath
+      let realPath: string
       try {
         realPath = fs.realpathSync(fullPath)
         assertConfined(root, realPath)
       } catch (err) {
-        console.error(`Skipping symlink '${entry}': ${err.message}`)
+        const message = err instanceof Error ? err.message : String(err)
+        console.error(`Skipping symlink '${entry}': ${message}`)
         continue
       }
       // The symlink target is safe; update stat to the real file.

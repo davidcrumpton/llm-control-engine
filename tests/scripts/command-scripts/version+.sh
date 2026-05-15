@@ -12,4 +12,7 @@ assert_output_contains "version: prints version string" "llmctrlx v" \
 assert_output_contains "version: verbose includes tagline" "orchestration" \
     llmctrlx version -v
 
+assert_output_matches_re "version: verbose includes version number" " v\d+\.\d+\.\d+" \
+    llmctrlx version -v
+
 print_assert_summary

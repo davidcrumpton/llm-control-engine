@@ -77,6 +77,22 @@ assert_output_contains() {
     fi
 }
 
+assert_output_matches_re() {
+    local label="$1"; local pattern="$2"; shift 2
+    local output
+    output=$("$@" 2>&1)
+    # Use BSD and GNU grep compatibility for -P (Perl regex)
+    if echo "${output}" | grep -Eq "${pattern}"; then
+        echo -e "${GREEN}  ✓ PASS${NC}  ${label}"
+        _ASSERT_PASS=$((_ASSERT_PASS + 1))
+    else
+        echo -e "${RED}  ✗ FAIL${NC}  ${label}  (regex pattern '${pattern}' not found)"
+        echo "       CMD: $*"
+        echo "       OUT: ${output}"
+        _ASSERT_FAIL=$((_ASSERT_FAIL + 1))
+    fi
+}
+
 # assert_exit_code LABEL EXPECTED CMD [ARGS...]
 assert_exit_code() {
     local label="$1"; local expected="$2"; shift 2
