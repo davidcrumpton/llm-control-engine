@@ -11,11 +11,7 @@
  *     URL, preventing accidental SSRF via a misconfigured host string.
  */
 
-import {
-  LLMProvider,
-  LLMResponse,
-  ChatParams,
-} from '../types.js'
+import { LLMProvider, LLMResponse, ChatParams } from "../types.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -27,16 +23,16 @@ import {
  */
 async function assertOk(res: Response, endpoint: string): Promise<void> {
   if (!res.ok) {
-    let body = ''
+    let body = "";
     try {
-      body = await res.text()
+      body = await res.text();
     } catch {
       /* ignore */
     }
     throw new Error(
       `LM Studio API error at '${endpoint}': HTTP ${res.status} ${res.statusText}` +
-        (body ? ` — ${body.slice(0, 200)}` : '')
-    )
+        (body ? ` — ${body.slice(0, 200)}` : ""),
+    );
   }
 }
 
@@ -48,59 +44,57 @@ async function assertOk(res: Response, endpoint: string): Promise<void> {
 function parseChatResponse(data: unknown): LLMResponse {
   if (
     data === null ||
-    typeof data !== 'object' ||
+    typeof data !== "object" ||
     !Array.isArray((data as any).choices) ||
     (data as any).choices.length === 0
   ) {
     throw new Error(
-      'LM Studio chat response is missing or has no choices. ' +
-        `Got: ${JSON.stringify(data)?.slice(0, 200)}`
-    )
+      "LM Studio chat response is missing or has no choices. " +
+        `Got: ${JSON.stringify(data)?.slice(0, 200)}`,
+    );
   }
 
-  const choice = (data as any).choices[0]
+  const choice = (data as any).choices[0];
   if (
     !choice ||
-    typeof choice !== 'object' ||
+    typeof choice !== "object" ||
     !choice.message ||
-    typeof choice.message.content !== 'string'
+    typeof choice.message.content !== "string"
   ) {
     throw new Error(
-      'LM Studio chat response choice is malformed (missing message.content). ' +
-        `Got: ${JSON.stringify(choice)?.slice(0, 200)}`
-    )
+      "LM Studio chat response choice is malformed (missing message.content). " +
+        `Got: ${JSON.stringify(choice)?.slice(0, 200)}`,
+    );
   }
 
-  return { message: { content: choice.message.content } }
+  return { message: { content: choice.message.content } };
 }
 
 /**
  * Validate that `data` looks like a well-formed embeddings response.
  */
-function parseEmbeddingsResponse(
-  data: unknown
-): { embedding: number[] } {
+function parseEmbeddingsResponse(data: unknown): { embedding: number[] } {
   if (
     data === null ||
-    typeof data !== 'object' ||
+    typeof data !== "object" ||
     !Array.isArray((data as any).data) ||
     (data as any).data.length === 0
   ) {
     throw new Error(
-      'LM Studio embeddings response is missing or has no data. ' +
-        `Got: ${JSON.stringify(data)?.slice(0, 200)}`
-    )
+      "LM Studio embeddings response is missing or has no data. " +
+        `Got: ${JSON.stringify(data)?.slice(0, 200)}`,
+    );
   }
 
-  const item = (data as any).data[0]
+  const item = (data as any).data[0];
   if (!item || !Array.isArray(item.embedding)) {
     throw new Error(
-      'LM Studio embeddings response item is malformed (missing embedding array). ' +
-        `Got: ${JSON.stringify(item)?.slice(0, 200)}`
-    )
+      "LM Studio embeddings response item is malformed (missing embedding array). " +
+        `Got: ${JSON.stringify(item)?.slice(0, 200)}`,
+    );
   }
 
-  return { embedding: item.embedding }
+  return { embedding: item.embedding };
 }
 
 /**
@@ -108,22 +102,20 @@ function parseEmbeddingsResponse(
  * Must be an http or https URL; trailing slashes are stripped.
  */
 function validateHost(host: string): string {
-  let url: URL
+  let url: URL;
   try {
-    url = new URL(host)
+    url = new URL(host);
   } catch {
-    throw new Error(
-      `LMStudioProvider: invalid host URL '${host}'.`
-    )
+    throw new Error(`LMStudioProvider: invalid host URL '${host}'.`);
   }
 
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new Error(
-      `LMStudioProvider: host must use http or https, got '${url.protocol}'.`
-    )
+      `LMStudioProvider: host must use http or https, got '${url.protocol}'.`,
+    );
   }
 
-  return url.toString().replace(/\/$/, '')
+  return url.toString().replace(/\/$/, "");
 }
 
 // ---------------------------------------------------------------------------
@@ -131,100 +123,101 @@ function validateHost(host: string): string {
 // ---------------------------------------------------------------------------
 
 export class LMStudioProvider implements LLMProvider {
-  static readonly DEFAULT_HOST = 'http://127.0.0.1:1234/v1'
-  static readonly DEFAULT_MODEL = 'google/gemma-4-e2b'
+  static readonly DEFAULT_HOST = "http://127.0.0.1:1234/v1";
+  static readonly DEFAULT_MODEL = "google/gemma-4-e2b";
 
-  readonly defaultModel: string
-  readonly capabilities: string[] = ['list']
-  private host: string
-  private timeout: number
+  readonly defaultModel: string;
+  readonly capabilities: string[] = ["list"];
+  private host: string;
+  private timeout: number;
 
   constructor(opts: Record<string, unknown> = {}) {
-    const { host, timeout } = opts as any
+    const { host, timeout } = opts as any;
     // Use caller-supplied host only when explicitly provided; fall back to
     // this provider's own default so callers never need to know the port.
     this.host = validateHost(
-      (typeof host === 'string' && host) ||
-        LMStudioProvider.DEFAULT_HOST
-    )
-    this.defaultModel = LMStudioProvider.DEFAULT_MODEL
-    this.timeout = typeof timeout === 'number' ? timeout : 480
+      (typeof host === "string" && host) || LMStudioProvider.DEFAULT_HOST,
+    );
+    this.defaultModel = LMStudioProvider.DEFAULT_MODEL;
+    this.timeout = typeof timeout === "number" ? timeout : 480;
   }
 
   async chat(args: ChatParams): Promise<LLMResponse> {
-    const { model, messages, stream } = args
+    const { model, messages, stream } = args;
 
     if (stream) {
-      throw new Error('Streaming not yet supported for LM Studio')
+      throw new Error("Streaming not yet supported for LM Studio");
     }
 
     const res = await fetch(`${this.host}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ model, messages, stream }),
       signal: AbortSignal.timeout(this.timeout * 1000),
-    })
+    });
 
-    await assertOk(res, '/chat/completions')
-    const data = await res.json()
-    return parseChatResponse(data)
+    await assertOk(res, "/chat/completions");
+    const data = await res.json();
+    return parseChatResponse(data);
   }
 
-  async embeddings(args: Record<string, unknown>): Promise<{ embedding: number[] }> {
+  async embeddings(
+    args: Record<string, unknown>,
+  ): Promise<{ embedding: number[] }> {
     const { model, prompt } = args as {
-      model: string
-      prompt: string
-    }
+      model: string;
+      prompt: string;
+    };
 
     const res = await fetch(`${this.host}/embeddings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ model, input: prompt }),
       signal: AbortSignal.timeout(this.timeout * 1000),
-    })
+    });
 
-    await assertOk(res, '/embeddings')
-    const data = await res.json()
-    return parseEmbeddingsResponse(data)
+    await assertOk(res, "/embeddings");
+    const data = await res.json();
+    return parseEmbeddingsResponse(data);
   }
 
   async list(): Promise<{ models: string[] }> {
     const res = await fetch(`${this.host}/models`, {
       signal: AbortSignal.timeout(this.timeout * 1000),
-    })
-    await assertOk(res, '/models')
-    const data = await res.json()
+    });
+    await assertOk(res, "/models");
+    const data = await res.json();
 
     if (
       data === null ||
-      typeof data !== 'object' ||
+      typeof data !== "object" ||
       !Array.isArray((data as any).data) ||
       (data as any).data.length === 0
     ) {
       throw new Error(
-        'LM Studio models response is missing or has no models. ' +
-          `Got: ${JSON.stringify(data)?.slice(0, 200)}`
-      )
+        "LM Studio models response is missing or has no models. " +
+          `Got: ${JSON.stringify(data)?.slice(0, 200)}`,
+      );
     }
     // we want return list of model names
     return {
-      models: (data as any).data.map((model: any) => model['id']),
-    }
+      models: (data as any).data.map((model: any) => model["id"]),
+    };
   }
 
   async show(): Promise<never> {
-    throw new Error('LM Studio does not support show()')
+    throw new Error("LM Studio does not support show()");
   }
 
   async pull(): Promise<never> {
-    throw new Error('LM Studio does not support pull()')
+    throw new Error("LM Studio does not support pull()");
   }
 
   async delete(): Promise<never> {
-    throw new Error('LM Studio does not support delete()')
+    throw new Error("LM Studio does not support delete()");
   }
 
   getHelpMessage(): string {
-    throw new Error('LM Studio model commands: --list')
+    throw new Error("LM Studio model commands: --list");
   }
 }

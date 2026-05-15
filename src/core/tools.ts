@@ -3,9 +3,9 @@
  * Handles tool loading, validation, and execution flow with LLM provider integration
  */
 
-import { extractJSON, validateArgs } from './utils.js'
-import { Registry } from './registry.js'
-import { loadPluginsFromDir } from './loader.ts'
+import { extractJSON, validateArgs } from "./utils.js";
+import { Registry } from "./registry.js";
+import { loadPluginsFromDir } from "./loader.ts";
 import {
   LLMProvider,
   LLMResponse,
@@ -14,26 +14,26 @@ import {
   PolicyPlugin,
   PolicyResult,
   PolicyContext,
-} from '../types.js'
+} from "../types.js";
 
 /**
  * Execute a tool with given arguments, returning output as a string.
  */
 export async function executeTool(
   tool: ToolPlugin,
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
 ): Promise<string> {
   try {
-    const result = await tool.run(args)
+    const result = await tool.run(args);
 
-    if (typeof result !== 'string') {
-      return JSON.stringify(result)
+    if (typeof result !== "string") {
+      return JSON.stringify(result);
     }
 
-    return result
+    return result;
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    return `Tool '${tool.name}' failed: ${message}`
+    const message = err instanceof Error ? err.message : String(err);
+    return `Tool '${tool.name}' failed: ${message}`;
   }
 }
 
@@ -41,9 +41,9 @@ export async function executeTool(
  * Extract displayable text from an LLM response, prioritizing content over thinking.
  */
 function getMessageText(res: LLMResponse): string {
-  const visible = res?.message?.content ?? ''
-  const thinking = res?.message?.thinking ?? ''
-  return visible || thinking || ''
+  const visible = res?.message?.content ?? "";
+  const thinking = res?.message?.thinking ?? "";
+  return visible || thinking || "";
 }
 
 /**
@@ -53,47 +53,47 @@ export async function runWithoutTools(
   llm: LLMProvider,
   model: string,
   messages: LLMMessage[],
-  chatOptions: Record<string, unknown> = {}
+  chatOptions: Record<string, unknown> = {},
 ): Promise<string> {
   const systemPrompt =
-    'You do not have access to any tools. Notify user that tools are not available. If user asks'
-  messages.unshift({ role: 'system', content: systemPrompt })
-  const res = await llm.chat({ model, messages, options: chatOptions })
-  return getMessageText(res)
+    "You do not have access to any tools. Notify user that tools are not available. If user asks";
+  messages.unshift({ role: "system", content: systemPrompt });
+  const res = await llm.chat({ model, messages, options: chatOptions });
+  return getMessageText(res);
 }
 
 async function applyPolicyPlugins(
   tool: ToolPlugin,
   args: Record<string, unknown>,
   policies: PolicyPlugin[] = [],
-  ctx: Partial<PolicyContext> = {}
+  ctx: Partial<PolicyContext> = {},
 ): Promise<PolicyResult | null> {
   for (const policy of policies) {
-    if (typeof policy.onBeforeToolRun !== 'function') {
-      continue
+    if (typeof policy.onBeforeToolRun !== "function") {
+      continue;
     }
 
     const result = await policy.onBeforeToolRun({
       tool,
       args,
       ...ctx,
-    } as PolicyContext)
+    } as PolicyContext);
     if (result && result.allow === false) {
-      return result
+      return result;
     }
   }
 
-  return null
+  return null;
 }
 
 interface ToolHistory {
-  name: string
-  argsStr: string
+  name: string;
+  argsStr: string;
 }
 
 interface ParsedToolCall {
-  tool?: string
-  arguments?: Record<string, unknown>
+  tool?: string;
+  arguments?: Record<string, unknown>;
 }
 
 /**
@@ -113,46 +113,48 @@ export async function runWithTools(
   messages: LLMMessage[],
   tools: ToolPlugin[],
   policies: PolicyPlugin[] = [],
-  chatOptions: Record<string, unknown> = {}
+  chatOptions: Record<string, unknown> = {},
 ): Promise<string> {
   // Extract the recorder callback before forwarding chatOptions to llm.chat()
   // so the provider never sees an unrecognised key.
-  const { onToolCall, ...llmChatOptions } = chatOptions as any
+  const { onToolCall, ...llmChatOptions } = chatOptions as any;
 
-  const toolHistory: ToolHistory[] = []
-  let loopCount = 0
-  const MAX_LOOPS = 15
+  const toolHistory: ToolHistory[] = [];
+  let loopCount = 0;
+  const MAX_LOOPS = 15;
 
   while (true) {
     const res = await llm.chat({
       model,
       messages,
       options: llmChatOptions,
-    })
-    const content = getMessageText(res)
+    });
+    const content = getMessageText(res);
 
     try {
-      const parsed = extractJSON(res.message?.content || '') as ParsedToolCall | null
+      const parsed = extractJSON(
+        res.message?.content || "",
+      ) as ParsedToolCall | null;
       if (parsed && parsed.tool) {
-        const tool = tools.find((t) => t.name === parsed.tool)
+        const tool = tools.find((t) => t.name === parsed.tool);
 
         if (!tool) {
           messages.push({
-            role: 'assistant',
+            role: "assistant",
             content: `Tool ${parsed.tool} not found`,
-          })
-          continue
+          });
+          continue;
         }
 
         try {
-          validateArgs(tool, parsed.arguments || {})
+          validateArgs(tool, parsed.arguments || {});
         } catch (err) {
-          const message = err instanceof Error ? err.message : String(err)
+          const message = err instanceof Error ? err.message : String(err);
           messages.push({
-            role: 'assistant',
+            role: "assistant",
             content: `Error: ${message}`,
-          })
-          continue
+          });
+          continue;
         }
 
         const policyResult = await applyPolicyPlugins(
@@ -165,90 +167,90 @@ export async function runWithTools(
             tools,
             messages,
             model,
-          } as any
-        )
+          } as any,
+        );
 
         if (policyResult) {
           messages.push({
-            role: 'assistant',
+            role: "assistant",
             content: `System Error: Policy violation. ${policyResult.message}`,
-          })
-          continue
+          });
+          continue;
         }
 
-        const argsStr = JSON.stringify(parsed.arguments || {})
+        const argsStr = JSON.stringify(parsed.arguments || {});
 
-        loopCount++
+        loopCount++;
         if (loopCount > MAX_LOOPS) {
           messages.push({
-            role: 'user',
+            role: "user",
             content: `System Error: Maximum tool loop limit reached (${MAX_LOOPS}). Please provide your final answer to the user.`,
-          })
-          continue
+          });
+          continue;
         }
 
         const isDuplicate = toolHistory.some(
-          (h) => h.name === parsed.tool && h.argsStr === argsStr
-        )
+          (h) => h.name === parsed.tool && h.argsStr === argsStr,
+        );
         if (isDuplicate) {
           messages.push({
-            role: 'user',
+            role: "user",
             content: `System Error: You already called '${parsed.tool}' with these exact arguments. Do not repeat identical tool calls. Try a different approach or provide your final answer.`,
-          })
-          continue
+          });
+          continue;
         }
 
-        const toolPolicies = tool.policies || {}
+        const toolPolicies = tool.policies || {};
 
         if (toolPolicies.requires) {
           const missing = toolPolicies.requires.find(
-            (req) => !toolHistory.some((h) => h.name === req)
-          )
+            (req) => !toolHistory.some((h) => h.name === req),
+          );
           if (missing) {
             messages.push({
-              role: 'user',
+              role: "user",
               content: `System Error: Policy violation. You must use the '${missing}' tool before using '${tool.name}'.`,
-            })
-            continue
+            });
+            continue;
           }
         }
 
         if (toolPolicies.maxCalls) {
           const callCount = toolHistory.filter(
-            (h) => h.name === parsed.tool
-          ).length
+            (h) => h.name === parsed.tool,
+          ).length;
           if (callCount >= (toolPolicies.maxCalls as number)) {
             messages.push({
-              role: 'user',
+              role: "user",
               content: `System Error: Policy violation. You have reached the maximum allowed calls (${toolPolicies.maxCalls}) for '${tool.name}'.`,
-            })
-            continue
+            });
+            continue;
           }
         }
 
         // ── Execute tool ────────────────────────────────────────────────────
-        const result = await executeTool(tool, parsed.arguments || {})
+        const result = await executeTool(tool, parsed.arguments || {});
 
         // ── Notify recorder (if any) ────────────────────────────────────────
-        if (typeof onToolCall === 'function') {
-          onToolCall(parsed.tool, parsed.arguments || {}, result)
+        if (typeof onToolCall === "function") {
+          onToolCall(parsed.tool, parsed.arguments || {}, result);
         }
 
-        toolHistory.push({ name: parsed.tool, argsStr })
+        toolHistory.push({ name: parsed.tool, argsStr });
 
-        messages.push({ role: 'assistant', content })
+        messages.push({ role: "assistant", content });
         messages.push({
-          role: 'user',
+          role: "user",
           content: `Tool '${tool.name}' output:\n${result}`,
-        })
+        });
 
-        continue
+        continue;
       }
     } catch {
       // not JSON → normal response
     }
 
-    return content
+    return content;
   }
 }
 
@@ -257,20 +259,20 @@ export async function runWithTools(
  */
 export async function createPluginRegistry(
   toolsDir: string | undefined,
-  session?: string
+  session?: string,
 ): Promise<Registry> {
-  const registry = new Registry()
+  const registry = new Registry();
   const ctx: Record<string, unknown> = {
     toolsDir,
     projectDir: process.cwd(),
     session,
-  }
+  };
 
   if (toolsDir) {
-    await loadPluginsFromDir(toolsDir, registry, ctx)
+    await loadPluginsFromDir(toolsDir, registry, ctx);
   }
 
-  return registry
+  return registry;
 }
 
 /**
@@ -278,19 +280,19 @@ export async function createPluginRegistry(
  */
 export async function loadTools(
   toolsDir: string | undefined,
-  requestedTags: string[] | null = null
+  requestedTags: string[] | null = null,
 ): Promise<ToolPlugin[]> {
-  const registry = await createPluginRegistry(toolsDir)
-  let tools = registry.list('tool')
+  const registry = await createPluginRegistry(toolsDir);
+  let tools = registry.list("tool");
 
   if (requestedTags) {
     tools = tools.filter((tool) => {
-      const toolTags = tool.tags || []
-      const hasAlways = toolTags.includes('always')
-      const hasMatch = requestedTags.some((tag) => toolTags.includes(tag))
-      return hasAlways || hasMatch
-    })
+      const toolTags = tool.tags || [];
+      const hasAlways = toolTags.includes("always");
+      const hasMatch = requestedTags.some((tag) => toolTags.includes(tag));
+      return hasAlways || hasMatch;
+    });
   }
 
-  return tools
+  return tools;
 }

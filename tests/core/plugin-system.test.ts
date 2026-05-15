@@ -64,7 +64,7 @@ describe("Plugin system", () => {
 
   it("should enforce policy plugins before tool execution in runWithTools", async () => {
     const tool = {
-      type: "tool",
+      type: "tool" as const,
       name: "test-legacy",
       description: "A legacy tool loaded through plugin adapter",
       version: "v1.0.0",
@@ -74,7 +74,7 @@ describe("Plugin system", () => {
     };
 
     const policy = {
-      type: "policy",
+      type: "policy" as const,
       name: "test-policy",
       onBeforeToolRun: async ({ tool, args }: { tool: any; args: any }) => {
         if (tool.name === "test-legacy" && args.block) {
@@ -86,8 +86,8 @@ describe("Plugin system", () => {
 
     const llm = {
       chat: vi.fn(),
-      defaultModel: 'test-model',
-      capabilities: ['chat'],
+      defaultModel: "test-model",
+      capabilities: ["chat"],
       list: vi.fn(),
     };
 

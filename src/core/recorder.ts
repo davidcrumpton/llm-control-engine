@@ -21,8 +21,8 @@
  * }
  */
 
-import fs from 'node:fs/promises'
-import crypto from 'node:crypto'
+import fs from "node:fs/promises";
+import crypto from "node:crypto";
 import {
   CommandType,
   Session,
@@ -31,11 +31,11 @@ import {
   StepEvent,
   SessionOutputs,
   SessionTimestamps,
-} from '../types.js'
+} from "../types.js";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-export const SESSION_VERSION = '1'
+export const SESSION_VERSION = "1";
 
 // ─── Hashing ─────────────────────────────────────────────────────────────────
 
@@ -45,20 +45,20 @@ export const SESSION_VERSION = '1'
  * in the options object never cause a false hash mismatch on replay.
  */
 export function hashInputs(inputs: Record<string, unknown>): string {
-  const canonical = JSON.stringify(inputs, Object.keys(inputs).sort())
-  return crypto.createHash('sha256').update(canonical).digest('hex')
+  const canonical = JSON.stringify(inputs, Object.keys(inputs).sort());
+  return crypto.createHash("sha256").update(canonical).digest("hex");
 }
 
 // ─── Recorder class ──────────────────────────────────────────────────────────
 
 export class Recorder {
-  commandType: CommandType
-  inputs: Record<string, unknown>
-  runHash: string
-  recordedAt: string
-  events: SessionEvent[]
-  outputs: SessionOutputs
-  timestamps: SessionTimestamps
+  commandType: CommandType;
+  inputs: Record<string, unknown>;
+  runHash: string;
+  recordedAt: string;
+  events: SessionEvent[];
+  outputs: SessionOutputs;
+  timestamps: SessionTimestamps;
 
   /**
    * Create a new session recorder.
@@ -67,32 +67,32 @@ export class Recorder {
    * @param inputs - Canonicalisable description of this run's inputs
    */
   constructor(commandType: CommandType, inputs: Record<string, unknown>) {
-    this.commandType = commandType
-    this.inputs = inputs
-    this.runHash = hashInputs(inputs)
-    this.recordedAt = new Date().toISOString()
+    this.commandType = commandType;
+    this.inputs = inputs;
+    this.runHash = hashInputs(inputs);
+    this.recordedAt = new Date().toISOString();
 
-    this.events = []
-    this.outputs = {}
-    this.timestamps = {}
+    this.events = [];
+    this.outputs = {};
+    this.timestamps = {};
   }
 
   // ── Timestamp helpers ──────────────────────────────────────────────────────
 
   markExecStart(): void {
-    this.timestamps.execStart = new Date().toISOString()
+    this.timestamps.execStart = new Date().toISOString();
   }
 
   markExecEnd(): void {
-    this.timestamps.execEnd = new Date().toISOString()
+    this.timestamps.execEnd = new Date().toISOString();
   }
 
   markLlmStart(): void {
-    this.timestamps.llmStart = new Date().toISOString()
+    this.timestamps.llmStart = new Date().toISOString();
   }
 
   markLlmEnd(): void {
-    this.timestamps.llmEnd = new Date().toISOString()
+    this.timestamps.llmEnd = new Date().toISOString();
   }
 
   // ── Event recording ────────────────────────────────────────────────────────
@@ -104,15 +104,15 @@ export class Recorder {
   recordToolCall(
     tool: string,
     args: Record<string, unknown>,
-    result: string
+    result: string,
   ): void {
     this.events.push({
-      type: 'tool_call',
+      type: "tool_call",
       tool,
       args,
       result,
       timestamp: new Date().toISOString(),
-    } as ToolCallEvent)
+    } as ToolCallEvent);
   }
 
   /**
@@ -123,13 +123,13 @@ export class Recorder {
     stepName: string,
     exec: string,
     result: {
-      stdout?: string
-      stderr?: string
-      exitCode?: number
-    }
+      stdout?: string;
+      stderr?: string;
+      exitCode?: number;
+    },
   ): void {
     this.events.push({
-      type: 'step',
+      type: "step",
       stepId,
       stepName,
       exec,
@@ -137,14 +137,14 @@ export class Recorder {
       stderr: result.stderr,
       exitCode: result.exitCode,
       timestamp: new Date().toISOString(),
-    } as StepEvent)
+    } as StepEvent);
   }
 
   /**
    * Set the final outputs produced by this run.
    */
   setOutputs(outputs: SessionOutputs): void {
-    this.outputs = outputs
+    this.outputs = outputs;
   }
 
   // ── Serialisation ──────────────────────────────────────────────────────────
@@ -159,7 +159,7 @@ export class Recorder {
       events: this.events,
       outputs: this.outputs,
       timestamps: this.timestamps,
-    }
+    };
   }
 
   /**
@@ -169,8 +169,8 @@ export class Recorder {
     await fs.writeFile(
       filePath,
       JSON.stringify(this.toJSON(), null, 2),
-      'utf8'
-    )
+      "utf8",
+    );
   }
 }
 
@@ -182,51 +182,51 @@ export class Recorder {
  * @throws {Error} if the file is missing required fields or has an unknown version
  */
 export async function loadSession(filePath: string): Promise<Session> {
-  const raw = await fs.readFile(filePath, 'utf8')
-  const session = JSON.parse(raw) as unknown
+  const raw = await fs.readFile(filePath, "utf8");
+  const session = JSON.parse(raw) as unknown;
 
   if (!isValidSession(session)) {
-    throw new Error('Session validation failed: not a valid session object')
+    throw new Error("Session validation failed: not a valid session object");
   }
 
   if (session.version !== SESSION_VERSION) {
     throw new Error(
-      `Unsupported session version '${session.version}'. Expected '${SESSION_VERSION}'.`
-    )
+      `Unsupported session version '${session.version}'. Expected '${SESSION_VERSION}'.`,
+    );
   }
 
   const required: (keyof Session)[] = [
-    'command_type',
-    'runHash',
-    'inputs',
-    'outputs',
-  ]
+    "command_type",
+    "runHash",
+    "inputs",
+    "outputs",
+  ];
   for (const field of required) {
     if (!(field in session)) {
-      throw new Error(`Session file is missing required field: '${field}'`)
+      throw new Error(`Session file is missing required field: '${field}'`);
     }
   }
 
-  return session as Session
+  return session as Session;
 }
 
 // ─── Type guard ──────────────────────────────────────────────────────────────
 
 function isValidSession(value: unknown): value is Session {
-  if (typeof value !== 'object' || value === null) {
-    return false
+  if (typeof value !== "object" || value === null) {
+    return false;
   }
-  const obj = value as Record<string, unknown>
+  const obj = value as Record<string, unknown>;
   return (
-    typeof obj.version === 'string' &&
-    typeof obj.command_type === 'string' &&
-    typeof obj.runHash === 'string' &&
-    typeof obj.recordedAt === 'string' &&
-    typeof obj.inputs === 'object' &&
+    typeof obj.version === "string" &&
+    typeof obj.command_type === "string" &&
+    typeof obj.runHash === "string" &&
+    typeof obj.recordedAt === "string" &&
+    typeof obj.inputs === "object" &&
     Array.isArray(obj.events) &&
-    typeof obj.outputs === 'object' &&
-    typeof obj.timestamps === 'object'
-  )
+    typeof obj.outputs === "object" &&
+    typeof obj.timestamps === "object"
+  );
 }
 
 // ─── onToolCall factory ───────────────────────────────────────────────────────
@@ -236,8 +236,8 @@ function isValidSession(value: unknown): value is Session {
  * Pass the returned function to runWithTools() via chatOptions.onToolCall.
  */
 export function makeToolCallRecorder(
-  recorder: Recorder
+  recorder: Recorder,
 ): (tool: string, args: Record<string, unknown>, result: string) => void {
   return (tool: string, args: Record<string, unknown>, result: string) =>
-    recorder.recordToolCall(tool, args, result)
+    recorder.recordToolCall(tool, args, result);
 }

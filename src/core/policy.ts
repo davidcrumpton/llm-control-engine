@@ -5,7 +5,7 @@
  * before execution. Uses glob-style pattern matching for flexible constraints.
  */
 
-import { Plan, PlanPolicy, PlanStep } from '../types.js'
+import { Plan, PlanPolicy, PlanStep } from "../types.js";
 
 /**
  * Validates the global plan policy before execution.
@@ -17,36 +17,36 @@ import { Plan, PlanPolicy, PlanStep } from '../types.js'
  * @throws {Error} If the model violates the policy
  */
 export function validatePolicy(plan: Plan): void {
-  const policy = plan.policy || {}
+  const policy = plan.policy || {};
 
   if (policy.model) {
-    const { allow, deny } = policy.model
+    const { allow, deny } = policy.model;
     const model =
-      plan.model && typeof plan.model === 'object' && 'name' in plan.model
+      plan.model && typeof plan.model === "object" && "name" in plan.model
         ? (plan.model as any).name
-        : plan.model
+        : plan.model;
 
     // Deny by default: model must appear in the allow list if one is defined
     if (model && allow && Array.isArray(allow)) {
       const matchedPattern = allow.find((pattern) =>
-        matchPattern(String(model), pattern)
-      )
+        matchPattern(String(model), pattern),
+      );
       if (!matchedPattern) {
         throw new Error(
-          `Policy violation: Model '${model}' is not in the allow list (policy.model.allow: [${allow.join(', ')}]).`
-        )
+          `Policy violation: Model '${model}' is not in the allow list (policy.model.allow: [${allow.join(", ")}]).`,
+        );
       }
     }
 
     // Explicit deny always wins, even if the model was also matched by allow
     if (model && deny && Array.isArray(deny)) {
       const matchedPattern = deny.find((pattern) =>
-        matchPattern(String(model), pattern)
-      )
+        matchPattern(String(model), pattern),
+      );
       if (matchedPattern) {
         throw new Error(
-          `Policy violation: Model '${model}' is explicitly denied by pattern '${matchedPattern}' (policy.model.deny).`
-        )
+          `Policy violation: Model '${model}' is explicitly denied by pattern '${matchedPattern}' (policy.model.deny).`,
+        );
       }
     }
   }
@@ -65,31 +65,31 @@ export function validatePolicy(plan: Plan): void {
  * @throws {Error} If the step violates the policy
  */
 export function validateStep(step: PlanStep, policy: PlanPolicy = {}): void {
-  if (step.type === 'tool') {
-    const toolName = step.tool
-    const toolPolicy = policy.tools || {}
+  if (step.type === "tool") {
+    const toolName = step.tool;
+    const toolPolicy = policy.tools || {};
 
     // Deny by default: tool must appear in the allow list if one is defined
     if (toolPolicy.allow && Array.isArray(toolPolicy.allow)) {
       const matchedPattern = toolPolicy.allow.find((pattern) =>
-        matchPattern(toolName || '', pattern)
-      )
+        matchPattern(toolName || "", pattern),
+      );
       if (!matchedPattern) {
         throw new Error(
-          `Policy violation: Tool '${toolName}' is not allowed in step '${step.id}' (policy.tools.allow: [${toolPolicy.allow.join(', ')}]).`
-        )
+          `Policy violation: Tool '${toolName}' is not allowed in step '${step.id}' (policy.tools.allow: [${toolPolicy.allow.join(", ")}]).`,
+        );
       }
     }
 
     // Explicit deny always wins
     if (toolPolicy.deny && Array.isArray(toolPolicy.deny)) {
       const matchedPattern = toolPolicy.deny.find((pattern) =>
-        matchPattern(toolName || '', pattern)
-      )
+        matchPattern(toolName || "", pattern),
+      );
       if (matchedPattern) {
         throw new Error(
-          `Policy violation: Tool '${toolName}' is explicitly denied in step '${step.id}' by pattern '${matchedPattern}' (policy.tools.deny).`
-        )
+          `Policy violation: Tool '${toolName}' is explicitly denied in step '${step.id}' by pattern '${matchedPattern}' (policy.tools.deny).`,
+        );
       }
     }
   }
@@ -98,19 +98,19 @@ export function validateStep(step: PlanStep, policy: PlanPolicy = {}): void {
     // Extract just the executable name (first token) for policy matching.
     // Full shell-metacharacter and allow-list checks still happen at runtime
     // in executeStep(); this enforces plan-level constraints on top of that.
-    const executable = step.exec.trim().split(/\s+/)[0]
-    const execPolicy = policy.exec || {}
+    const executable = step.exec.trim().split(/\s+/)[0];
+    const execPolicy = policy.exec || {};
 
     // Allow by default: no allow list concept for exec.
     // Plans only need to express what is explicitly forbidden.
     if (execPolicy.deny && Array.isArray(execPolicy.deny)) {
       const matchedPattern = execPolicy.deny.find((pattern) =>
-        matchPattern(executable, pattern)
-      )
+        matchPattern(executable, pattern),
+      );
       if (matchedPattern) {
         throw new Error(
-          `Policy violation: Executable '${executable}' is explicitly denied in step '${step.id}' by pattern '${matchedPattern}' (policy.exec.deny).`
-        )
+          `Policy violation: Executable '${executable}' is explicitly denied in step '${step.id}' by pattern '${matchedPattern}' (policy.exec.deny).`,
+        );
       }
     }
   }
@@ -126,17 +126,17 @@ export function validateStep(step: PlanStep, policy: PlanPolicy = {}): void {
  *   matchPattern('claude-3-sonnet', 'claude-3-haiku')  → false
  */
 function matchPattern(value: string, pattern: string): boolean {
-  if (!value) return false
+  if (!value) return false;
 
   // Fast path: no wildcard
-  if (!pattern.includes('*')) return value === pattern
+  if (!pattern.includes("*")) return value === pattern;
 
   // Convert glob pattern to a regex:
   //   - escape all regex special chars except '*'
   //   - replace '*' with '.*'
   const escaped = pattern
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*/g, '.*')
-  const re = new RegExp(`^${escaped}$`)
-  return re.test(value)
+    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+    .replace(/\*/g, ".*");
+  const re = new RegExp(`^${escaped}$`);
+  return re.test(value);
 }

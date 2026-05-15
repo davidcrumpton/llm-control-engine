@@ -74,8 +74,8 @@ describe("Plugin registry and runtime", () => {
 
     const llm: any = {
       chat: vi.fn(),
-      defaultModel: 'test-model',
-      capabilities: ['chat'],
+      defaultModel: "test-model",
+      capabilities: ["chat"],
       list: vi.fn(),
     };
 
