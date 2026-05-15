@@ -19,6 +19,7 @@ import { runWithoutTools, loadTools, executeTool } from '../core/tools.js'
 import { isImage, validateFileSize, buildImageMessage } from '../core/utils.js'
 import { validatePolicy, validateStep }              from '../core/policy.js'
 import { Recorder }                                  from '../core/recorder.js'
+import type { CLIOptions, LLMProvider, Plan, PlanStep } from '../types.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -50,7 +51,7 @@ const SHELL_META_RE     = /[;&|`$<>\\!{}()\n\r]/
  * @param {string} planFile - Original filename for error reporting
  * @returns {Object}        - Validated plan
  */
-function normalizeAndValidatePlan(plan, planFile) {
+function normalizeAndValidatePlan(plan: any, planFile: string): Plan {
   if (!plan || typeof plan !== 'object') throw new Error(`Invalid plan file: ${planFile}`)
   if (!plan.steps || !Array.isArray(plan.steps)) throw new Error('Plan must have a steps array')
   if (plan.steps.length === 0) throw new Error('Plan must have at least one step')
@@ -63,7 +64,7 @@ function normalizeAndValidatePlan(plan, planFile) {
   })
 
   validatePolicy(plan)
-  plan.steps.forEach(step => validateStep(step, plan.policy || {}))
+  ;(plan.steps || []).forEach(step => validateStep(step, plan.policy || {}))
 
   return plan
 }
@@ -76,7 +77,7 @@ function normalizeAndValidatePlan(plan, planFile) {
  * @param {Object} options - CLI options
  * @returns {Object}       - Key-value pairs of variables
  */
-function parseCliVars(options) {
+function parseCliVars(options: CLIOptions): Record<string, string> {
   const vars = {}
   const raw  = options.var || options.vars || []
   const list = Array.isArray(raw) ? raw : [raw]
@@ -143,7 +144,7 @@ function interpolateString(str, vars) {
  * @param {Object} options  - CLI options
  * @returns {Promise<{plan: Object, vars: Object}>}
  */
-async function preparePlan(planFile, options) {
+async function preparePlan(planFile: string, options: CLIOptions): Promise<{plan: Plan, vars: Record<string, string>}> {
   const rawYaml = await fs.readFile(planFile, 'utf8')
 
   // Pre-parse to extract plan-level variables
@@ -171,10 +172,10 @@ async function preparePlan(planFile, options) {
  * @param {Array}  loadedTools    - Pre-loaded tools
  * @returns {Promise<Array>}      - Execution results
  */
-async function executeSteps(plan, llm, model, options, recorder, contextData, loadedTools) {
-  const results = []
+async function executeSteps(plan: Plan, llm: LLMProvider, model: string, options: CLIOptions, recorder: Recorder | null, contextData: Record<string, any>, loadedTools: any[]): Promise<any[]> {
+  const results: any[] = []
 
-  for (const [index, step] of plan.steps.entries()) {
+  for (const [index, step] of (plan.steps || []).entries()) {
     console.log(`Executing step ${index + 1}/${plan.steps.length}: ${step.name}`)
 
     const result    = await executeStepAction(step, loadedTools, llm, model, contextData)
@@ -208,7 +209,7 @@ async function executeSteps(plan, llm, model, options, recorder, contextData, lo
  * @param {string} recordFile          - Path to record file
  * @param {number} maxUploadFileSize   - Max file size for attachments
  */
-async function finalizePlan(plan, results, contextData, llm, options, recorder, recordFile, maxUploadFileSize) {
+async function finalizePlan(plan: Plan, results: any[], contextData: Record<string, any>, llm: LLMProvider, options: CLIOptions, recorder: Recorder | null, recordFile: string | null, maxUploadFileSize: number) {
   let llmResponse = ''
 
   if (recorder) recorder.markLlmStart()
@@ -239,7 +240,7 @@ async function finalizePlan(plan, results, contextData, llm, options, recorder, 
  * @param {Object} contextData  - Accumulated results from previous steps
  * @returns {Promise<Object>}   - The result of the execution { stdout, stderr, exitCode }
  */
-async function executeStepAction(step, loadedTools, llm, planModel, contextData) {
+async function executeStepAction(step: PlanStep, loadedTools: any[], llm: LLMProvider, planModel: string, contextData: Record<string, any>): Promise<any> {
   if (step.type === 'exec') {
     if (!step.exec?.trim()) {
       return { stdout: '', stderr: 'Empty exec command', exitCode: 1 }
@@ -431,7 +432,7 @@ async function processOutputs(planOutputs, contextData) {
  * @param {Object} options            - CLI options (includes options.record)
  * @param {number} maxUploadFileSize
  */
-export async function cmdPlan(llm, options, maxUploadFileSize = 10 * 1024 * 1024) {
+export async function cmdPlan(llm: LLMProvider, options: CLIOptions, maxUploadFileSize: number = 10 * 1024 * 1024) {
   let recorder = null
   const recordFile = options.record ?? null
 
@@ -444,7 +445,8 @@ export async function cmdPlan(llm, options, maxUploadFileSize = 10 * 1024 * 1024
     const { plan, vars } = await preparePlan(planFile, options)
 
     const dryRun = Boolean(options['dry-run'] || options.dryRun)
-    const model  = options.model || plan.model
+    const rawModel = options.model || plan.model
+    const model = typeof rawModel === 'object' ? (rawModel as any).name : rawModel
 
     if (!model) throw new Error('No model specified via plan or --model')
 

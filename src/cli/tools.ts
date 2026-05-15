@@ -2,15 +2,16 @@
  * Tools command handler for llmctrlx
  */
 import { loadTools } from '../core/tools.js'
+import type { CLIOptions } from '../types.js'
 
 /**
  * Handle tools command
- * @param {Object} options - CLI options
+ * @param {CLIOptions} options - CLI options
  * @param {string|null} toolsDir - Tools directory path
  */
-export async function cmdTools(options, toolsDir) {
-  const requestedTags = options.tags ? options.tags.split(',').map(t => t.trim()).filter(Boolean) : null
-  const tools = await loadTools(toolsDir, requestedTags)
+export async function cmdTools(options: CLIOptions, toolsDir: string | null) {
+  const requestedTags = options.tags ? (options.tags as string).split(',').map((t: string) => t.trim()).filter(Boolean) : null
+  const tools = await loadTools(toolsDir ?? undefined, requestedTags ?? undefined)
 
   // 1. Handle Empty State
   if (tools.length === 0) {

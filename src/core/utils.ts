@@ -13,6 +13,7 @@
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
+import type { ToolPlugin, LLMMessage, MessageContent } from '../types.js'
 
 // ---------------------------------------------------------------------------
 // Existing utilities (unchanged)
@@ -23,8 +24,8 @@ import os from 'os'
  * @param {Object} opts - Options object with optional json, temperature, top_p
  * @returns {Object}
  */
-export function buildOptions(opts) {
-  const out = {}
+export function buildOptions(opts: any): Record<string, any> {
+  const out: Record<string, any> = {}
   if (opts.json)        out.json        = true
   if (opts.temperature) out.temperature = opts.temperature
   if (opts.top_p)       out.top_p       = opts.top_p
@@ -39,7 +40,7 @@ export function buildOptions(opts) {
  * @param {number} maxSize - Maximum allowed size in bytes
  * @throws {Error} if file size exceeds maximum
  */
-export function validateFileSize(file, maxSize) {
+export function validateFileSize(file: string, maxSize: number): void {
   const stats = fs.statSync(file)
   if (stats.size > maxSize) {
     throw new Error('File size exceeds the maximum upload file size')
@@ -51,7 +52,7 @@ export function validateFileSize(file, maxSize) {
  * @param {string} file - File path
  * @returns {boolean}
  */
-export function isImage(file) {
+export function isImage(file: string): boolean {
   return ['.png', '.jpg', '.jpeg', '.webp']
     .includes(path.extname(file).toLowerCase())
 }
@@ -61,7 +62,7 @@ export function isImage(file) {
  * @param {string} text
  * @returns {Object|null}
  */
-export function extractJSON(text) {
+export function extractJSON(text: string): any {
   const codeBlockMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/)
   if (codeBlockMatch) {
     try { return JSON.parse(codeBlockMatch[1]) } catch { /* fall through */ }
@@ -95,7 +96,7 @@ export function extractJSON(text) {
  * @param {Object} args - Arguments to validate
  * @throws {Error} if required arguments are missing
  */
-export function validateArgs(tool, args) {
+export function validateArgs(tool: any, args: Record<string, any>): void {
   const schema = tool.parameters
   const properties  = schema.properties || schema
   const requiredList = Array.isArray(schema.required) ? schema.required : []
@@ -115,7 +116,7 @@ export function validateArgs(tool, args) {
  * @returns {Object}
  * @throws {Error}
  */
-export function validateTool(tool, source) {
+export function validateTool(tool: any, source: string): any {
   if (!tool || typeof tool !== 'object') {
     throw new Error(`Invalid tool export from ${source}`)
   }
@@ -142,7 +143,7 @@ export function validateTool(tool, source) {
     throw new Error(`Tool '${tool.name}' missing version`)
   }
   if (tool.tags !== undefined) {
-    if (!Array.isArray(tool.tags) || !tool.tags.every(t => typeof t === 'string')) {
+    if (!Array.isArray(tool.tags) || !tool.tags.every((t: any) => typeof t === 'string')) {
       throw new Error(`Tool '${tool.name}' tags must be an array of strings`)
     }
   }
@@ -179,7 +180,7 @@ const DEFAULT_HISTORY_BASE = path.resolve(os.homedir(), '.llmctrlx')
  * @returns {string} The resolved, safe absolute path.
  * @throws {Error}  If the resolved path escapes allowedBase.
  */
-export function validateHistoryPath(filePath, allowedBase = DEFAULT_HISTORY_BASE) {
+export function validateHistoryPath(filePath: string, allowedBase: string = DEFAULT_HISTORY_BASE): string {
   const resolvedBase = path.resolve(allowedBase)
   const resolvedFile = path.resolve(filePath)
 
@@ -222,13 +223,13 @@ const DEFAULT_SENSITIVE_PARAM_KEYS = new Set([
  * @param {Set<string>} sensitiveKeys
  * @returns {Object}                - Redacted schema safe for the LLM.
  */
-function redactParameters(parameters, sensitiveKeys) {
+function redactParameters(parameters: any, sensitiveKeys: Set<string>): any {
   if (!parameters || typeof parameters !== 'object') return parameters
 
   const properties = parameters.properties || parameters
-  const redacted = {}
+  const redacted: Record<string, any> = {}
 
-  for (const [key, def] of Object.entries(properties)) {
+  for (const [key, def] of Object.entries(properties) as [string, any][]) {
     if (sensitiveKeys.has(key.toLowerCase()) || def?.sensitive === true) {
       redacted[key] = { type: def?.type || 'string', description: '[redacted]' }
     } else {
@@ -250,10 +251,10 @@ function redactParameters(parameters, sensitiveKeys) {
  * @param {Set<string>} [sensitiveKeys]   - Additional sensitive param names to redact.
  * @returns {string}
  */
-export function buildToolPrompt(tools, sensitiveKeys = new Set()) {
+export function buildToolPrompt(tools: any[], sensitiveKeys: Set<string> = new Set()): string {
   const allSensitiveKeys = new Set([
     ...DEFAULT_SENSITIVE_PARAM_KEYS,
-    ...[...sensitiveKeys].map(k => k.toLowerCase()),
+    ...Array.from(sensitiveKeys).map(k => k.toLowerCase()),
   ])
 
   return `
@@ -292,7 +293,7 @@ ${tools.map(t => {
  * @param {string} provider - 'lmstudio' | 'ollama'
  * @returns {Object}
  */
-export function buildImageMessage(filePath, imgData, provider) {
+export function buildImageMessage(filePath: string, imgData: string, provider: string): LLMMessage {
   const label = `Attached image: ${path.basename(filePath)}`
 
   if (provider === 'lmstudio') {
@@ -303,12 +304,12 @@ export function buildImageMessage(filePath, imgData, provider) {
       content: [
         { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imgData}` } },
         { type: 'text', text: label }
-      ]
+      ] as MessageContent[]
     }
   }
 
   // Ollama default
-  return { role: 'user', content: label, images: [imgData] }
+  return { role: 'user', content: label, images: [imgData] } as any
 }
 
 /**
@@ -317,11 +318,11 @@ export function buildImageMessage(filePath, imgData, provider) {
  * @param {Array} messages - Message array to compact.
  * @returns {Array} New compacted message array.
  */
-export function compactMessages(messages) {
+export function compactMessages(messages: LLMMessage[]): LLMMessage[] {
   if (!messages || messages.length === 0) return []
 
-  const compacted = []
-  let current = null
+  const compacted: LLMMessage[] = []
+  let current: LLMMessage | null = null
 
   for (const msg of messages) {
     if (!current || current.role !== msg.role) {
@@ -334,14 +335,14 @@ export function compactMessages(messages) {
       } else if (Array.isArray(current.content) && Array.isArray(msg.content)) {
         current.content.push(...msg.content)
       } else if (Array.isArray(current.content) && typeof msg.content === 'string') {
-        current.content.push({ type: 'text', text: msg.content })
+        (current.content as MessageContent[]).push({ type: 'text', text: msg.content })
       } else if (typeof current.content === 'string' && Array.isArray(msg.content)) {
-        current.content = [{ type: 'text', text: current.content }, ...msg.content]
+        current.content = [{ type: 'text', text: current.content }, ...msg.content] as MessageContent[]
       }
 
       // Merge images if present
-      if (msg.images) {
-        current.images = [...(current.images || []), ...msg.images]
+      if ((msg as any).images) {
+        (current as any).images = [...((current as any).images || []), ...(msg as any).images]
       }
     }
   }

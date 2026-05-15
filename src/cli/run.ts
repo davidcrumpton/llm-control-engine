@@ -13,6 +13,7 @@ import { promisify } from 'node:util';
 import { Recorder } from '../core/recorder.js';
 import { loadHistory, saveHistory, getSession, getHistoryWindow } from '../core/history.js';
 import { compactMessages, buildOptions } from '../core/utils.js';
+import type { CLIOptions, LLMProvider, EngineHookIntegration } from '../types.js'
 
 const execFileAsync = promisify(execFile);
 
@@ -34,7 +35,7 @@ const SHELL_META_RE = /[;&|`$<>\\!{}()\n\r]/;
  * Validates and parses the command string.
  * Returns { executable, args } or throws an Error.
  */
-function validateCommand(rawInput) {
+function validateCommand(rawInput: string | undefined): { executable: string, args: string[] } {
   if (!rawInput?.trim()) {
     throw new Error('Empty command provided.');
   }
@@ -57,7 +58,7 @@ function validateCommand(rawInput) {
  * Parse a command string into tokens, respecting quoted strings.
  * Handles both single and double-quoted arguments.
  */
-function parseTokens(input) {
+function parseTokens(input: string): string[] {
   const tokens = [];
   let current = '';
   let inQuotes = false;
@@ -100,14 +101,14 @@ function parseTokens(input) {
  * @param {string} method
  * @param  {...any} args
  */
-function record(recorder, method, ...args) {
-  recorder?.[method](...args);
+function record(recorder: Recorder | null, method: string, ...args: any[]) {
+  if (recorder) (recorder as any)[method](...args);
 }
 
 /**
  * Execute the shell command and return stdout.
  */
-async function executeCommand(executable, args, recorder) {
+async function executeCommand(executable: string, args: string[], recorder: Recorder | null): Promise<string> {
   record(recorder, 'markExecStart');
 
   const { stdout, stderr, error: execError } = await execFileAsync(
@@ -133,7 +134,7 @@ async function executeCommand(executable, args, recorder) {
 /**
  * Filter the LLM response using engine hooks
  */
-async function filterResponse(output, engineHooks, options, prompt) {
+async function filterResponse(output: string, engineHooks: any, options: CLIOptions, prompt: string): Promise<string> {
   if (typeof engineHooks?.filterResponse !== 'function') return output;
 
   const result = await engineHooks.filterResponse('run', {
@@ -157,7 +158,7 @@ async function filterResponse(output, engineHooks, options, prompt) {
  * @param {Object} options     - CLI options (includes options.record for session path)
  * @param {Object} engineHooks - Optional engine hook system
  */
-export async function cmdRun(llm, options, defaultHistoryFile, engineHooks) {
+export async function cmdRun(llm: LLMProvider, options: CLIOptions, defaultHistoryFile: string, engineHooks?: any) {
   const recordFile = options.record ?? null;
   const recorderInputs = {
     model: options.model,

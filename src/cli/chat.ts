@@ -12,6 +12,7 @@ import { loadHistory, saveHistory, getSession, getHistoryWindow }               
 import { buildOptions, isImage, validateFileSize, buildToolPrompt, buildImageMessage, compactMessages } from '../core/utils.js'
 import { createPluginRegistry, runWithTools, runWithoutTools }           from '../core/tools.js'
 import { Recorder, makeToolCallRecorder }                                from '../core/recorder.js'
+import type { CLIOptions, LLMProvider, LLMMessage, EngineHookIntegration } from '../types.js'
 
 // ─── Main command ─────────────────────────────────────────────────────────────
 
@@ -25,7 +26,14 @@ import { Recorder, makeToolCallRecorder }                                from '.
  * @param {number} maxUploadFileSize  - Maximum file attachment size in bytes
  * @param {Object} engineHooks        - Optional engine hook system
  */
-export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUploadFileSize,  engineHooks) {
+export async function cmdChat(
+  llm: LLMProvider,
+  options: CLIOptions,
+  defaultHistoryFile: string,
+  toolsDir: string | null,
+  maxUploadFileSize: number,
+  engineHooks?: any
+) {
   const recordFile = options.record ?? null
 
   const historyData = loadHistory(defaultHistoryFile)
@@ -70,7 +78,7 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
     no_tools        : options.no_tools ?? false,
   }
 
-  const recorder = recordFile ? new Recorder('chat', recorderInputs) : null
+  const recorder = recordFile ? new Recorder('chat', recorderInputs as any) : null
 
   // 4. Execute LLM Request
   const chatOptions = buildOptions(options)
@@ -124,7 +132,7 @@ export async function cmdChat(llm, options, defaultHistoryFile, toolsDir, maxUpl
 
 // ─── Private helpers (unchanged from original) ────────────────────────────────
 
-async function resolveUserContent(options) {
+async function resolveUserContent(options: CLIOptions): Promise<string> {
   let stdinData = ''
   if (options.stdin || (!options.user && !process.stdin.isTTY)) {
     stdinData = await new Promise((resolve) => {
@@ -142,7 +150,7 @@ async function resolveUserContent(options) {
 }
 
 
-async function processFiles(filesInput, maxSize, provider = 'ollama') {
+async function processFiles(filesInput: string[] | string | undefined, maxSize: number, provider: string = 'ollama'): Promise<LLMMessage[]> {
   const files = Array.isArray(filesInput) ? filesInput : (filesInput ? [filesInput] : [])
   const msgs  = []
 
@@ -159,7 +167,7 @@ async function processFiles(filesInput, maxSize, provider = 'ollama') {
   return msgs
 }
 
-async function handleStandardChat(llm, options, messages, chatOptions, toolsDir) {
+async function handleStandardChat(llm: LLMProvider, options: CLIOptions, messages: LLMMessage[], chatOptions: any, toolsDir: string | null): Promise<string> {
   if (options.no_tools) {
     return await runWithoutTools(llm, options.model, messages, chatOptions)
   }
@@ -181,7 +189,7 @@ async function handleStandardChat(llm, options, messages, chatOptions, toolsDir)
   return await runWithTools(llm, options.model, messages, tools, registry.list('policy'), chatOptions)
 }
 
-async function handleStreamingChat(llm, options, messages, chatOptions) {
+async function handleStreamingChat(llm: LLMProvider, options: CLIOptions, messages: LLMMessage[], chatOptions: any): Promise<string> {
   // Strip recorder-specific keys before forwarding to provider
   const { onToolCall, ...providerOptions } = chatOptions
 
@@ -205,7 +213,7 @@ async function handleStreamingChat(llm, options, messages, chatOptions) {
   return fullContent
 }
 
-async function filterResponse(output, engineHooks, options, prompt) {
+async function filterResponse(output: string, engineHooks: any, options: CLIOptions, prompt: string): Promise<string> {
   if (typeof engineHooks?.filterResponse !== 'function') return output
 
   const result = await engineHooks.filterResponse('chat', {

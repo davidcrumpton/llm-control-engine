@@ -1,13 +1,11 @@
-/**
- * Model command handler for llmctrlx
- */
+import type { CLIOptions, LLMProvider } from '../types.js'
 
 /**
  * Handle model command
- * @param {Object} llm - LLM provider instance
- * @param {Object} options - CLI options
+ * @param {LLMProvider} llm - LLM provider instance
+ * @param {CLIOptions} options - CLI options
  */
-export async function cmdModel(llm, options) {
+export async function cmdModel(llm: LLMProvider, options: CLIOptions) {
   const { list } = options;
 
   // 1. Handle List
@@ -48,7 +46,7 @@ export async function cmdModel(llm, options) {
 
     // Execution
     try {
-      const res = await llm[action.method]({ model: options.model });
+      const res = await (llm as any)[action.method]({ model: options.model });
       if (action.method === 'show' && res) {
         console.log(JSON.stringify(res, null, 2));
       }

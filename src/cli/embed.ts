@@ -1,30 +1,27 @@
-/**
- * Embed command handler for llmctrlx
- */
-
 import fs from 'fs/promises';
+import type { CLIOptions, LLMProvider } from '../types.js'
 
 /**
  * Helper to perform the embedding call
- * @param {Object} llm - LLM provider instance
+ * @param {LLMProvider} llm - LLM provider instance
  * @param {string} model - Model name
  * @param {string} content - The text to embed
- * @returns {Promise<Object>}
+ * @returns {Promise<any>}
  */
-async function performEmbedding(llm, model, content) {
-  const res = await llm.embeddings({
+async function performEmbedding(llm: LLMProvider, model: string, content: string): Promise<any> {
+  const res = await llm.embeddings!({
     model,
     prompt: content
   });
-  return res.embedding;
+  return (res as any).embedding;
 }
 
 /**
  * Handle embed command
- * @param {Object} llm - LLM provider instance
- * @param {Object} options - CLI options
+ * @param {LLMProvider} llm - LLM provider instance
+ * @param {CLIOptions} options - CLI options
  */
-export async function cmdEmbed(llm, options) {
+export async function cmdEmbed(llm: LLMProvider, options: CLIOptions) {
   const { model, stdin, files } = options;
 
 
@@ -82,7 +79,7 @@ export async function cmdEmbed(llm, options) {
       throw new Error(`${failures.length} embedding(s) failed`);
     }
 
-    console.log(JSON.stringify(successfulResults, null, 2));
+    console.log(JSON.stringify(successfulResults as any, null, 2));
 
   } catch (err) {
     throw new Error(`Fatal error during embedding process: ${err.message}`);

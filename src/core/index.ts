@@ -30,4 +30,3 @@ export {
 export { Registry } from './registry.js'
 export { loadPluginsFromDir } from './loader.js'
 export * from "./tools.js";
-// no type exports needed here — TS will pick up the .d.ts automatically

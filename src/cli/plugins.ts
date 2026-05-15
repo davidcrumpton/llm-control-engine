@@ -1,18 +1,16 @@
-/**
- * Plugins command handler for llmctrlx
- */
-
 import { existsSync } from 'fs'
 import { readdir, readFile } from 'fs/promises'
 import path from 'path'
+import type { CLIOptions } from '../types.js'
 
 const PLUGIN_EXT_REGEX = /\.plugin\.(ts|js)$/
 
 /**
  * Discover plugin files in a directory
  */
-async function discoverPlugins(pluginsDir) {
-  if (!existsSync(pluginsDir)) return []
+async function discoverPlugins(pluginsDir: string | null): Promise<any[]> {
+  if (!pluginsDir || !existsSync(pluginsDir)) return []
+// ... (omitted for brevity in chunk but I'll provide full replacement)
 
   try {
     const entries = await readdir(pluginsDir, { withFileTypes: true })
@@ -75,7 +73,7 @@ async function readPluginMetadata(filePath) {
 /**
  * Handle plugins command
  */
-export async function cmdPlugins(options, pluginsDir) {
+export async function cmdPlugins(options: CLIOptions, pluginsDir: string | null) {
   const plugins = await discoverPlugins(pluginsDir)
 
   if (plugins.length === 0) {

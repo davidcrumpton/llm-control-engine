@@ -1,13 +1,11 @@
-/**
- * Bench command handler for llmctrlx
- */
+import type { CLIOptions, LLMProvider } from '../types.js'
 
 /**
  * Handle bench command
- * @param {Object} llm - LLM provider instance
- * @param {Object} options - CLI options
+ * @param {LLMProvider} llm - LLM provider instance
+ * @param {CLIOptions} options - CLI options
  */
-export async function cmdBench(llm, options) {
+export async function cmdBench(llm: LLMProvider, options: CLIOptions) {
   // 1. Guard against undefined models
   if (!options.model) {
     console.error("Error: No models specified. Use --model='model1,model2'");
@@ -65,5 +63,5 @@ export async function cmdBench(llm, options) {
   const results = await Promise.all(tasks);
 
   // 4. Output results
-  console.table(results);
+  console.table(results as any[]);
 }

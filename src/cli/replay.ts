@@ -27,6 +27,7 @@ import { buildToolPrompt }               from '../core/utils.js'
 import { createPluginRegistry, runWithTools, runWithoutTools } from '../core/tools.js'
 import { execFile }    from 'node:child_process'
 import { promisify }   from 'node:util'
+import type { CLIOptions, LLMProvider, Session } from '../types.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -37,7 +38,7 @@ const execFileAsync = promisify(execFile)
  *
  * @param {Object} session - Loaded session envelope
  */
-function playback(session) {
+function playback(session: Session) {
   console.error(`[replay] playback — ${session.command_type} recorded at ${session.recordedAt}`)
   console.error(`[replay] runHash: ${session.runHash}`)
 
@@ -65,8 +66,8 @@ function playback(session) {
  * @param {Object} llm     - LLM provider
  * @returns {Promise<Recorder>}
  */
-async function reExecuteRun(session, llm) {
-  const { inputs } = session
+async function reExecuteRun(session: Session, llm: LLMProvider): Promise<Recorder> {
+  const { inputs } = session as any
   const recorder   = new Recorder('run', inputs)
 
   // Shell execution
@@ -112,8 +113,8 @@ async function reExecuteRun(session, llm) {
  * @param {string|null} toolsDir - Tools directory
  * @returns {Promise<Recorder>}
  */
-async function reExecuteChat(session, llm, toolsDir) {
-  const { inputs } = session
+async function reExecuteChat(session: Session, llm: LLMProvider, toolsDir: string | null): Promise<Recorder> {
+  const { inputs } = session as any
   const recorder   = new Recorder('chat', inputs)
 
   // Reconstruct the exact message array from the snapshot so this re-execution
@@ -171,8 +172,8 @@ async function reExecuteChat(session, llm, toolsDir) {
  * @param {Object} llm     - LLM provider
  * @returns {Promise<Recorder>}
  */
-async function reExecutePlan(session, llm) {
-  const { inputs } = session
+async function reExecutePlan(session: Session, llm: LLMProvider): Promise<Recorder> {
+  const { inputs } = session as any
 
   if (!inputs.planFile) {
     throw new Error('Session inputs.planFile is missing — cannot re-execute plan.')
@@ -235,7 +236,7 @@ async function reExecutePlan(session, llm) {
  * @param {Object} options - CLI options; options._ should contain the session file path
  * @param {string|null} toolsDir - Tools directory path(needed for chat re-execution)
  */
-export async function cmdReplay(llm, options, toolsDir) {
+export async function cmdReplay(llm: LLMProvider, options: CLIOptions, toolsDir: string | null) {
   const positional  = options._ || []
   const sessionFile = positional[0]
 

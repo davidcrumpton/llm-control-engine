@@ -53,7 +53,7 @@ output:
       system: undefined,
     };
 
-    await cmdPlan(llm, options);
+    await cmdPlan(llm as any, options as any);
 
     expect(llm.chat).toHaveBeenCalledTimes(1);
     expect(logSpy).toHaveBeenCalledWith("Mock analysis");
@@ -86,7 +86,7 @@ steps:
       system: undefined,
     };
 
-    await cmdPlan(llm, options);
+    await cmdPlan(llm as any, options as any);
 
     expect(llm.chat).not.toHaveBeenCalled();
     expect(logSpy).toHaveBeenCalledWith("Dry run plan: Dry Run Plan");
@@ -131,7 +131,7 @@ output:
         var: ["host=proxmox1", "env=prod"],
       };
 
-      await cmdPlan(llm, options);
+      await cmdPlan(llm as any, options as any);
 
       expect(llm.chat).toHaveBeenCalledTimes(1);
       expect(logSpy).toHaveBeenCalledWith("Host OK");

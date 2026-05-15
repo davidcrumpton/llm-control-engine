@@ -40,7 +40,7 @@ describe("cmdRun history integration", () => {
     };
 
     // First run
-    await cmdRun(llm, options, historyFile, engineHooks);
+    await cmdRun(llm as any, options as any, historyFile, engineHooks as any);
 
     expect(llm.chat).toHaveBeenCalledTimes(1);
     const firstCallMessages = llm.chat.mock.calls[0][0].messages;
@@ -58,7 +58,7 @@ describe("cmdRun history integration", () => {
 
     // Second run
     llm.chat.mockClear();
-    await cmdRun(llm, options, historyFile, engineHooks);
+    await cmdRun(llm as any, options as any, historyFile, engineHooks as any);
 
     expect(llm.chat).toHaveBeenCalledTimes(1);
     const secondCallMessages = llm.chat.mock.calls[0][0].messages;

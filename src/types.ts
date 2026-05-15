@@ -222,14 +222,25 @@ export interface PlanStep {
   type: "tool" | "exec" | "prompt";
   tool?: string;
   exec?: string;
+  args?: Record<string, unknown>;
+  context?: { from_steps?: string[] };
+  prompt?: string;
   [key: string]: unknown;
 }
 
 export interface Plan {
   version?: string;
+  name?: string;
+  vars?: Record<string, string>;
   model?: { name: string } | string;
   policy?: PlanPolicy;
   steps?: PlanStep[];
+  attachments?: string[];
+  prompt?: string;
+  output?: { format?: string, save?: string };
+  outputs?: { save?: { step: string, to: string }[] };
+  system?: string;
+  flow?: { on_error?: 'stop' | 'continue' };
 }
 
 // ─── CLI and Configuration Types ─────────────────────────────────────────────

@@ -4,10 +4,10 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const historyCandidates = [
-  "../../src/cli/history.js",
-  "../../lib/cli/history.js",
-  "../../../src/cli/history.js",
-  "../../../lib/cli/history.js",
+  "../../src/cli/history.ts",
+  "../../lib/cli/history.ts",
+  "../../../src/cli/history.ts",
+  "../../../lib/cli/history.ts",
 ];
 
 const historyPath = historyCandidates

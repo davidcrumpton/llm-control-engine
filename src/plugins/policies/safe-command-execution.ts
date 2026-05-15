@@ -18,6 +18,8 @@
  *  4. All checks use exact word boundaries on the normalised form.
  */
 
+import type { PolicyContext, PolicyResult, PolicyPlugin } from '../../types.js'
+
 // Executables that are never permitted, regardless of context.
 const BLOCKED_EXECUTABLES = new Set([
   'sudo', 'doas', 'su',
@@ -46,7 +48,7 @@ const SHELL_META_CHARS = new Set([
  * NFKC compatibility decomposition collapses lookalike characters
  * (fullwidth letters, superscripts, etc.) to their ASCII equivalents.
  */
-function normalise(str) {
+function normalise(str: string): string {
   return String(str).normalize('NFKC').toLowerCase()
 }
 
@@ -57,7 +59,7 @@ function normalise(str) {
  * @param {string} value
  * @returns {string|null}
  */
-function checkValue(value) {
+function checkValue(value: string): string | null {
   const str = String(value)
   const norm = normalise(str)
 
@@ -82,9 +84,10 @@ function checkValue(value) {
   return null
 }
 
-export default {
+const plugin: PolicyPlugin = {
   type: 'policy',
   name: 'safe-command-execution',
+  // @ts-ignore
   description: 'Block unsafe command execution patterns before tools run.',
 
   /**
@@ -94,10 +97,10 @@ export default {
   init() {},
 
   /**
-   * @param {{ tool: Object, args: Record<string,unknown> }} context
-   * @returns {Promise<{allow:false, message:string}|null>}
+   * @param {PolicyContext} context
+   * @returns {Promise<PolicyResult|null>}
    */
-  async onBeforeToolRun({ tool, args }) {
+  async onBeforeToolRun({ tool, args }: PolicyContext): Promise<PolicyResult | null> {
     // Check the tool name itself.
     const nameReason = checkValue(tool.name)
     if (nameReason) {
@@ -123,6 +126,8 @@ export default {
   },
 }
 
+export default plugin
+
 /**
  * Recursively collect policy violations from an argument object.
  *
@@ -130,8 +135,8 @@ export default {
  * @param {string}  keyPath - Human-readable path for error messages.
  * @returns {string[]}      - List of violation descriptions.
  */
-function collectViolations(value, keyPath) {
-  const violations = []
+function collectViolations(value: any, keyPath: string): string[] {
+  const violations: string[] = []
 
   if (value === null || value === undefined) return violations
 

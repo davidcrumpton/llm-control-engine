@@ -2,13 +2,14 @@
  * History command handler for llmctrlx
  */
 import { loadHistory, saveHistory, getSession } from '../core/history.js';
+import type { CLIOptions } from '../types.js'
 
 /**
  * Handle history command
- * @param {Object} options - CLI options
+ * @param {CLIOptions} options - CLI options
  * @param {string} historyFile - Path to the history file
  */
-export function cmdHistory(options, historyFile) {
+export function cmdHistory(options: CLIOptions, historyFile: string) {
   const historyData = loadHistory(historyFile);
 
   // 1. Destructive Actions (Purge/Delete)
