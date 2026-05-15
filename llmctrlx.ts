@@ -53,7 +53,7 @@ const _dirname =
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.8.16'
+const APP_VERSION = '0.8.20'
 const APP_TAGLINE =
   'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION =
@@ -80,8 +80,15 @@ const DEFAULT_HISTORY_FILE: string =
 const DEFAULT_API_KEY: string =
   process.env.__LLMCTRLX_OLLAMA_API_KEY || ''
 
-const DEFAULT_PROVIDER: Provider = 
-  (process.env.LLMCTRLX_PROVIDER as Provider) || 'ollama'
+const VALID_PROVIDERS = ['ollama', 'lmstudio'] as const
+function isProvider(v: string | undefined): v is Provider {
+  return !!v && (VALID_PROVIDERS as readonly string[]).includes(v)
+}
+
+const DEFAULT_PROVIDER: Provider = isProvider(process.env.LLMCTRLX_PROVIDER)
+  ? process.env.LLMCTRLX_PROVIDER
+  : 'ollama'
+
 const DEFAULT_SESSION: string = process.env.LLMCTRLX_SESSION || 'default'
 const DEFAULT_TOOLS_HISTORY_LENGTH: number = envNumber(
   'LLMCTRLX_TOOLS_HISTORY_LENGTH',
@@ -120,45 +127,10 @@ const DEFAULT_PLUGINS_DIR: string | null =
 // CLI parsing
 // --------------------
 
-const KNOWN_OPTIONS = new Set([
-  'host',
-  'model',
-  'user',
-  'system',
-  'files',
-  'session',
-  'temperature',
-  'top_p',
-  'provider',
-  'tools_dir',
-  'no_tools',
-  'api_key',
-  'tags',
-  'verbose',
-  'history_length',
-  'num_ctx',
-  'record',
-  'timeout',
-  'history_file',
-  'json',
-  'stream',
-  'all',
-  'list',
-  'stdin',
-  'purge',
-  'dry-run',
-  'diff',
-  'show',
-  'shell',
-  'var',
-  'pull',
-  'delete',
-])
-
 const argv = process.argv.slice(2)
 const command = argv[0]
 
-interface GetotsOptions extends Record<string, unknown> {
+interface GetoptsOptions extends Record<string, unknown> {
   host?: string
   model?: string
   user?: string
@@ -196,7 +168,7 @@ interface GetotsOptions extends Record<string, unknown> {
   delete?: boolean
 }
 
-const options: GetotsOptions = getopts(argv.slice(1), {
+const options: GetoptsOptions = getopts(argv.slice(1), {
   alias: {
     h: 'host',
     m: 'model',
@@ -269,16 +241,29 @@ const options: GetotsOptions = getopts(argv.slice(1), {
   },
 })
 
-// Parse numeric options to ensure they match CLIOptions
-options.num_ctx = parseInt(String(options.num_ctx), 10)
-options.timeout = parseInt(String(options.timeout), 10)
-options.history_length = parseInt(String(options.history_length), 10)
-
-const cliOptions = options as unknown as CLIOptions
+// Map and validate options into a clean CLIOptions object
+const cliOptions: CLIOptions = {
+  ...options,
+  num_ctx: parseInt(String(options.num_ctx), 10),
+  timeout: parseInt(String(options.timeout), 10),
+  history_length: parseInt(String(options.history_length), 10),
+  session: String(options.session ?? DEFAULT_SESSION),
+  history_file: String(options.history_file ?? DEFAULT_HISTORY_FILE),
+  provider: (options.provider ?? DEFAULT_PROVIDER) as Provider,
+  verbose: !!options.verbose,
+  no_tools: !!options.no_tools,
+  no_plugins: !!options.no_plugins,
+  json: !!options.json,
+  stream: !!options.stream,
+  stdin: !!options.stdin,
+  purge: !!options.purge,
+  'dry-run': !!options['dry-run'],
+  diff: !!options.diff,
+}
 
 // Check for -f flag with no files for chat command
 if (command === 'chat' && (argv.includes('-f') || argv.includes('--files'))) {
-  if (!options.files || options.files.length === 0) {
+  if (!cliOptions.files || cliOptions.files.length === 0) {
     console.error('Error: -f flag provided but no files specified.')
     process.exit(1)
   }
@@ -286,7 +271,7 @@ if (command === 'chat' && (argv.includes('-f') || argv.includes('--files'))) {
 
 // Plugins directory
 if (command === 'chat' && (argv.includes('-X') || argv.includes('--plugins_dir'))) {
-  if (!options.plugins_dir || options.plugins_dir.length === 0) {
+  if (!cliOptions.plugins_dir || cliOptions.plugins_dir.length === 0) {
     console.error(
       'Error: -X flag provided but no plugins_dir specified.'
     )
@@ -295,7 +280,7 @@ if (command === 'chat' && (argv.includes('-X') || argv.includes('--plugins_dir')
 }
 
 // No -x and -X given together
-if (options.no_plugins && options.plugins_dir) {
+if (cliOptions.no_plugins && cliOptions.plugins_dir) {
   console.error(
     'Error: Cannot use both -x and -X flags or equivalent environment variables.'
   )
@@ -303,19 +288,19 @@ if (options.no_plugins && options.plugins_dir) {
 }
 
 if (argv.includes('-k') || argv.includes('--session')) {
-  if (!options.session || options.session.length === 0) {
+  if (!cliOptions.session || cliOptions.session.length === 0) {
     console.error('Error: -k flag provided but no session name specified.')
     process.exit(1)
   }
 }
 
 // abort if -W and -T is given (not applicable to replay which only reads toolsDir for re-execution)
-if (options.no_tools && options.tools_dir && command !== 'replay') {
+if (cliOptions.no_tools && cliOptions.tools_dir && command !== 'replay') {
   console.error('Cannot use both -W and -T')
   process.exit(1)
 }
 
-const toolsDir: string | null = options.tools_dir || DEFAULT_TOOLS_DIR || null
+const toolsDir: string | null = cliOptions.tools_dir || DEFAULT_TOOLS_DIR || null
 
 // --------------------
 // Router
@@ -325,17 +310,17 @@ async function main(): Promise<void> {
   // Initialize LLM provider
   let llm: LLMProvider
 
-  if (options.provider === 'lmstudio') {
+  if (cliOptions.provider === 'lmstudio') {
     llm = new LMStudioProvider({
-      host: options.host || process.env.LLMCTRLX_API_URL || undefined,
-      apiKey: options.__api_key,
-      timeout: options.timeout,
+      host: cliOptions.host || process.env.LLMCTRLX_API_URL || undefined,
+      apiKey: cliOptions.api_key || (cliOptions.__api_key as string),
+      timeout: cliOptions.timeout,
     })
-  } else if (options.provider === 'ollama') {
+  } else if (cliOptions.provider === 'ollama') {
     llm = new OllamaProvider({
-      host: options.host || process.env.LLMCTRLX_API_URL || undefined,
-      apiKey: options.__api_key,
-      timeout: options.timeout,
+      host: cliOptions.host || process.env.LLMCTRLX_API_URL || undefined,
+      apiKey: cliOptions.api_key || (cliOptions.__api_key as string),
+      timeout: cliOptions.timeout,
     })
   } else {
     // fail and let user know wrong provider
@@ -346,18 +331,18 @@ async function main(): Promise<void> {
   }
 
   // Resolve model: CLI flag > env-var > provider default
-  options.model =
-    options.model || process.env.LLMCTRLX_MODEL || llm.defaultModel
+  cliOptions.model =
+    cliOptions.model || process.env.LLMCTRLX_MODEL || llm.defaultModel
 
   // Initialize plugin system
   // Plugins are opt-in: only load if a directory is explicitly configured via
   // -X / --plugins_dir or the LLMCTRLX_PLUGINS_DIR env var. No directory = no plugins, silently.
-  const logger = options.verbose ? console : undefined
+  const logger = cliOptions.verbose ? console : undefined
   const hookManager = new HookManager(logger)
   const pluginLoader = new PluginLoader(hookManager, logger)
-  const effectivePluginsDir = options.no_plugins
+  const effectivePluginsDir = cliOptions.no_plugins
     ? null
-    : options.plugins_dir || DEFAULT_PLUGINS_DIR
+    : cliOptions.plugins_dir || DEFAULT_PLUGINS_DIR
   if (effectivePluginsDir) {
     await pluginLoader.loadFromDirectory(effectivePluginsDir)
   }
@@ -407,9 +392,9 @@ async function main(): Promise<void> {
     case 'pl':
       await cmdPlugins(
         cliOptions,
-        options.no_plugins
+        cliOptions.no_plugins
           ? null
-          : (options.plugins_dir as string) || DEFAULT_PLUGINS_DIR
+          : (cliOptions.plugins_dir as string) || DEFAULT_PLUGINS_DIR
       )
       break
     case 'history':
@@ -419,11 +404,11 @@ async function main(): Promise<void> {
       break
     case 'completion':
     case 'comp':
-      cmdCompletion(options.shell || process.env.SHELL)
+      cmdCompletion(cliOptions.shell || process.env.SHELL)
       break
     case 'version':
     case 'v':
-      if (options.verbose) {
+      if (cliOptions.verbose) {
         console.log(`${APP_NAME} v${APP_VERSION} - ${APP_TAGLINE}`)
         console.log(`${APP_DESCRIPTION}`)
       } else {

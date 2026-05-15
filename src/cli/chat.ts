@@ -28,19 +28,17 @@ import {
   runWithoutTools,
 } from "../core/tools.js";
 import { Recorder, makeToolCallRecorder } from "../core/recorder.js";
-import type { CLIOptions, LLMProvider, LLMMessage } from "../types.js";
+import type {
+  CLIOptions,
+  LLMProvider,
+  LLMMessage,
+  IEngineHooks,
+} from "../types.js";
 
 // ─── Main command ─────────────────────────────────────────────────────────────
 
 /**
  * Handle chat command
- *
- * @param {Object} llm                - LLM provider instance
- * @param {Object} options            - CLI options (includes options.record)
- * @param {string} defaultHistoryFile - Path to the history JSON file
- * @param {string|null} toolsDir      - Tools directory
- * @param {number} maxUploadFileSize  - Maximum file attachment size in bytes
- * @param {Object} engineHooks        - Optional engine hook system
  */
 export async function cmdChat(
   llm: LLMProvider,
@@ -48,7 +46,7 @@ export async function cmdChat(
   defaultHistoryFile: string,
   toolsDir: string | null,
   maxUploadFileSize: number,
-  engineHooks?: any,
+  engineHooks?: IEngineHooks,
 ) {
   const recordFile = options.record ?? null;
 
@@ -102,9 +100,7 @@ export async function cmdChat(
     no_tools: options.no_tools ?? false,
   };
 
-  const recorder = recordFile
-    ? new Recorder("chat", recorderInputs as any)
-    : null;
+  const recorder = recordFile ? new Recorder("chat", recorderInputs) : null;
 
   // 4. Execute LLM Request
   const chatOptions = buildOptions(options);
@@ -294,7 +290,7 @@ async function handleStreamingChat(
 
 async function filterResponse(
   output: string,
-  engineHooks: any,
+  engineHooks: IEngineHooks | undefined,
   options: CLIOptions,
   prompt: string,
 ): Promise<string> {

@@ -299,10 +299,42 @@ export interface CLIOptions {
   [key: string]: unknown;
 }
 
-export interface EngineHookIntegration {
-  onBeforeChat?: (ctx: unknown) => Promise<void>;
-  onAfterChat?: (ctx: unknown) => Promise<void>;
-  [key: string]: unknown;
+export interface IEngineHooks {
+  init?(): Promise<void>;
+  shutdown?(): Promise<void>;
+  preProcessPrompt?(requestId: string, raw: string): Promise<string>;
+  postProcessPrompt?(requestId: string, assembled: string): Promise<string>;
+  gateInference?(
+    requestId: string,
+    prompt: string,
+  ): Promise<{ allowed: boolean; reason?: string }>;
+  postProcessInference?(
+    requestId: string,
+    inferenceResult: unknown,
+  ): Promise<unknown>;
+  filterResponse?(requestId: string, payload: any): Promise<any>;
+  complete?(requestId: string, response: any): Promise<void>;
+  onError?(requestId: string, error: Error, phase: string): Promise<void>;
+}
+
+export interface IRecorder {
+  markExecStart(): void;
+  markExecEnd(): void;
+  markLlmStart(): void;
+  markLlmEnd(): void;
+  recordToolCall(
+    tool: string,
+    args: Record<string, unknown>,
+    result: string,
+  ): void;
+  recordStep(
+    stepId: string,
+    stepName: string,
+    exec: string,
+    result: { stdout?: string; stderr?: string; exitCode?: number },
+  ): void;
+  setOutputs(outputs: SessionOutputs): void;
+  save(filePath: string): Promise<void>;
 }
 
 // ─── Validation and Argument Types ───────────────────────────────────────────

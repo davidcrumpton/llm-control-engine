@@ -18,7 +18,12 @@ import {
   getHistoryWindow,
 } from "../core/history.js";
 import { compactMessages, buildOptions } from "../core/utils.js";
-import type { CLIOptions, LLMProvider } from "../types.js";
+import type {
+  CLIOptions,
+  LLMProvider,
+  IEngineHooks,
+  IRecorder,
+} from "../types.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -87,7 +92,7 @@ function parseTokens(input: string): string[] {
   const tokens = [];
   let current = "";
   let inQuotes = false;
-  let quoteChar = null;
+  let quoteChar: string | null = null;
 
   for (const char of input) {
     if (inQuotes) {
@@ -122,12 +127,16 @@ function parseTokens(input: string): string[] {
 /**
  * Safely invokes a recorder method only if a recorder exists.
  * Prevents repetitive `if (recorder)` checks throughout the code.
- * @param {Recorder|null} recorder
- * @param {string} method
- * @param  {...any} args
  */
-function record(recorder: Recorder | null, method: string, ...args: any[]) {
-  if (recorder) (recorder as any)[method](...args);
+function record(
+  recorder: IRecorder | null,
+  method: keyof IRecorder,
+  ...args: any[]
+) {
+  if (recorder) {
+    const fn = recorder[method] as (...args: any[]) => void;
+    fn.apply(recorder, args);
+  }
 }
 
 /**
@@ -161,7 +170,7 @@ async function executeCommand(
  */
 async function filterResponse(
   output: string,
-  engineHooks: any,
+  engineHooks: IEngineHooks | undefined,
   options: CLIOptions,
   prompt: string,
 ): Promise<string> {
@@ -183,16 +192,12 @@ async function filterResponse(
 
 /**
  * Handle run command
- *
- * @param {Object} llm         - LLM provider instance
- * @param {Object} options     - CLI options (includes options.record for session path)
- * @param {Object} engineHooks - Optional engine hook system
  */
 export async function cmdRun(
   llm: LLMProvider,
   options: CLIOptions,
   defaultHistoryFile: string,
-  engineHooks?: any,
+  engineHooks?: IEngineHooks,
 ) {
   const recordFile = options.record ?? null;
   const recorderInputs = {
@@ -214,8 +219,8 @@ export async function cmdRun(
     const rawCommand = options.user;
     const { executable, args } = validateCommand(rawCommand);
 
-    if (engineHooks) {
-      const gate = await engineHooks.gateInference("run", rawCommand);
+    if (engineHooks?.gateInference) {
+      const gate = await engineHooks.gateInference("run", rawCommand!);
       if (!gate.allowed) {
         throw new Error(`Command blocked by policy: ${gate.reason}`);
       }
