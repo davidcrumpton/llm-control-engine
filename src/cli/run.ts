@@ -13,7 +13,7 @@ import { promisify } from 'node:util';
 import { Recorder } from '../core/recorder.js';
 import { loadHistory, saveHistory, getSession, getHistoryWindow } from '../core/history.js';
 import { compactMessages, buildOptions } from '../core/utils.js';
-import type { CLIOptions, LLMProvider, EngineHookIntegration } from '../types.js'
+import type { CLIOptions, LLMProvider } from '../types.js'
 
 const execFileAsync = promisify(execFile);
 

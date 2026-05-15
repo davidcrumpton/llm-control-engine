@@ -13,7 +13,7 @@
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import type { ToolPlugin, LLMMessage, MessageContent } from '../types.js'
+import type { LLMMessage, MessageContent } from '../types.js'
 
 // ---------------------------------------------------------------------------
 // Existing utilities (unchanged)

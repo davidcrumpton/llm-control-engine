@@ -12,7 +12,7 @@ import { loadHistory, saveHistory, getSession, getHistoryWindow }               
 import { buildOptions, isImage, validateFileSize, buildToolPrompt, buildImageMessage, compactMessages } from '../core/utils.js'
 import { createPluginRegistry, runWithTools, runWithoutTools }           from '../core/tools.js'
 import { Recorder, makeToolCallRecorder }                                from '../core/recorder.js'
-import type { CLIOptions, LLMProvider, LLMMessage, EngineHookIntegration } from '../types.js'
+import type { CLIOptions, LLMProvider, LLMMessage } from '../types.js'
 
 // ─── Main command ─────────────────────────────────────────────────────────────
 
