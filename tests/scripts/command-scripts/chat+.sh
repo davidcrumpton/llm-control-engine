@@ -44,7 +44,7 @@ assert_succeeds "chat: stdin + streaming" \
 
 # 8. File attachment
 TMPFILE=$(mktemp)
-echo "The secret code is: XRAY-42." >"${TMPFILE}"
+echo "The secret code is: XRAY-42." > "${TMPFILE}"
 assert_output_contains "chat: file attachment" "XRAY-42" \
   llmctrlx chat -u "What is the secret code in this file? Output it exactly." -f "${TMPFILE}" -k "${SESSION_BASE}_file"
 rm -f "${TMPFILE}"
