@@ -5,7 +5,7 @@
 
 import { extractJSON, validateArgs } from './utils.js'
 import { Registry } from './registry.js'
-import { loadPluginsFromDir } from './loader.ts'
+import { loadPluginsFromDir } from './loader.js'
 
 /**
  * Execute a tool with given arguments
