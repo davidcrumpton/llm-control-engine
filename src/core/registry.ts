@@ -12,7 +12,6 @@ import {
   PolicyPlugin,
   ProviderPlugin,
   HookPlugin,
-  BasePlugin,
 } from '../types.js'
 
 type PluginMap = {

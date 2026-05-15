@@ -9,7 +9,6 @@ import {
   LLMProvider,
   LLMResponse,
   ChatParams,
-  LLMMessage,
   MessageContent,
 } from '../types.js'
 

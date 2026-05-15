@@ -14,7 +14,6 @@ import {
   PolicyPlugin,
   PolicyResult,
   PolicyContext,
-  ChatMessage,
 } from '../types.js'
 
 /**

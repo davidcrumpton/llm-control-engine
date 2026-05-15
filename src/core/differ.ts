@@ -15,7 +15,6 @@ import {
   StepEvent,
   DiffLine,
   ToolCallDiffResult,
-  DiffReport,
 } from '../types.js'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
