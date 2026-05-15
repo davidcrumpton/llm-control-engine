@@ -191,8 +191,9 @@ export function validateTool(tool: any, source: string): any {
 /**
  * The default allowed base directory for history files.
  * Override by passing a custom `allowedBase` to validateHistoryPath().
+ * This function is not called by llmctrlx as it is undecided how best to support this feature.
  */
-const DEFAULT_HISTORY_BASE = path.resolve(os.homedir(), ".llmctrlx");
+const DEFAULT_HISTORY_BASE = path.resolve(os.homedir());
 
 /**
  * Validate that a history file path resolves inside `allowedBase`.

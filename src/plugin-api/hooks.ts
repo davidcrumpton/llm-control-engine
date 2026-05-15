@@ -7,10 +7,9 @@
  * will not change in breaking ways.
  */
 
-export {
-  HOOK_EVENTS,
+export { HOOK_EVENTS, HookPriority } from "../plugins/types.js";
+export type {
   HookEvent,
-  HookPriority,
   HookMeta,
   HookContext,
   HookResult,
