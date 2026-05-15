@@ -9,7 +9,7 @@ class Llmctrlx < Formula
 
   def install
     system "npm", "install", "--production", "--ignore-scripts"
-    bin.install "llmctrlx.js" => "llmctrlx"
+    bin.install "llmctrlx.ts" => "llmctrlx"
     # Install shared resources (tools and plugins) into pkgshare
     # resolves to /usr/local/share/llmctrlx/
     (pkgshare/"tools").install Dir["tools/*"]

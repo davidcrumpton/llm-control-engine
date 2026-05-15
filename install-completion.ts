@@ -32,7 +32,7 @@ function detectShell(): 'zsh' | 'bash' | 'fish' {
  */
 function getCompletionScript(shell: 'bash' | 'zsh' | 'fish'): string {
   // Note: In a real TS environment, the path resolution for process.argv[1] might require careful handling.
-  const result = spawnSync('node', ['llmctrlx.js', 'completion', '--shell', shell], {
+  const result = spawnSync('node', ['llmctrlx.ts', 'completion', '--shell', shell], {
     encoding: 'utf8',
     cwd: path.dirname(process.argv[1])
   });

@@ -5,7 +5,7 @@
 
 import { extractJSON, validateArgs } from './utils.js'
 import { Registry } from './registry.js'
-import { loadPluginsFromDir } from './loader.js'
+import { loadPluginsFromDir } from './loader.ts'
 
 /**
  * Execute a tool with given arguments
@@ -187,7 +187,7 @@ export async function runWithTools(llm, model, messages, tools, policies = [], c
 
 /**
  * Create a plugin registry and load plugins from built-in, project, legacy, and global locations.
- * @param {string} toolsDir - Primary tools directory or legacy tools path
+ * @param {string|null} toolsDir - Primary tools directory or legacy tools path
  * @returns {Promise<Registry>} - Plugin registry with loaded tools and policies
  */
 export async function createPluginRegistry(toolsDir, session) {
@@ -203,7 +203,7 @@ export async function createPluginRegistry(toolsDir, session) {
 
 /**
  * Load tools from a directory using the plugin registry.
- * @param {string} toolsDir - Directory containing tool files / plugin folders
+ * @param {string|null} toolsDir - Directory containing tool files / plugin folders
  * @param {Array<string>|null} requestedTags - Optional tags to filter tools
  * @returns {Promise<Array>} - Array of loaded tool plugins
  */

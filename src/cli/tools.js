@@ -6,7 +6,7 @@ import { loadTools } from '../core/tools.js'
 /**
  * Handle tools command
  * @param {Object} options - CLI options
- * @param {string} toolsDir - Tools directory path
+ * @param {string|null} toolsDir - Tools directory path
  */
 export async function cmdTools(options, toolsDir) {
   const requestedTags = options.tags ? options.tags.split(',').map(t => t.trim()).filter(Boolean) : null

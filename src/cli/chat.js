@@ -21,7 +21,7 @@ import { Recorder, makeToolCallRecorder }                                from '.
  * @param {Object} llm                - LLM provider instance
  * @param {Object} options            - CLI options (includes options.record)
  * @param {string} defaultHistoryFile - Path to the history JSON file
- * @param {string} toolsDir           - Tools directory
+ * @param {string|null} toolsDir      - Tools directory
  * @param {number} maxUploadFileSize  - Maximum file attachment size in bytes
  * @param {Object} engineHooks        - Optional engine hook system
  */

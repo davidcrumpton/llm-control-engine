@@ -6,7 +6,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/funcs.sh"
 
 echo -e "\n${CYAN}=== completion+ : positive tests ===${NC}"
 
-assert_output_contains "completion: bash script contains _llmctrlx_completions" "_llmctrlx_completions" \
+assert_output_contains "completion: bash script contains _llmctrlx_completion" "_llmctrlx_completion" \
     llmctrlx completion --shell bash
 
 assert_output_contains "completion: zsh script contains #compdef" "#compdef" \

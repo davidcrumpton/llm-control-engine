@@ -109,7 +109,7 @@ async function reExecuteRun(session, llm) {
  *
  * @param {Object} session  - Original session envelope
  * @param {Object} llm      - LLM provider
- * @param {string} toolsDir - Tools directory
+ * @param {string|null} toolsDir - Tools directory
  * @returns {Promise<Recorder>}
  */
 async function reExecuteChat(session, llm, toolsDir) {
@@ -233,7 +233,7 @@ async function reExecutePlan(session, llm) {
  *
  * @param {Object} llm     - LLM provider instance
  * @param {Object} options - CLI options; options._ should contain the session file path
- * @param {string} toolsDir - Tools directory (needed for chat re-execution)
+ * @param {string|null} toolsDir - Tools directory path(needed for chat re-execution)
  */
 export async function cmdReplay(llm, options, toolsDir) {
   const positional  = options._ || []

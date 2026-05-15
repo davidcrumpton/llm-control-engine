@@ -18,7 +18,7 @@ export {
 } from "./types.js";
 
 export { HookManager, HookLogger } from "./hook-manager.js";
-export { PluginLoader, LoaderOptions } from "./plugin-loader.js";
+export { PluginLoader, LoaderOptions } from "./plugin-loader.ts";
 
 export {
   EngineHookIntegration,

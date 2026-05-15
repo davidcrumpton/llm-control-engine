@@ -174,7 +174,7 @@ export class PluginLoader {
       "index.ts",
       "index.js",
       "plugin-loader.ts",
-      "plugin-loader.js",
+      "plugin-loader.ts",
       "engine-hooks.ts",
       "engine-hooks.js",
       "hook-manager.ts",

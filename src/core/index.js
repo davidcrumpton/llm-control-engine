@@ -28,6 +28,6 @@ export {
 } from './tools.js'
 
 export { Registry } from './registry.js'
-export { loadPluginsFromDir } from './loader.js'
+export { loadPluginsFromDir } from './loader.ts'
 export * from "./tools.js";
 // no type exports needed here — TS will pick up the .d.ts automatically

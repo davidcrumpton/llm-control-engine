@@ -6,7 +6,7 @@ import path from "node:path";
 // @ts-ignore
 import { Registry } from "@/core/registry.js";
 // @ts-ignore
-import { loadPluginsFromDir } from "@/core/loader.js";
+import { loadPluginsFromDir } from "@/core/loader.ts";
 // @ts-ignore
 import { validateTool } from "@/core/utils.js";
 

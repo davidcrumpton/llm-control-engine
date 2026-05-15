@@ -45,15 +45,15 @@
     }
   },
   "bin": {
-    "llmctrlx": "llmctrlx.js"
+    "llmctrlx": "llmctrlx.ts"
   },
   "man": "./man/llmctrlx.1",
   "pkg": {
     "scripts": [
-      "llmctrlx.js"
+      "llmctrlx.ts"
     ],
     "assets": [
-      "llmctrlx.js",
+      "llmctrlx.ts",
       "node_modules/undici/**/*"
     ],
     "targets": [
@@ -63,7 +63,7 @@
   },
   "files": [
     "dist",
-    "llmctrlx.js",
+    "llmctrlx.ts",
     "src",
     "README.md",
     "LICENSE",
@@ -71,15 +71,15 @@
     "man"
   ],
   "scripts": {
-    "build:for_npm_link": "pkg llmctrlx.js --targets node18-linux-x64,node18-macos-x64 --out-path dist/",
-    "build:bin": "esbuild llmctrlx.js --inject:polyfill.js --bundle --packages=external --platform=node --format=cjs --outfile=dist/llmctrlx.cjs && npx @yao-pkg/pkg dist/llmctrlx.cjs --targets node20-linux-x64,node20-macos-x64 --out-path dist/",
+    "build:for_npm_link": "pkg llmctrlx.ts --targets node18-linux-x64,node18-macos-x64 --out-path dist/",
+    "build:bin": "esbuild llmctrlx.ts --inject:polyfill.js --bundle --packages=external --platform=node --format=cjs --outfile=dist/llmctrlx.cjs && npx @yao-pkg/pkg dist/llmctrlx.cjs --targets node20-linux-x64,node20-macos-x64 --out-path dist/",
     "build": "tsc -p tsconfig.build.json && npm run build:bin",
     "build:clean": "rm -rf dist && npm run build",
     "build:deb": "npm run build && fpm -s dir -t deb -n llmctrlx -v $(node -p \"require('./package.json').version\") dist/llmctrlx-linux=/usr/local/bin/llmctrlx man/llmctrlx.1=/usr/share/man/man1/llmctrlx.1 README.md=/usr/share/doc/llmctrlx/README.md LICENSE=/usr/share/doc/llmctrlx/LICENSE plugins/=/usr/local/share/llmctrlx/plugins/ tools/=/usr/local/share/llmctrlx/tools/ examples/=/usr/local/share/llmctrlx/examples/",
     "build:rpm": "npm run build && fpm -s dir -t rpm -n llmctrlx -v $(node -p \"require('./package.json').version\") dist/llmctrlx-linux=/usr/local/bin/llmctrlx man/llmctrlx.1=/usr/share/man/man1/llmctrlx.1 README.md=/usr/share/doc/llmctrlx/README.md LICENSE=/usr/share/doc/llmctrlx/LICENSE plugins/=/usr/local/share/llmctrlx/plugins/ tools/=/usr/local/share/llmctrlx/tools/ examples/=/usr/local/share/llmctrlx/examples/",
     "build:packages": "npm run build:deb && npm run build:rpm",
-    "dev": "tsx watch llmctrlx.js",
-    "start": "node llmctrlx.js",
+    "dev": "tsx watch llmctrlx.ts",
+    "start": "node llmctrlx.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

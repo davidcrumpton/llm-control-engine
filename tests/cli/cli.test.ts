@@ -121,7 +121,7 @@ describe("CLI Argument Parsing", () => {
         .mockImplementation(() => {});
 
       try {
-        // Simulate the validation logic from llmctrlx.js
+        // Simulate the validation logic from llmctrlx.ts
         const options = { no_tools: true, tools_dir: "/some/path" };
 
         if (options.no_tools && options.tools_dir) {
