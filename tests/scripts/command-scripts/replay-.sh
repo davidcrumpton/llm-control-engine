@@ -15,7 +15,7 @@ assert_fails "replay: non-existent session file" \
     llmctrlx replay "/tmp/no_such_session_xray99.json"
 
 # 3. Invalid (non-JSON) session file
-BADFILE=$(mktemp /tmp/llmctrlx-bad-replay-XXXXXXXX.json)
+BADFILE=$(mktemp -t llmctrlx-bad-replay-XXXXXXXX.json)
 echo "this is not json { garbage" > "${BADFILE}"
 assert_fails "replay: malformed session file" \
     llmctrlx replay "${BADFILE}"

@@ -51,7 +51,6 @@ const DEFAULT_ALLOWED_EXECUTABLES = new Set([
 
 const MAX_OUTPUT_BYTES = 1024 * 1024; // 1 MB
 const EXEC_TIMEOUT_MS = 30_000; // 30 s
-// const SHELL_META_RE = /[;&|`$<>\\!{}()\n\r ]/;
 const SHELL_META_RE = /[;&|`$<>\\!{}()\n\r]/;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

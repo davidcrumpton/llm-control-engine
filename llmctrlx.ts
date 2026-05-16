@@ -14,7 +14,7 @@ import { fileURLToPath, pathToFileURL } from 'url'
 import { dirname, join } from 'path'
 import os from 'os'
 
-import { OllamaProvider, LMStudioProvider } from './src/providers/index.js'
+import { OllamaProvider, LMStudioProvider, OpenAIProvider } from './src/providers/index.js'
 import {
   cmdChat,
   cmdModel,
@@ -53,7 +53,7 @@ const _dirname =
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.8.23'
+const APP_VERSION = '0.8.25'
 const APP_TAGLINE =
   'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION =
@@ -77,17 +77,20 @@ function envNumber(key: string, fallback: number): number {
 const DEFAULT_HISTORY_FILE: string =
   process.env.LLMCTRLX_HISTORY_FILE ||
   path.join(os.homedir(), '.llmctrlx_history.json')
-const DEFAULT_API_KEY: string =
-  process.env.__LLMCTRLX_OLLAMA_API_KEY || ''
 
-const VALID_PROVIDERS = ['ollama', 'lmstudio'] as const
+
+const VALID_PROVIDERS = ['ollama', 'lmstudio', 'openai'] as const
 function isProvider(v: string | undefined): v is Provider {
   return !!v && (VALID_PROVIDERS as readonly string[]).includes(v)
 }
 
+
+
+
 const DEFAULT_PROVIDER: Provider = isProvider(process.env.LLMCTRLX_PROVIDER)
   ? process.env.LLMCTRLX_PROVIDER
   : 'ollama'
+
 
 const DEFAULT_SESSION: string = process.env.LLMCTRLX_SESSION || 'default'
 const DEFAULT_TOOLS_HISTORY_LENGTH: number = envNumber(
@@ -202,7 +205,6 @@ const options: GetoptsOptions = getopts(argv.slice(1), {
     no_tools: false,
     no_plugins: false,
     plugins_dir: DEFAULT_PLUGINS_DIR,
-    __api_key: DEFAULT_API_KEY,
     provider: DEFAULT_PROVIDER,
   },
   boolean: [
@@ -261,6 +263,20 @@ const cliOptions: CLIOptions = {
   diff: !!options.diff,
 }
 
+/*
+ * Only Ollama and OpenAI use API keys
+ * local ollama ignores the API key - so no need to set it
+ * remote ollama uses the API key
+ * lmstudio ignores the API key - so no need to set it
+ * openai uses the API key
+ */
+
+if (cliOptions.provider === 'openai') {
+  cliOptions.__api_key = process.env.__LLMCTRLX_OPENAI_API_KEY || ''
+} else if (cliOptions.provider === 'ollama') {
+  cliOptions.__api_key = process.env.__LLMCTRLX_OLLAMA_API_KEY || ''
+}
+
 // Check for -f flag with no files for chat command
 if (command === 'chat' && (argv.includes('-f') || argv.includes('--files'))) {
   if (!cliOptions.files || cliOptions.files.length === 0) {
@@ -316,6 +332,13 @@ async function main(): Promise<void> {
       apiKey: cliOptions.api_key || (cliOptions.__api_key as string),
       timeout: cliOptions.timeout,
     })
+  } else if (cliOptions.provider === 'openai') {
+
+    llm = new OpenAIProvider({
+      host: cliOptions.host || process.env.LLMCTRLX_API_URL || undefined,
+      apiKey: cliOptions.api_key || (cliOptions.__api_key as string),
+      timeout: cliOptions.timeout,
+    })
   } else if (cliOptions.provider === 'ollama') {
     llm = new OllamaProvider({
       host: cliOptions.host || process.env.LLMCTRLX_API_URL || undefined,
@@ -325,7 +348,7 @@ async function main(): Promise<void> {
   } else {
     // fail and let user know wrong provider
     console.error(
-      'Error: Invalid provider. Supported providers are: ollama, lmstudio'
+      'Error: Invalid provider. Supported providers are: ollama, lmstudio, openai'
     )
     process.exit(1)
   }
@@ -441,6 +464,7 @@ Command Examples:
   plugins --list
   plugins --show logger
   bench -m mistral,gemma -u "test"
+  chat -P openai -m gpt-4o -u "hello" -K "<openai_api_key>"
   chat -u "long query" --timeout 600
   run -u "df -h"
   run -u "df -h" -R session.json

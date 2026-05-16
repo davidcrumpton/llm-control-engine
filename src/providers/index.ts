@@ -5,3 +5,4 @@
 
 export { OllamaProvider } from "./ollama.js";
 export { LMStudioProvider } from "./lmstudio.js";
+export { OpenAIProvider } from "./openai.js";

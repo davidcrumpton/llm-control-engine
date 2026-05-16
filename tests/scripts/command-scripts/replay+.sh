@@ -7,7 +7,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/funcs.sh"
 echo -e "\n${CYAN}=== replay+ : positive tests ===${NC}"
 
 # Create a recording to replay
-RECFILE=$(mktemp)
+RECFILE=$(mktemp -t llmctrlx-rec-XXXXXXXX.json)
 
 assert_succeeds "replay setup: record a chat session" \
   llmctrlx chat -u "Reply with the single word: REPLAY_TEST" -R "${RECFILE}" -k "replay-test-$(uuidgen | cut -c1-8)"

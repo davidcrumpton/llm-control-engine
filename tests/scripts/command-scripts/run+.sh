@@ -11,7 +11,7 @@ assert_succeeds "run: df -h analysis" \
     llmctrlx run -u "df -h"
 
 # 2. Run with record
-RECFILE=$(mktemp /tmp/llmctrlx-run-rec-XXXXXXXX.json)
+RECFILE=$(mktemp -t llmctrlx-run-rec-XXXXXXXX.json)
 assert_succeeds "run: record to file" \
     llmctrlx run -u "echo hello_run_test" -R "${RECFILE}"
 

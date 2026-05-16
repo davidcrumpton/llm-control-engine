@@ -8,7 +8,7 @@
 // ─── Core type utilities ─────────────────────────────────────────────────────
 
 export type PluginType = "tool" | "policy" | "provider" | "hook";
-export type Provider = "ollama" | "lmstudio";
+export type Provider = "ollama" | "lmstudio" | "openai";
 export type CommandType = "run" | "chat" | "plan";
 export type MessageRole = "user" | "assistant" | "system" | "tool";
 

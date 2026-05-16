@@ -43,7 +43,7 @@ assert_succeeds "chat: stdin + streaming" \
   bash -c 'echo "Say: STDIN_STREAM_OK" | llmctrlx chat --stdin --stream -k "'"${SESSION_BASE}"'_stdin_stream"'
 
 # 8. File attachment
-TMPFILE=$(mktemp)
+TMPFILE=$(mktemp -t llmctrlx-test-XXXXXXXX.txt)
 echo "The secret code is: XRAY-42." > "${TMPFILE}"
 assert_output_contains "chat: file attachment" "XRAY-42" \
   llmctrlx chat -u "What is the secret code in this file? Output it exactly." -f "${TMPFILE}" -k "${SESSION_BASE}_file"
@@ -58,7 +58,7 @@ assert_succeeds "chat: --no-tools disables tools" \
   llmctrlx chat -W -u "Say 'tools disabled ok'" -k "${SESSION_BASE}_notools"
 
 # 11. Custom history file
-HISTFILE=$(mktemp /tmp/llmctrlx-hist-XXXXXXXX.json)
+HISTFILE=$(mktemp -t llmctrlx-hist-XXXXXXXX.json)
 assert_succeeds "chat: custom history file" \
   llmctrlx chat -H "${HISTFILE}" -u "Say 'custom history ok'" -k "${SESSION_BASE}_histfile"
 rm -f "${HISTFILE}"
@@ -76,7 +76,7 @@ assert_succeeds "chat: temperature flag" \
   llmctrlx chat -t 0.1 -u "Say 'temp ok'" -k "${SESSION_BASE}_temp"
 
 # 15. Record session
-RECFILE=$(mktemp /tmp/llmctrlx-rec-XXXXXXXX.json)
+RECFILE=$(mktemp -tllmctrlx-rec-XXXXXXXX.json)
 assert_succeeds "chat: record session with -R" \
   llmctrlx chat -u "Say 'recording ok'" -R "${RECFILE}" -k "${SESSION_BASE}_rec"
 # Verify the record file was created and has content

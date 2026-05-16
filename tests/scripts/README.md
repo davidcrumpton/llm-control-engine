@@ -14,6 +14,7 @@
 ./llmtest --command chat               # chat+ and chat- only
 ./llmtest --command chat --type positive
 ./llmtest --provider lmstudio          # auto-skips if LMStudio not running
+./llmtest --provider openai            # auto-skips if OpenAI not running or no __LLMCTRLX_OPENAI_API_KEY is set
 ./llmtest --provider remote            # auto-skips if remote Ollama unreachable
 ./llmtest --command "version completion"  # multiple commands
 ./llmtest --dry-run                    # see what would run without executing
@@ -31,11 +32,11 @@ Three new things it provides:
 
 **Provider setup functions** — `setup_ollama_local`, `setup_ollama_remote`, `setup_lmstudio_local` properly set the right env vars for each target.
 
-**`skip_if_provider_unavailable`** — provider-specific scripts call this at the top. If LMStudio isn't running or the remote server is down, the script exits 0 with a clear SKIP message instead of failing the whole suite.
+**`skip_if_provider_unavailable`** — provider-specific scripts call this at the top. If LMStudio or OpenAI isn't running or the remote server is down, the script exits 0 with a clear SKIP message instead of failing the whole suite.
 
 ### Provider-specific test scripts
 
-`chat-lmstudio+.sh` and `chat-remote+.sh` are new. They call `setup_*` and `skip_if_provider_unavailable` at the top, so they're safe to include in `run-all.sh` — they'll just auto-skip when those providers aren't up.
+`chat-lmstudio+.sh`, `chat-openai+.sh` and `chat-remote+.sh` are new. They call `setup_*` and `skip_if_provider_unavailable` at the top, so they're safe to include in `run-all.sh` — they'll just auto-skip when those providers aren't up.
 
 ### Negative tests are actually asserted now
 

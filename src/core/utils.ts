@@ -341,7 +341,7 @@ ${tools
  *
  * @param filePath - Path to the image file
  * @param imgData  - Base64-encoded image data
- * @param provider - 'lmstudio' | 'ollama'
+ * @param provider - 'lmstudio' | 'ollama' | 'openai'
  */
 export function buildImageMessage(
   filePath: string,
@@ -350,7 +350,7 @@ export function buildImageMessage(
 ): LLMMessage {
   const label = `Attached image: ${path.basename(filePath)}`;
 
-  if (provider === "lmstudio") {
+  if (provider === "lmstudio" || provider === "openai") {
     const ext = path.extname(filePath).slice(1).toLowerCase();
     const mimeType = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
     return {

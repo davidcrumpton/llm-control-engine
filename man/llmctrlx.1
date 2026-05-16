@@ -49,13 +49,17 @@ takes precedence over this variable.
 .It Ev __LLMCTRLX_OLLAMA_API_KEY
 API key for the Ollama cloud provider.
 Default: empty string.
+.It Ev __LLMCTRLX_OPENAI_API_KEY
+API key for the OpenAI provider.
+Default: empty string.
 .It Ev LLMCTRLX_PROVIDER
 The default provider.
 Default:
 .Li ollama .
 Options:
 .Li ollama ,
-.Li lmstudio .
+.Li lmstudio ,
+.Li openai .
 .It Ev LLMCTRLX_MAX_UPLOAD_FILE_SIZE
 Maximum file size to upload.
 Default: 10 MB (1024 * 1024 * 10).
@@ -163,9 +167,10 @@ Default:
 .Li ollama .
 Options:
 .Li ollama ,
-.Li lmstudio .
+.Li lmstudio ,
+.Li openai .
 .It Fl K , -api_key Ar key
-Set the API key for the cloud Ollama instance.
+Set the API key for the cloud Ollama or OpenAI instance.
 .It Fl k , -session Ar name
 Session key for continuing a conversation.
 Default:

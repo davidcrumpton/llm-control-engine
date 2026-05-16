@@ -161,6 +161,17 @@ setup_lmstudio_local() {
     export LLMCTRLX_MODEL="${LLMCTRLX_LMSTUDIO_MODEL:-gemma-4-e2b}"
 }
 
+setup_openai_local() {
+    export LLMCTRLX_PROVIDER="openai"
+    export LLMCTRLX_MODEL="${LLMCTRLX_OPENAI_MODEL:-gpt-5-mini}"
+    unset LLMCTRLX_API_URL
+    
+    if [[ -z "${__LLMCTRLX_OPENAI_API_KEY}" ]]; then
+        echo -e "${YELLOW}  ⊘ SKIP${NC}  OpenAI API key not set — skipping script"
+       exit 0
+    fi
+}
+
 # =============================================================================
 # PROVIDER AVAILABILITY CHECK
 # =============================================================================
@@ -175,6 +186,9 @@ provider_available() {
             ;;
         lmstudio)
             curl -sf --max-time 3 "${url}/models" > /dev/null 2>&1
+            ;;
+        openai)
+            return 0
             ;;
         *)
             curl -sf --max-time 3 "${url}" > /dev/null 2>&1

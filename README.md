@@ -79,7 +79,7 @@ The completion provides:
 - Command completion (`chat`, `model`, `embed`, etc.)
 - Option completion for each command
 - File completion for `-f/--files`, `-T/--tools_dir`, and `-X/--plugins_dir` options
-- Provider completion (`ollama`, `lmstudio`)
+- Provider completion (`ollama`, `lmstudio`, `openai`)
 - Shell type completion for the `completion` command
 
 ## Environment Variables
@@ -92,7 +92,8 @@ You can configure the default behavior using environment variables:
 - `LLMCTRLX_TOOLS_DIR`: The tools directory to load tools from. **No tools are loaded by default.** Set this to `/usr/local/share/llmctrlx/tools` (DEB/RPM/Homebrew installs) or a custom path to opt-in.
 - `LLMCTRLX_PLUGINS_DIR`: The plugins directory to load plugins from. **No plugins are loaded by default.** Set this to `/usr/local/share/llmctrlx/plugins` (DEB/RPM/Homebrew installs) or a custom path to opt-in.
 - `__LLMCTRLX_OLLAMA_API_KEY`: The API key for the Ollama cloud provider. Default: `''`
-- `LLMCTRLX_PROVIDER`: The default provider to use. Default: `ollama`. Options: `ollama`, `lmstudio`
+- `__LLMCTRLX_OPENAI_API_KEY`: The API key for the OpenAI provider. Default: `''`
+- `LLMCTRLX_PROVIDER`: The default provider to use. Default: `ollama`. Options: `ollama`, `lmstudio`, `openai`
 - `LLMCTRLX_MAX_UPLOAD_FILE_SIZE`: The maximum file size to upload. Default: `1024 * 1024 * 10` (10 MB)
 - `LLMCTRLX_SESSION`: The default session to use. Default: `default`
 - `LLMCTRLX_NUM_CTX`: The default context window size. Default: `32768`
@@ -172,8 +173,8 @@ These options apply to most commands:
 
 - `-a, --api_url <url>`: The URL of your LLM provider. Default: `http://127.0.0.1:11434`
 - `-m, --model <name>`: Model to use. Default: `gemma4:e2b`
-- `-P, --provider <provider>`: Set the provider to use. Default: `ollama`. Options: `ollama`, `lmstudio`
-- `-K, --api_key <key>`: Set the API key for the cloud Ollama instance. Default: `''`
+- `-P, --provider <provider>`: Set the provider to use. Default: `ollama`. Options: `ollama`, `lmstudio`, `openai`
+- `-K, --api_key <key>`: Set the API key for the cloud Ollama or OpenAI instance. Default: `''`
 - `-k, --session <name>`: Session key to use for continuing a conversation. Default: `default`
 - `-o, --timeout <number>`: Request timeout in seconds. Default: `480`
 
@@ -198,8 +199,8 @@ Run a chat session with an LLM. It maintains conversational history in `.chat_hi
 - `-t, --temperature <float>`: Set the generation temperature.
 - `-p, --top_p <float>`: Set the top-p sampling value.
 - `-T, --tools-dir <path>`: Path to the tools directory. Default: `./tools`.
-- `-P, --provider <provider>`: Set the provider to use. Default: `ollama`. Options: `ollama`, `lmstudio`.
-- `-K, --api-key <key>`: Set the API key for the cloud Ollama instance. Default: `''`.
+- `-P, --provider <provider>`: Set the provider to use. Default: `ollama`. Options: `ollama`, `lmstudio`, `openai`.
+- `-K, --api-key <key>`: Set the API key for the cloud Ollama or OpenAI instance. Default: `''`.
 - `-W, --no-tools`: Disable tool usage.
 - `-g, --tags <tags>`: Comma-separated list of tags to filter loaded tools.
 - `-R, --record <file>`: Record the session to a JSON file for later replay.
@@ -253,6 +254,24 @@ llmctrlx chat -u "What is this image of?" -f "examples/png.png" -m gemma4:26b
 
 ```bash
 npm run chat -u "Why is the sky blue?"
+```
+
+## OpenAI
+
+### Using OpenAI as provider
+
+```bash
+llmctrlx chat -P openai -u "Are you working, AI?" -m gpt-5-mini -K "your-api-key"
+```
+
+Using environment variables lessens the need to specify the provider, model, and API key on every command. You can set them in your shell profile:
+
+```bash
+export LLMCTRLX_PROVIDER=openai
+export LLMCTRLX_MODEL=gpt-5-mini
+export __LLMCTRLX_OPENAI_API_KEY="your-api-key"
+
+llmctrlx chat -u 'tell me a joke'
 ```
 
 ## LMStudio

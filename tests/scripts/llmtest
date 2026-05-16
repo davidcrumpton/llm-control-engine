@@ -7,7 +7,7 @@
 #
 # Options:
 #   -t, --type    Test type: positive, negative, all  (default: all)
-#   -p, --provider  Provider filter: ollama, lmstudio, remote, any (default: any)
+#   -p, --provider  Provider filter: ollama, lmstudio, openai, remote, any (default: any)
 #   -c, --command   Command filter: chat, model, embed, version, etc. (default: all)
 #   -d, --dry-run   Print what would run without executing
 #   -v, --verbose   Verbose output (set -x in sub-scripts)
@@ -19,6 +19,7 @@
 #   llmtest -t positive              # Only positive tests
 #   llmtest -t negative              # Only negative tests
 #   llmtest -p lmstudio              # LMStudio tests only
+#   llmtest -p openai              # OpenAI tests only
 #   llmtest -p remote                # Remote Ollama tests only
 #   llmtest -c chat                  # Only chat command tests (both +/-)
 #   llmtest -c chat -t positive      # Only positive chat tests
@@ -91,6 +92,7 @@ case "${OPT_PROVIDER}" in
     ollama|any|"")  setup_ollama_local ;;
     remote)         setup_ollama_remote ;;
     lmstudio)       setup_lmstudio_local ;;
+    openai)         setup_openai_local ;;
     *)              echo "Unknown provider: ${OPT_PROVIDER}"; exit 1 ;;
 esac
 
@@ -176,7 +178,7 @@ run_script() {
     log "\n${BOLD}▶ ${label}${NC}"
 
     local tmp_out
-    tmp_out=$(mktemp)
+    tmp_out=$(mktemp -t llmctrlx-test-XXXXXXXX.log)
     local exit_code=0
 
     # Determine if this is a positive or negative test
