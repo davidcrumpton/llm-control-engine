@@ -128,7 +128,7 @@ output:
         "dry-run": false,
         dryRun: false,
         system: undefined,
-        var: ["host=proxmox1", "env=prod"],
+        var: ["host=atom", "env=prod"],
       };
 
       await cmdPlan(llm as any, options as any);
