@@ -10,6 +10,7 @@
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+
 import { Recorder } from "../core/recorder.js";
 import {
   loadHistory,
@@ -29,7 +30,7 @@ const execFileAsync = promisify(execFile);
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-const ALLOWED_EXECUTABLES = new Set([
+const DEFAULT_ALLOWED_EXECUTABLES = new Set([
   "ls",
   "cat",
   "echo",
@@ -50,18 +51,30 @@ const ALLOWED_EXECUTABLES = new Set([
 
 const MAX_OUTPUT_BYTES = 1024 * 1024; // 1 MB
 const EXEC_TIMEOUT_MS = 30_000; // 30 s
+// const SHELL_META_RE = /[;&|`$<>\\!{}()\n\r ]/;
 const SHELL_META_RE = /[;&|`$<>\\!{}()\n\r]/;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
+ * Resolve the allow-list of executables from CLI options or fall back
+ * to the built-in default set.
+ */
+function getAllowedExecutables(options: CLIOptions): ReadonlySet<string> {
+  if (Array.isArray((options as any).allowedCommands)) {
+    return new Set((options as any).allowedCommands as string[]);
+  }
+  return DEFAULT_ALLOWED_EXECUTABLES;
+}
+
+/**
  * Validates and parses the command string.
  * Returns { executable, args } or throws an Error.
  */
-function validateCommand(rawInput: string | undefined): {
-  executable: string;
-  args: string[];
-} {
+function validateCommand(
+  rawInput: string | undefined,
+  allowedExecutables: ReadonlySet<string>,
+): { executable: string; args: string[] } {
   if (!rawInput?.trim()) {
     throw new Error("Empty command provided.");
   }
@@ -75,7 +88,7 @@ function validateCommand(rawInput: string | undefined): {
   const tokens = parseTokens(rawInput);
   const [executable, ...args] = tokens;
 
-  if (!executable || !ALLOWED_EXECUTABLES.has(executable)) {
+  if (!executable || !allowedExecutables.has(executable)) {
     throw new Error(
       `Command rejected: '${executable ?? ""}' is not in the allow-list.`,
     );
@@ -89,7 +102,7 @@ function validateCommand(rawInput: string | undefined): {
  * Handles both single and double-quoted arguments.
  */
 function parseTokens(input: string): string[] {
-  const tokens = [];
+  const tokens: string[] = [];
   let current = "";
   let inQuotes = false;
   let quoteChar: string | null = null;
@@ -128,15 +141,30 @@ function parseTokens(input: string): string[] {
  * Safely invokes a recorder method only if a recorder exists.
  * Prevents repetitive `if (recorder)` checks throughout the code.
  */
-function record(
+function record<K extends keyof IRecorder>(
   recorder: IRecorder | null,
-  method: keyof IRecorder,
-  ...args: any[]
-) {
-  if (recorder) {
-    const fn = recorder[method] as (...args: any[]) => void;
-    fn.apply(recorder, args);
+  method: K,
+  ...args: Parameters<IRecorder[K]>
+): void {
+  const fn = recorder?.[method];
+  if (typeof fn === "function") {
+    // TS can't prove `this` type here; runtime is fine.
+    (fn as (...a: Parameters<IRecorder[K]>) => void).apply(recorder, args);
   }
+}
+
+/**
+ * Build the user-facing context prompt for the LLM from the command and output.
+ * Decoupled from cmdRun for testability.
+ */
+function buildContextPrompt(output: string, command: string): string {
+  return (
+    `I executed the shell command "${command}" and received the following output:\n\n` +
+    "```" +
+    `\n${output}\n` +
+    "```" +
+    "\n\nPlease analyze this output and explain what it means."
+  );
 }
 
 /**
@@ -153,7 +181,10 @@ async function executeCommand(
     timeout: EXEC_TIMEOUT_MS,
     maxBuffer: MAX_OUTPUT_BYTES,
     windowsHide: true,
-    env: { ...process.env, SHLVL: "1" },
+    // Do not override SHLVL; preserve environment as-is.
+    env: {
+      ...process.env,
+    },
   });
 
   record(recorder, "markExecEnd");
@@ -185,7 +216,8 @@ async function filterResponse(
     requestMeta: { flags: options },
   });
 
-  return result.output || result.content;
+  // Prefer explicit output, then legacy content, finally fall back to original.
+  return result.output ?? result.content ?? output;
 }
 
 // ─── Main command ─────────────────────────────────────────────────────────────
@@ -200,6 +232,7 @@ export async function cmdRun(
   engineHooks?: IEngineHooks,
 ) {
   const recordFile = options.record ?? null;
+
   const recorderInputs = {
     model: options.model,
     parameters: {
@@ -209,15 +242,21 @@ export async function cmdRun(
     },
     command: options.user,
   };
+
   const recorder = recordFile ? new Recorder("run", recorderInputs) : null;
 
   const historyData = loadHistory(defaultHistoryFile);
   const session = getSession(historyData, options.session);
   const historyWindow = getHistoryWindow(session, options.history_length);
 
+  const allowedExecutables = getAllowedExecutables(options);
+
   try {
     const rawCommand = options.user;
-    const { executable, args } = validateCommand(rawCommand);
+    const { executable, args } = validateCommand(
+      rawCommand,
+      allowedExecutables,
+    );
 
     if (engineHooks?.gateInference) {
       const gate = await engineHooks.gateInference("run", rawCommand!);
@@ -230,7 +269,7 @@ export async function cmdRun(
 
     record(recorder, "markLlmStart");
 
-    const userContent = `I executed the shell command "${rawCommand}" and received the following output:\n\n\`\`\`\n${stdout}\n\`\`\`\n\nPlease analyze this output and explain what it means.`;
+    const userContent = buildContextPrompt(stdout, rawCommand!);
     const systemContent =
       options.system ||
       "You are a helpful assistant that analyzes shell command output to provide technical insights.";
@@ -247,8 +286,9 @@ export async function cmdRun(
       messages,
       options: chatOptions,
     });
-    record(recorder, "markLlmEnd");
 
+    // Future streaming support: this branch can return an async generator
+    // or ReadableStream instead of throwing.
     if (Symbol.asyncIterator in res) {
       throw new Error("Streaming not supported in cmdRun");
     }
@@ -260,15 +300,27 @@ export async function cmdRun(
       options,
       userContent,
     );
+
     console.log(filtered);
 
-    session.messages.push({ role: "user" as const, content: userContent });
-    session.messages.push({ role: "assistant" as const, content: filtered });
+    // Avoid relying on in-place mutation identity for history consumers:
+    // rebuild the messages array instead of pushing directly.
+    const updatedMessages = [
+      ...session.messages,
+      { role: "user" as const, content: userContent },
+      { role: "assistant" as const, content: filtered },
+    ];
+    session.messages = updatedMessages;
+
     saveHistory(defaultHistoryFile, historyData);
 
-    if (recorder && recordFile) {
-      recorder.setOutputs({ stdout, llmResponse: filtered, exitCode: 0 });
-      await recorder.save(recordFile);
+    if (recorder) {
+      recorder.setOutputs({
+        stdout,
+        llmResponse: filtered,
+        exitCode: 0,
+      });
+      await recorder.save(recordFile!);
       console.error(`[record] session saved → ${recordFile}`);
     }
   } catch (err: any) {
@@ -278,10 +330,15 @@ export async function cmdRun(
 
     console.error(`[Error] ${message}`);
 
-    if (recorder && recordFile) {
-      recorder.setOutputs({ llmResponse: "", exitCode: 1, error: message });
+    if (recorder) {
+      recorder.setOutputs({
+        llmResponse: "",
+        exitCode: 1,
+        error: message,
+      });
+
       try {
-        await recorder.save(recordFile);
+        await recorder.save(recordFile!);
         console.error(`[record] partial session saved → ${recordFile}`);
       } catch {
         // ignore save errors on failure path
