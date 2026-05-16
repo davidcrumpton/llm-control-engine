@@ -22,4 +22,16 @@ assert_succeeds "plan: record test" \
 assert_succeeds "plan: cleanup test" \
   rm $HOST_HEALTH_PLAN_PATH
 
+# 4. Test plan variables
+assert_succeeds "plan: test variables" \
+  llmctrlx plan ./tests/scripts/files/host-health.yaml --var server=atom --var env=dev --dry-run
+
+# 5. Test plan with complex YAML
+assert_succeeds "plan: test complex YAML" \
+  llmctrlx plan ./tests/scripts/files/network-diag.yaml --dry-run
+
+# 6. Test plan with complex YAML and variables
+assert_succeeds "plan: test complex YAML with vars" \
+  llmctrlx plan ./tests/scripts/files/network-diag.yaml --var server=atom --var env=prod --dry-run
+
 print_assert_summary

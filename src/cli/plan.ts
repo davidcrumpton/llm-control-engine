@@ -10,8 +10,8 @@
 
 */
 
+import path from "path";
 import fs from "fs/promises";
-import fsSync from "fs";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import jsYaml from "js-yaml";
@@ -202,7 +202,7 @@ function mergeVars(planVars = {}, cliVars = {}, envVars = {}) {
  */
 function interpolateString(str: string, vars: Record<string, string>): string {
   return str.replace(
-    /\{\{(\w+)\}\}/g,
+    /\{\{([\w.-]+)\}\}/g,
     (_: string, key: string) => vars[key] ?? `{{${key}}}`,
   );
 }
@@ -386,10 +386,13 @@ async function executeStepAction(
         timeout: STEP_TIMEOUT_MS,
         maxBuffer: MAX_STDOUT_BYTES,
         windowsHide: true,
-        env: { ...safeEnv, SHLVL: "1" },
+        env: { ...safeEnv, SHLVL: process.env.SHLVL ?? "1" },
       });
       return { stdout, stderr, exitCode: 0 };
     } catch (err: any) {
+      console.error(
+        `[exec] Step '${step.id}' failed: ${err.message} [code: ${err.code}, signal: ${err.signal}]`,
+      );
       return { stdout: "", stderr: err.message, exitCode: 1 };
     }
   }
@@ -406,6 +409,7 @@ async function executeStepAction(
       const result = await executeTool(tool, step.args || {});
       return { stdout: result, stderr: "", exitCode: 0 };
     } catch (err: any) {
+      console.error(`[tool] Step '${step.id}' failed: ${err.message}`);
       return { stdout: "", stderr: err.message, exitCode: 1 };
     }
   }
@@ -431,6 +435,7 @@ async function executeStepAction(
       const promptOutput = await runWithoutTools(llm, planModel, stepMessages);
       return { stdout: promptOutput, stderr: "", exitCode: 0 };
     } catch (err: any) {
+      console.error(`[prompt] Step '${step.id}' failed: ${err.message}`);
       return { stdout: "", stderr: err.message, exitCode: 1 };
     }
   }
@@ -495,7 +500,7 @@ async function buildAttachmentMessages(
     try {
       validateFileSize(filePath, maxUploadFileSize);
       if (isImage(filePath)) {
-        const imgData = fsSync.readFileSync(filePath).toString("base64");
+        const imgData = await fs.readFile(filePath, "base64");
         messages.push(buildImageMessage(filePath, imgData, provider));
       } else {
         const content = await fs.readFile(filePath, "utf8");
@@ -574,6 +579,13 @@ async function processOutputs(
 ) {
   if (!planOutputs?.save) return;
   for (const saveCmd of planOutputs.save) {
+    const resolvedPath = path.resolve(process.cwd(), saveCmd.to);
+    if (!resolvedPath.startsWith(process.cwd())) {
+      console.error(
+        `[output] Path traversal detected for '${saveCmd.to}'. Skipping.`,
+      );
+      continue;
+    }
     const stepRes = contextData[saveCmd.step];
     if (stepRes?.stdout) {
       try {
@@ -606,8 +618,8 @@ export async function cmdPlan(
   const recordFile = options.record ?? null;
 
   try {
-    const positional = (options._ || []) as string[];
-    const planFile = positional[0];
+    const positional = (options._ as any[]) || [];
+    const planFile = positional.length > 0 ? String(positional[0]) : "";
 
     if (!planFile)
       throw new Error(
@@ -670,7 +682,7 @@ export async function cmdPlan(
       loadedTools,
     );
 
-    if (recorder) recorder.markExecEnd();
+    // recorder.markExecEnd() moved to finally block for resilience
 
     // Finalize (Report, Outputs, Record saving)
     await finalizePlan(
@@ -683,8 +695,18 @@ export async function cmdPlan(
       recordFile,
       maxUploadFileSize,
     );
+
+    // Handle flow.on_error: "stop" before marking success
+    if (
+      plan.flow?.on_error === "stop" &&
+      results.some((r) => r.exitCode !== 0)
+    ) {
+      process.exitCode = 1;
+      return;
+    }
   } catch (err: any) {
-    console.error(err.message);
+    console.error(`[cmdPlan] Fatal error: ${err.message}`);
+    if (err.stack) console.error(err.stack);
     process.exitCode = 1;
   } finally {
     // Resilience: ensure recorder is saved even if something failed during execution

@@ -1,0 +1,22 @@
+version: 1
+name: Network Health Diagnostic
+attachments:
+  - ../../../examples/network-diagram.png
+  - ../../../examples/curl-command.txt
+  - ../../../examples/escalation-contacts.txt
+vars:
+  server: localhost
+  env: dev
+
+steps:
+  - name: disk
+    exec: ssh {{USER}}@{{server}} df -h
+
+prompt: Analyze the step data and the attachments to diagnose the network issue
+
+model: gemma4:e2b
+system: You are a senior Linux sysadmin.
+
+output:
+  format: markdown
+  save: report.md
