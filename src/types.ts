@@ -291,6 +291,7 @@ export interface CLIOptions {
   diff: boolean;
   pull?: boolean;
   delete?: boolean;
+  "max-upload-file-size"?: number;
 
   // For model command
   list?: boolean;
