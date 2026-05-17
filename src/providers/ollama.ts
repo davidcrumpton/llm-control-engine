@@ -31,8 +31,13 @@ export class OllamaProvider implements LLMProvider {
     // Custom fetch with timeout settings
     const timeoutMs = (Number(opts.timeout) || 480) * 1000;
     const customFetch = (input: RequestInfo, init?: RequestInit) => {
+      const headers = new Headers(init?.headers);
+      if (typeof opts.apiKey === "string" && opts.apiKey) {
+        headers.set("Authorization", `Bearer ${opts.apiKey}`);
+      }
       return fetch(input, {
         ...init,
+        headers,
         signal: AbortSignal.timeout(timeoutMs),
       });
     };
