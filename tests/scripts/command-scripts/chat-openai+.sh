@@ -4,7 +4,7 @@
 # Skipped automatically if OpenAI not running or no __LLMCTRLX_OPENAI_API_KEY set
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/funcs.sh"
-setup_openai_local
+setup_openai_remote
 skip_if_provider_unavailable
 
 SESSION_BASE="test-openai-$(uuidgen | tr '[:upper:]' '[:lower:]' | cut -c1-8)"

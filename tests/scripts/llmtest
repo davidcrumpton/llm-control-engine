@@ -92,7 +92,7 @@ case "${OPT_PROVIDER}" in
     ollama|any|"")  setup_ollama_local ;;
     remote)         setup_ollama_remote ;;
     lmstudio)       setup_lmstudio_local ;;
-    openai)         setup_openai_local ;;
+    openai)         setup_openai_remote ;;
     *)              echo "Unknown provider: ${OPT_PROVIDER}"; exit 1 ;;
 esac
 

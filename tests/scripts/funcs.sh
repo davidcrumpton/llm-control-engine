@@ -182,7 +182,7 @@ setup_lmstudio_local() {
     export LLMCTRLX_MODEL="${LLMCTRLX_LMSTUDIO_MODEL:-gemma-4-e2b}"
 }
 
-setup_openai_local() {
+setup_openai_remote() {
     export LLMCTRLX_PROVIDER="openai"
     export LLMCTRLX_MODEL="${LLMCTRLX_OPENAI_MODEL:-gpt-5-mini}"
     unset LLMCTRLX_API_URL
