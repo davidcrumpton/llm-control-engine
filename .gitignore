@@ -17,6 +17,8 @@ report.md
 .env
 __*
 session.json
+test-*.js
+test-*.mjs
 
 dist/
 
