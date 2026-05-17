@@ -35,6 +35,14 @@ import type {
   IEngineHooks,
 } from "../types.js";
 
+export interface ProviderChatOptions extends Record<string, unknown> {
+  onToolCall?: (
+    toolName: string,
+    args: Record<string, unknown>,
+    result: string,
+  ) => void | Promise<void>;
+}
+
 // ─── Main command ─────────────────────────────────────────────────────────────
 
 /**
@@ -103,7 +111,7 @@ export async function cmdChat(
   const recorder = recordFile ? new Recorder("chat", recorderInputs) : null;
 
   // 4. Execute LLM Request
-  const chatOptions = buildOptions(options);
+  const chatOptions: ProviderChatOptions = buildOptions(options);
 
   // Attach the recorder's tool-call hook so every tool invocation is captured
   if (recorder) {
@@ -114,6 +122,23 @@ export async function cmdChat(
   let assistantResponse = "";
 
   try {
+    let tools: any[] = [];
+    let policies: any[] = [];
+
+    if (!options.no_tools) {
+      const prepared = await prepareTools(
+        toolsDir ?? undefined,
+        options.session,
+        options.tags,
+      );
+      tools = prepared.tools;
+      policies = prepared.policies;
+
+      if (tools.length > 0) {
+        messages.unshift({ role: "system", content: buildToolPrompt(tools) });
+      }
+    }
+
     if (options.stream) {
       assistantResponse = await handleStreamingChat(
         llm,
@@ -127,28 +152,35 @@ export async function cmdChat(
         options,
         messages,
         chatOptions,
-        toolsDir ?? undefined,
+        tools,
+        policies,
       );
     }
 
     if (recorder) recorder.markLlmEnd();
 
     // 5. Post-processing & Persistence
-    const filtered = await filterResponse(
-      assistantResponse,
-      engineHooks,
-      options,
-      userContent,
-    );
-    if (!options.stream) console.log(filtered);
+    // Note: Filtering only applies to non-streaming mode to avoid
+    // a discrepancy between what the user sees (unfiltered stream)
+    // and what gets recorded in history.
+    let finalResponse = assistantResponse;
+    if (!options.stream) {
+      finalResponse = await filterResponse(
+        assistantResponse,
+        engineHooks,
+        options,
+        userContent,
+      );
+      console.log(finalResponse);
+    }
 
     session.messages.push({ role: "user", content: userContent });
-    session.messages.push({ role: "assistant", content: filtered });
+    session.messages.push({ role: "assistant", content: finalResponse });
     saveHistory(defaultHistoryFile, historyData);
 
     // 6. Save session recording
     if (recorder && recordFile) {
-      recorder.setOutputs({ llmResponse: filtered });
+      recorder.setOutputs({ llmResponse: finalResponse });
       await recorder.save(recordFile);
       console.error(`[record] session saved → ${recordFile}`);
     }
@@ -177,7 +209,7 @@ async function resolveUserContent(options: CLIOptions): Promise<string> {
       process.stdin.on("data", (chunk) => (data += chunk));
       process.stdin.on("end", () => resolve(data.trim()));
     });
-    if (options.stdin && !stdinData && process.stdin.isTTY) {
+    if (options.stdin && !stdinData) {
       throw new Error("--stdin specified but no input detected");
     }
   }
@@ -214,20 +246,14 @@ async function processFiles(
   return msgs;
 }
 
-async function handleStandardChat(
-  llm: LLMProvider,
-  options: CLIOptions,
-  messages: LLMMessage[],
-  chatOptions: any,
+async function prepareTools(
   toolsDir: string | undefined,
-): Promise<string> {
-  if (options.no_tools) {
-    return await runWithoutTools(llm, options.model!, messages, chatOptions);
-  }
-
-  const registry = await createPluginRegistry(toolsDir, options.session);
-  const requestedTags = options.tags
-    ? options.tags
+  session: string | undefined,
+  tags: string | undefined,
+) {
+  const registry = await createPluginRegistry(toolsDir, session);
+  const requestedTags = tags
+    ? tags
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean)
@@ -242,15 +268,27 @@ async function handleStandardChat(
     );
   }
 
-  if (tools.length > 0) {
-    messages.unshift({ role: "system", content: buildToolPrompt(tools) });
+  return { tools, policies: registry.list("policy") };
+}
+
+async function handleStandardChat(
+  llm: LLMProvider,
+  options: CLIOptions,
+  messages: LLMMessage[],
+  chatOptions: ProviderChatOptions,
+  tools: any[],
+  policies: any[],
+): Promise<string> {
+  if (options.no_tools || tools.length === 0) {
+    return await runWithoutTools(llm, options.model!, messages, chatOptions);
   }
+
   return await runWithTools(
     llm,
     options.model!,
     messages,
     tools,
-    registry.list("policy"),
+    policies,
     chatOptions,
   );
 }
@@ -259,7 +297,7 @@ async function handleStreamingChat(
   llm: LLMProvider,
   options: CLIOptions,
   messages: LLMMessage[],
-  chatOptions: any,
+  chatOptions: ProviderChatOptions,
 ): Promise<string> {
   // Strip recorder-specific keys before forwarding to provider
   const { onToolCall, ...providerOptions } = chatOptions;

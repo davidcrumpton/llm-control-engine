@@ -1,8 +1,10 @@
-# FIX: The thinking abortion bug
+# Fixes
+
+## The thinking abortion bug
 
 The thinking abortion bug occurs when the model generates the thinking process, but then, instead of providing the final answer, it generates a new thought process to "continue" the thinking. This results in the model never actually providing the final answer.
 
-## Settings
+### Settings
 
 ```sh
 bear@atom:~$ env | grep LLM
@@ -37,4 +39,27 @@ Here is a summary of the battle:
     *   **French Army:** Commanded by Bertrand du Guesclin, numbering 5,200 men.
     *   **English Force:** Approximately the same size, but this contingent had separated from the main army led by Sir Robert Knolles.
 *   **Outcome:** The French army achieved a heavy victory over the English force.
+```
+
+### Tools and streaming bug
+
+This bug occurs when using the --stream option.  Currently, runWithTools waits for the entire response to finish before trying to parse it as JSON:
+
+```TypeScript
+const parsed = extractJSON(res.message?.content || "")
+```
+
+Buffering the entire response and then parsing it as JSON is not the right way to handle streaming.  This is a low priority fix as this tool call does work.
+
+```text
+✔ bear@ollama ~/Workspace/llm-control-engine [main]
+❯ llmctrlx chat -u 'Use the datetime tool to tell me the time' --stream -k dt                                                                                                  Sun May 17 13:55:12
+{
+  "tool": "datetime",
+  "arguments": {}
+}
+
+✔ bear@ollama ~/Workspace/llm-control-engine [main]
+❯ llmctrlx chat -u 'Use the datetime tool to tell me the time'  -k dt2                                                                                                         Sun May 17 13:55:50
+2026-05-17T19:56:00.468Z
 ```
