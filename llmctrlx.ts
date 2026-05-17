@@ -53,7 +53,7 @@ const _dirname =
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.8.25'
+const APP_VERSION = '0.8.26'
 const APP_TAGLINE =
   'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION =
@@ -72,6 +72,35 @@ function envNumber(key: string, fallback: number): number {
     return fallback
   }
   return n
+}
+
+function parseSize(val: string): number | null {
+  const match = /^(\d+)([kKmMgG]?)$/.exec(val.trim());
+  if (!match) return null;
+
+  const num = Number(match[1]);
+  const unit = match[2].toLowerCase();
+
+  switch (unit) {
+    case "k": return num * 1024;
+    case "m": return num * 1024 * 1024;
+    case "g": return num * 1024 * 1024 * 1024;
+    default:  return num;
+  }
+}
+
+function envNumberOrSize(key: string, fallback: number): number {
+  const val = process.env[key];
+  if (!val) return fallback;
+
+  const sized = parseSize(val);
+  if (sized !== null) return sized;
+
+  const n = Number(val);
+  if (!isNaN(n)) return n;
+
+  console.error(`WARN: env ${key}="${val}" is invalid; using default ${fallback}`);
+  return fallback;
 }
 
 const DEFAULT_HISTORY_FILE: string =
@@ -97,10 +126,12 @@ const DEFAULT_TOOLS_HISTORY_LENGTH: number = envNumber(
   'LLMCTRLX_TOOLS_HISTORY_LENGTH',
   5
 )
-const DEFAULT_NUM_CTX: number = envNumber('LLMCTRLX_NUM_CTX', 32768)
-const DEFAULT_TIMEOUT: number = envNumber('LLMCTRLX_TIMEOUT', 480)
+const DEFAULT_NUM_CTX: number = envNumberOrSize('LLMCTRLX_NUM_CTX', 32768)
+const DEFAULT_TIMEOUT: number = envNumberOrSize('LLMCTRLX_TIMEOUT', 480)
 
-let DEFAULT_MAX_UPLOAD_FILE_SIZE = 1024 * 1024 * 10 // 10 MB
+// We default only if undefined
+// if entered erroneous value, we error out
+let DEFAULT_MAX_UPLOAD_FILE_SIZE = 1024 * 1024 * 10
 const envValue = process.env.LLMCTRLX_MAX_UPLOAD_FILE_SIZE
 if (envValue !== undefined) {
   if (/^\d+$/.test(envValue)) {
