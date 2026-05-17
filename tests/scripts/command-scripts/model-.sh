@@ -20,6 +20,6 @@ assert_fails "model: no sub-command given" \
 
 # 4. Show a model that exists (use the configured default)
 assert_fails "model: --show default model" \
-    llmctrlx model --show -m "${LLMCTRLX_MODEL:-gemma4:e2b}"
+    llmctrlx model --show -m "${LLMCTRLX_MODEL:$(get_preferred_chat_model)}"
 
 print_assert_summary

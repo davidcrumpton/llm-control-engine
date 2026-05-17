@@ -16,6 +16,74 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
+get_current_model_list()
+{
+	llmctrlx model --list
+}
+
+# We no longer need to hardcod models in the command functions, 
+# but we can for backwards compatibility or for testings. 
+
+get_preferred_chat_model()
+{
+    local CURENT_MODEL_LIST=$(get_current_model_list)
+    # Small models for testing with chat/completion
+    CHAT_MODELS_PREFERRED=(
+        google/gemma-4-e2b
+        gemma4:e2b
+        mistral:latest
+        gpt-5-mini
+        o3-mini
+    )
+    for model in "${CHAT_MODELS_PREFERRED[@]}"; do
+    if echo "${CURENT_MODEL_LIST}" | grep -q "${model}"; then
+        echo "${model}"
+        return 0
+    fi
+    done
+    echo "" # return empty string if no model is found
+    return 1
+}
+
+get_embeddable_model()
+{
+    local CURENT_MODEL_LIST=$(get_current_model_list)
+    # try small models for testing
+    EMBEDDABLE_MODELS_PREFERRED=(
+    mistral:latest
+    text-embedding-nomic-embed-text-v1.5
+    text-embedding-3-small
+    text-embedding-ada-002
+    )
+    EMBEDDABLE_MODEL=""
+    for model in "${EMBEDDABLE_MODELS_PREFERRED[@]}"; do
+    if echo "${CURENT_MODEL_LIST}" | grep -q "${model}"; then
+        EMBEDDABLE_MODEL="${model}"
+        break
+    fi
+    done
+    print "${EMBEDDABLE_MODEL}"
+}
+
+get_embeddable_model()
+{
+    local CURENT_MODEL_LIST=$(get_current_model_list)
+    # try small models for testing
+    EMBEDDABLE_MODELS_PREFERRED=(
+    mistral:latest
+    text-embedding-nomic-embed-text-v1.5
+    text-embedding-3-small
+    text-embedding-ada-002
+    )
+    EMBEDDABLE_MODEL=""
+    for model in "${EMBEDDABLE_MODELS_PREFERRED[@]}"; do
+    if echo "${CURENT_MODEL_LIST}" | grep -q "${model}"; then
+        EMBEDDABLE_MODEL="${model}"
+        break
+    fi
+    done
+    print "${EMBEDDABLE_MODEL}"
+}
 # print_safe_env
 # prints environment variables that start with LLMCTRLX or __LLMCTRLX
 # and masks the value for any key containing _API_KEY

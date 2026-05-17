@@ -14,11 +14,11 @@ assert_succeeds "chat: basic -u prompt" \
 
 # 2. Explicit provider + model
 assert_succeeds "chat: explicit --provider ollama and --model" \
-  llmctrlx chat --provider ollama -u "Say 'Hello World'" -k "${SESSION_BASE}_explicit"
+  llmctrlx chat --provider ollama -u "Say 'Hello World'" -k "${SESSION_BASE}_explicit" -m "mistral:latest"
 
 # 3. Env var model override
 (
-  export LLMCTRLX_MODEL="${LLMCTRLX_MODEL:-gemma4:e2b}"
+  export LLMCTRLX_MODEL="${LLMCTRLX_MODEL:-$(get_preferred_chat_model)}"
   export LLMCTRLX_PROVIDER="ollama"
   assert_succeeds "chat: model from LLMCTRLX_MODEL env var" \
     llmctrlx chat -u "Say 'Hello World'" -k "${SESSION_BASE}_envmodel"
