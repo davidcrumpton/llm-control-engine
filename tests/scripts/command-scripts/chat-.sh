@@ -27,6 +27,18 @@ assert_fails "chat: non-existent model" \
 assert_fails "chat: -k with empty argument" \
   llmctrlx chat -u "Say hello" -k ""
 
+# 15. -k with 'true' (regression test)
+assert_fails "chat: -k with 'true'" \
+  llmctrlx chat -u 'Say hello' -k true
+
+# 16. -k with 'false' (regression test)
+assert_fails "chat: -k with 'false'" \
+  llmctrlx chat -u 'Say hello' -k false
+
+# 17. -k with no value (regression test)
+assert_fails "chat: -k with no value" \
+  llmctrlx chat -u 'Say hello' -k
+
 # 5. Empty STDIN (--stdin with no data)
 assert_fails "chat: --stdin with empty input" \
   bash -c 'llmctrlx chat --stdin < /dev/null'
@@ -71,5 +83,13 @@ assert_fails "chat: empty stdin" \
 # 8. LLMCTRLX_MAX_UPLOAD_FILE_SIZE=x with chat command (regression test)
 assert_fails "chat: LLMCTRLX_MAX_UPLOAD_FILE_SIZE=x" \
   bash -c 'LLMCTRLX_MAX_UPLOAD_FILE_SIZE=x llmctrlx chat' -m mistral:latest
+
+# 14. --no-tools flag and env var set
+export LLMCTRLX_TOOLS_DIR="/tmp/"
+assert_fails "chat: --no-tools disables tools when LLMCTRLX_TOOLS_DIR is set" \
+  llmctrlx chat -W -u "Say 'tools disabled ok'" -k "${SESSION_BASE}_notools"
+unset LLMCTRLX_TOOLS_DIR
+
+
 
 print_assert_summary

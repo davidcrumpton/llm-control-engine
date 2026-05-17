@@ -53,26 +53,11 @@ const _dirname =
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.8.26'
+const APP_VERSION = '0.8.27'
 const APP_TAGLINE =
   'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION =
   'Built with Node.js, it features a persistent chat history, support for multiple chat sessions,\nLLM tool execution, model management, benchmarking, and shell command analysis.'
-
-/**
- * Parse numeric environment variable with fallback.
- * Logs warning and exits if value is provided but invalid.
- */
-function envNumber(key: string, fallback: number): number {
-  const val = process.env[key]
-  if (val === undefined) return fallback
-  const n = Number(val)
-  if (isNaN(n)) {
-    console.error(`WARN: env ${key}="${val}" is not a number; using default ${fallback}`)
-    return fallback
-  }
-  return n
-}
 
 function parseSize(val: string): number | null {
   const match = /^(\d+)([kKmMgG]?)$/.exec(val.trim());
@@ -89,73 +74,72 @@ function parseSize(val: string): number | null {
   }
 }
 
-function envNumberOrSize(key: string, fallback: number): number {
-  const val = process.env[key];
-  if (!val) return fallback;
+function resolveSize(name: string, cliVal: unknown, envVal: string | undefined, fallback: number): number {
+  let val: unknown;
+  if (cliVal !== undefined && cliVal !== '') val = cliVal;
+  else if (envVal !== undefined && envVal !== '') val = envVal;
+  else return fallback;
 
-  const sized = parseSize(val);
+  if (typeof val === 'number') return val;
+  const s = String(val);
+  const sized = parseSize(s);
   if (sized !== null) return sized;
 
-  const n = Number(val);
+  const n = Number(s);
   if (!isNaN(n)) return n;
 
-  console.error(`WARN: env ${key}="${val}" is invalid; using default ${fallback}`);
+  console.error(`Error: Invalid size value for ${name}: "${s}"`);
+  process.exit(1);
+}
+
+function resolveNumber(name: string, cliVal: unknown, envVal: string | undefined, fallback: number): number {
+  let val: unknown;
+  if (cliVal !== undefined && cliVal !== '') val = cliVal;
+  else if (envVal !== undefined && envVal !== '') val = envVal;
+  else return fallback;
+
+  const n = Number(val);
+  if (isNaN(n)) {
+    console.error(`Error: Invalid number value for ${name}: "${val}"`);
+    process.exit(1);
+  }
+  return n;
+}
+
+function resolveString(cliVal: unknown, envVal: string | undefined, fallback: string | undefined): string | undefined {
+  if (cliVal !== undefined && cliVal !== '') return String(cliVal);
+  if (envVal !== undefined && envVal !== '') return envVal;
   return fallback;
 }
 
-const DEFAULT_HISTORY_FILE: string =
-  process.env.LLMCTRLX_HISTORY_FILE ||
-  path.join(os.homedir(), '.llmctrlx_history.json')
-
+function resolveBool(cliVal: unknown, envVal: string | undefined, fallback: boolean): boolean {
+  if (cliVal !== undefined) return !!cliVal;
+  if (envVal !== undefined) {
+    const s = envVal.toLowerCase();
+    return s === '1' || s === 'true' || s === 'yes' || s === 'on';
+  }
+  return fallback;
+}
 
 const VALID_PROVIDERS = ['ollama', 'lmstudio', 'openai'] as const
 function isProvider(v: string | undefined): v is Provider {
   return !!v && (VALID_PROVIDERS as readonly string[]).includes(v)
 }
 
-
-
-
-const DEFAULT_PROVIDER: Provider = isProvider(process.env.LLMCTRLX_PROVIDER)
-  ? process.env.LLMCTRLX_PROVIDER
-  : 'ollama'
-
-
-const DEFAULT_SESSION: string = process.env.LLMCTRLX_SESSION || 'default'
-const DEFAULT_TOOLS_HISTORY_LENGTH: number = envNumber(
-  'LLMCTRLX_TOOLS_HISTORY_LENGTH',
-  5
-)
-const DEFAULT_NUM_CTX: number = envNumberOrSize('LLMCTRLX_NUM_CTX', 32768)
-const DEFAULT_TIMEOUT: number = envNumberOrSize('LLMCTRLX_TIMEOUT', 480)
-
-// We default only if undefined
-// if entered erroneous value, we error out
-let DEFAULT_MAX_UPLOAD_FILE_SIZE = 1024 * 1024 * 10
-const envValue = process.env.LLMCTRLX_MAX_UPLOAD_FILE_SIZE
-if (envValue !== undefined) {
-  if (/^\d+$/.test(envValue)) {
-    DEFAULT_MAX_UPLOAD_FILE_SIZE = parseInt(envValue, 10)
-  } else {
-    console.error('LLMCTRLX_MAX_UPLOAD_FILE_SIZE must be an integer')
-    process.exit(1)
-  }
+function resolveProvider(cliVal: unknown, envVal: string | undefined, fallback: Provider): Provider {
+  let val: unknown;
+  if (cliVal !== undefined && cliVal !== '') val = cliVal;
+  else if (envVal !== undefined && envVal !== '') val = envVal;
+  else return fallback;
+  
+  if (isProvider(val as string)) return val as Provider;
+  console.error(`Error: Invalid provider "${val}". Supported providers are: ollama, lmstudio, openai`);
+  process.exit(1);
 }
 
 // --------------------
-// Tools Directory
+// Defaults for tools and plugins directories are now resolved via CLI options
 // --------------------
-// No tools are loaded by default. Users must explicitly opt-in by setting
-// LLMCTRLX_TOOLS_DIR (e.g. /usr/local/share/llmctrlx/tools or a custom path)
-// or by passing -T <path> on the command line.
-const DEFAULT_TOOLS_DIR: string | null =
-  process.env.LLMCTRLX_TOOLS_DIR || null
-
-// --------------------
-// Plugins Directory
-// --------------------
-const DEFAULT_PLUGINS_DIR: string | null =
-  process.env.LLMCTRLX_PLUGINS_DIR || null
 
 // --------------------
 // CLI parsing
@@ -200,6 +184,7 @@ interface GetoptsOptions extends Record<string, unknown> {
   var?: string[]
   pull?: boolean
   delete?: boolean
+  'max-upload-file-size'?: string | number
 }
 
 const options: GetoptsOptions = getopts(argv.slice(1), {
@@ -226,17 +211,7 @@ const options: GetoptsOptions = getopts(argv.slice(1), {
     o: 'timeout',
     H: 'history_file',
     r: 'pull',
-  },
-  default: {
-    num_ctx: DEFAULT_NUM_CTX,
-    timeout: DEFAULT_TIMEOUT,
-    history_length: DEFAULT_TOOLS_HISTORY_LENGTH,
-    history_file: DEFAULT_HISTORY_FILE,
-    session: DEFAULT_SESSION,
-    no_tools: false,
-    no_plugins: false,
-    plugins_dir: DEFAULT_PLUGINS_DIR,
-    provider: DEFAULT_PROVIDER,
+    M: 'max-upload-file-size',
   },
   boolean: [
     'json',
@@ -266,6 +241,7 @@ const options: GetoptsOptions = getopts(argv.slice(1), {
     'num_ctx',
     'record',
     'timeout',
+    'max-upload-file-size',
   ],
   array: ['files', 'var'],
   unknown: (option: string) => {
@@ -274,24 +250,49 @@ const options: GetoptsOptions = getopts(argv.slice(1), {
   },
 })
 
+const resolvedNumCtx = resolveSize('num_ctx', options.num_ctx, process.env.LLMCTRLX_NUM_CTX, 32768)
+if (resolvedNumCtx <= 0) {
+  console.error(`Error: num_ctx must be > 0. Received: ${resolvedNumCtx}`)
+  process.exit(1)
+}
+
+const resolvedTimeout = resolveNumber('timeout', options.timeout, process.env.LLMCTRLX_TIMEOUT, 480)
+if (resolvedTimeout <= 0) {
+  console.error(`Error: timeout must be > 0. Received: ${resolvedTimeout}`)
+  process.exit(1)
+}
+
+const resolvedHistoryLength = resolveNumber('history_length', options.history_length, process.env.LLMCTRLX_TOOLS_HISTORY_LENGTH, 5)
+if (resolvedHistoryLength <= 0) {
+  console.error(`Error: history_length must be > 0. Received: ${resolvedHistoryLength}`)
+  process.exit(1)
+}
+
+const defaultSessionName = argv.includes('-k') || argv.includes('--session') ? undefined : 'default'
 // Map and validate options into a clean CLIOptions object
+// BUG: 
+//   no_tools and no_plugins are set to true when env LLMCTRLX_NO_TOOLS or LLMCTRLX_NO_PLUGINS is set, 
+//   but they should be set false when cli options -W or -x is used.
 const cliOptions: CLIOptions = {
   ...options,
-  num_ctx: parseInt(String(options.num_ctx), 10),
-  timeout: parseInt(String(options.timeout), 10),
-  history_length: parseInt(String(options.history_length), 10),
-  session: String(options.session ?? DEFAULT_SESSION),
-  history_file: String(options.history_file ?? DEFAULT_HISTORY_FILE),
-  provider: (options.provider ?? DEFAULT_PROVIDER) as Provider,
-  verbose: !!options.verbose,
-  no_tools: !!options.no_tools,
-  no_plugins: !!options.no_plugins,
-  json: !!options.json,
-  stream: !!options.stream,
-  stdin: !!options.stdin,
-  purge: !!options.purge,
-  'dry-run': !!options['dry-run'],
-  diff: !!options.diff,
+  num_ctx: resolvedNumCtx,
+  timeout: resolvedTimeout,
+  history_length: resolvedHistoryLength,
+  session: resolveString(options.session, process.env.LLMCTRLX_SESSION, defaultSessionName) as string,
+  history_file: resolveString(options.history_file, process.env.LLMCTRLX_HISTORY_FILE, '/dev/null') as string,
+  provider: resolveProvider(options.provider, process.env.LLMCTRLX_PROVIDER, 'ollama'),
+  verbose: resolveBool(options.verbose, process.env.LLMCTRLX_VERBOSE, false),
+  no_tools: resolveBool(options.no_tools, process.env.LLMCTRLX_NO_TOOLS, false),
+  no_plugins: resolveBool(options.no_plugins, process.env.LLMCTRLX_NO_PLUGINS, false),
+  json: resolveBool(options.json, process.env.LLMCTRLX_JSON, false),
+  stream: resolveBool(options.stream, process.env.LLMCTRLX_STREAM, false),
+  stdin: resolveBool(options.stdin, process.env.LLMCTRLX_STDIN, false),
+  purge: resolveBool(options.purge, process.env.LLMCTRLX_PURGE, false),
+  'dry-run': resolveBool(options['dry-run'], process.env.LLMCTRLX_DRY_RUN, false),
+  diff: resolveBool(options.diff, process.env.LLMCTRLX_DIFF, false),
+  tools_dir: resolveString(options.tools_dir, process.env.LLMCTRLX_TOOLS_DIR, undefined),
+  plugins_dir: resolveString(options.plugins_dir, process.env.LLMCTRLX_PLUGINS_DIR, undefined),
+  'max-upload-file-size': resolveSize('max-upload-file-size', options['max-upload-file-size'], process.env.LLMCTRLX_MAX_UPLOAD_FILE_SIZE, 1024 * 1024 * 10),
 }
 
 /*
@@ -334,20 +335,24 @@ if (cliOptions.no_plugins && cliOptions.plugins_dir) {
   process.exit(1)
 }
 
-if (argv.includes('-k') || argv.includes('--session')) {
-  if (!cliOptions.session || cliOptions.session.length === 0) {
-    console.error('Error: -k flag provided but no session name specified.')
-    process.exit(1)
-  }
-}
-
-// abort if -W and -T is given (not applicable to replay which only reads toolsDir for re-execution)
-if (cliOptions.no_tools && cliOptions.tools_dir && command !== 'replay') {
-  console.error('Cannot use both -W and -T')
+// Fail if -k flag with no session name given
+// Empty is true string and user supplied is also string - it is always 'true' or 'default' or 'some-key' or '' etc
+// BUG:
+//    User can't label a session named 'true' or 'false' or ''
+// length is undefined when llmctrlx chat -u 'Say hello' -k ''
+if ((argv.includes('-k') || argv.includes('--session')) && (cliOptions.session === 'true' || cliOptions.session === 'false' || !cliOptions.session)) {
+  console.error('Error: -k flag provided but no session name specified or session is named "true", "false", or "".')
   process.exit(1)
 }
 
-const toolsDir: string | null = cliOptions.tools_dir || DEFAULT_TOOLS_DIR || null
+
+// abort if -W and -T is given (not applicable to replay which only reads toolsDir for re-execution)
+if (cliOptions.no_tools && cliOptions.tools_dir && command !== 'replay') {
+  console.error('Cannot use both -W and -T, LLMCTRLX_TOOLS_DIR is set')
+  process.exit(1)
+}
+
+const toolsDir: string | null = cliOptions.tools_dir || null
 
 // --------------------
 // Router
@@ -396,7 +401,7 @@ async function main(): Promise<void> {
   const pluginLoader = new PluginLoader(hookManager, logger)
   const effectivePluginsDir = cliOptions.no_plugins
     ? null
-    : cliOptions.plugins_dir || DEFAULT_PLUGINS_DIR
+    : cliOptions.plugins_dir || null
   if (effectivePluginsDir) {
     await pluginLoader.loadFromDirectory(effectivePluginsDir)
   }
@@ -408,9 +413,9 @@ async function main(): Promise<void> {
       await cmdChat(
         llm,
         cliOptions,
-        DEFAULT_HISTORY_FILE,
+        cliOptions.history_file || '/dev/null',
         toolsDir,
-        DEFAULT_MAX_UPLOAD_FILE_SIZE,
+        cliOptions['max-upload-file-size'] || (1024 * 1024 * 10),
         engineHooks
       )
       break
@@ -429,11 +434,11 @@ async function main(): Promise<void> {
       break
     case 'run':
     case 'r':
-      await cmdRun(llm, cliOptions, DEFAULT_HISTORY_FILE, engineHooks)
+      await cmdRun(llm, cliOptions, cliOptions.history_file || '/dev/null', engineHooks)
       break
     case 'plan':
     case 'p':
-      await cmdPlan(llm, cliOptions, DEFAULT_MAX_UPLOAD_FILE_SIZE)
+      await cmdPlan(llm, cliOptions, cliOptions['max-upload-file-size'] || (1024 * 1024 * 10))
       break
     case 'replay':
       await cmdReplay(llm, cliOptions, toolsDir)
@@ -448,13 +453,13 @@ async function main(): Promise<void> {
         cliOptions,
         cliOptions.no_plugins
           ? null
-          : (cliOptions.plugins_dir as string) || DEFAULT_PLUGINS_DIR
+          : (cliOptions.plugins_dir as string) || null
       )
       break
     case 'history':
     case 'hist':
     case 'h':
-      cmdHistory(cliOptions, DEFAULT_HISTORY_FILE)
+      cmdHistory(cliOptions, cliOptions.history_file || '/dev/null')
       break
     case 'completion':
     case 'comp':

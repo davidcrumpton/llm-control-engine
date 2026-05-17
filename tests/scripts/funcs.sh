@@ -16,6 +16,21 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
+# print_safe_env
+# prints environment variables that start with LLMCTRLX or __LLMCTRLX
+# and masks the value for any key containing _API_KEY
+print_safe_env() {
+    for key in $(env | grep LLMCTRLX | cut -d= -f1); do
+        if [[ "$key" =~ ^__LLMCTRLX.*$ ]]; then
+            echo "       ${key}: [MASKED_VALUE]"
+        elif [[ "$key" =~ .*_API_KEY.* ]]; then
+            echo "       ${key}: [MASKED_VALUE]"
+        else
+            echo "       ${key}: ${!key}"
+        fi
+    done
+}
+
 # =============================================================================
 # ASSERTION HELPERS
 # Each assertion runs a command, checks exit code / output, and reports.
@@ -38,6 +53,7 @@ assert_succeeds() {
         echo -e "${RED}  ✗ FAIL${NC}  ${label}  (exit ${exit_code})"
         echo "       CMD: $*"
         echo "       OUT: ${output}"
+        print_safe_env
         _ASSERT_FAIL=$((_ASSERT_FAIL + 1))
     fi
 }
@@ -56,6 +72,7 @@ assert_fails() {
         echo -e "${RED}  ✗ FAIL${NC}  ${label}  (should have failed but exited 0)"
         echo "       CMD: $*"
         echo "       OUT: ${output}"
+        print_safe_env
         _ASSERT_FAIL=$((_ASSERT_FAIL + 1))
     fi
 }
@@ -73,6 +90,7 @@ assert_output_contains() {
         echo -e "${RED}  ✗ FAIL${NC}  ${label}  (pattern '${pattern}' not found)"
         echo "       CMD: $*"
         echo "       OUT: ${output}"
+        print_safe_env
         _ASSERT_FAIL=$((_ASSERT_FAIL + 1))
     fi
 }
@@ -89,6 +107,7 @@ assert_output_matches_re() {
         echo -e "${RED}  ✗ FAIL${NC}  ${label}  (regex pattern '${pattern}' not found)"
         echo "       CMD: $*"
         echo "       OUT: ${output}"
+        print_safe_env
         _ASSERT_FAIL=$((_ASSERT_FAIL + 1))
     fi
 }
@@ -104,6 +123,7 @@ assert_output_not_matches_re() {
         echo -e "${RED}  ✗ FAIL${NC}  ${label}  (regex pattern '${pattern}' found)"
         echo "       CMD: $*"
         echo "       OUT: ${output}"
+        print_safe_env
         _ASSERT_FAIL=$((_ASSERT_FAIL + 1))
     fi
 }
@@ -120,6 +140,7 @@ assert_exit_code() {
         echo -e "${RED}  ✗ FAIL${NC}  ${label}  (expected exit ${expected}, got ${exit_code})"
         echo "       CMD: $*"
         echo "       OUT: ${output}"
+        print_safe_env
         _ASSERT_FAIL=$((_ASSERT_FAIL + 1))
     fi
 }

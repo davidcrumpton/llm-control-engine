@@ -15,12 +15,13 @@ echo -e "\n${CYAN}=== chat-lmstudio+ : positive tests (provider: lmstudio) ===${
 assert_succeeds "lmstudio chat: basic prompt" \
   llmctrlx chat -P lmstudio -u "Say 'LMStudio OK'" -k "${SESSION_BASE}_basic"
 
-# 2. No-tools
-assert_succeeds "lmstudio chat: --no-tools" \
-  llmctrlx chat -P lmstudio -W -u "Say 'LMStudio notools OK'" -k "${SESSION_BASE}_notools"
-
-# 3. JSON output
+# 2. JSON output
 assert_output_contains "lmstudio chat: --json output" 'ok' \
   llmctrlx chat -P lmstudio --json -u "Say ok" -k "${SESSION_BASE}_json"
+
+# 3. No-tools
+unset LLMCTRLX_TOOLS_DIR
+assert_succeeds "lmstudio chat: --no-tools" \
+  llmctrlx chat -P lmstudio -W -u "Say 'LMStudio notools OK'" -k "${SESSION_BASE}_notools"
 
 print_assert_summary

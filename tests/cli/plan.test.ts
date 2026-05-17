@@ -110,8 +110,10 @@ vars:
   host: localhost
   env: dev
 steps:
+  - name: init
+    exec: echo "{{host}} {{env}}"
   - name: disk
-    exec: ssh {{host}} df -h
+    exec: df -h
 output:
   save: ${savePath}
 `;

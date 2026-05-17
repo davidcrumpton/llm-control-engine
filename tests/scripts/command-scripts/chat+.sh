@@ -54,6 +54,7 @@ assert_succeeds "chat: system prompt" \
   llmctrlx chat -s "You are a helpful assistant. Respond briefly." -u "Say OK" -k "${SESSION_BASE}_sys"
 
 # 10. --no-tools flag
+unset LLMCTRLX_TOOLS_DIR
 assert_succeeds "chat: --no-tools disables tools" \
   llmctrlx chat -W -u "Say 'tools disabled ok'" -k "${SESSION_BASE}_notools"
 

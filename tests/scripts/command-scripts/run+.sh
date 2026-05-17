@@ -30,6 +30,7 @@ assert_succeeds "replay: playback recorded run" \
 rm -f "${RECFILE}"
 
 # 4. Run with no-tools
+unset LLMCTRLX_TOOLS_DIR
 assert_succeeds "run: with --no-tools" \
     llmctrlx run -W -u "ls /tmp"
 
