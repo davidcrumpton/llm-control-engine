@@ -23,10 +23,10 @@ The default model to use.
 Default:
 .Li gemma4:e2b .
 .It Ev LLMCTRLX_HISTORY_FILE
-The default history file.
-Default:
-.Pa ~/.llmctrlx_history.json .
-Use
+There is no default history file.
+Recommended setting:
+.Pa ~/llmctrlx/default/history.json
+works well or you can use
 .Li NUL
 on Windows or
 .Pa /dev/null
@@ -35,14 +35,16 @@ on Linux/macOS to disable history.
 The tools directory to load tools from.
 No tools are loaded by default.
 Set this to
+.Pa ~/llmctrlx/default/tools/
+(DEB/RPM/Homebrew installs) or copy pre-built tools from
 .Pa /usr/local/share/llmctrlx/tools
-(DEB/RPM/Homebrew installs) or a custom path to opt-in.
 .It Ev LLMCTRLX_PLUGINS_DIR
 The plugins directory to load plugins from.
 No plugins are loaded by default.
-Set this to
+Copy plugins from
 .Pa /usr/local/share/llmctrlx/plugins
-(DEB/RPM/Homebrew installs) or a custom path to opt-in.
+(DEB/RPM/Homebrew installs) or create your own to
+.Pa ~/llmctrlx/default/plugins
 The CLI flag
 .Fl X
 takes precedence over this variable.
@@ -76,6 +78,74 @@ The default request timeout in seconds.
 Default:
 .Li 480 .
 .El
+.Sh RECOMMENDED SETUP
+A clean way to organize multiple agent personalities is to give each provider
+its own directory tree and a dedicated environment file.
+Bootstrap the full layout in one shot:
+.Bd -literal -offset indent
+mkdir -p ~/llmctrlx/{default,openai,ollama}/{tools,plugins}
+.Ed
+.Pp
+This creates a tidy workspace:
+.Bd -literal -offset indent
+~/llmctrlx/
+\(ba\(em default/
+\(ba   \(ba\(em tools/       # tools for your default (local) agent
+\(ba   \(bm\(em plugins/     # plugins for your default agent
+\(ba\(em openai/
+\(ba   \(ba\(em tools/       # OpenAI-specific tools
+\(ba   \(bm\(em plugins/     # OpenAI-specific plugins
+\(bm\(em ollama/
+    \(ba\(em tools/       # Ollama-specific tools
+    \(bm\(em plugins/     # Ollama-specific plugins
+.Ed
+.Pp
+Each agent gets its own history file.
+Set
+.Ev LLMCTRLX_HISTORY_FILE
+to the appropriate path, replacing
+.Ar BASE
+with the provider subdirectory
+.Po
+.Li default ,
+.Li openai ,
+or
+.Li ollama
+.Pc :
+.Bd -literal -offset indent
+export LLMCTRLX_HISTORY_FILE=~/llmctrlx/BASE/history.json
+.Ed
+.Pp
+To make switching agents effortless, source a per-agent environment file.
+.Nm
+ships companion
+.Pa .env
+files, one per provider:
+.Bd -literal -offset indent
+~/llmctrlx/default.env
+~/llmctrlx/ollama.env
+~/llmctrlx/openai.env
+.Ed
+.Pp
+Each
+.Pa .env
+file pre-configures the provider URL, API key, model,
+history path, and tools/plugins directories for that agent.
+Source the one you need before starting a session:
+.Bd -literal -offset indent
+# Switch to the OpenAI agent
+source ~/llmctrlx/openai.env
+llmctrlx chat -u "Summarize today's standup notes."
+
+# Switch to the local Ollama agent
+source ~/llmctrlx/ollama.env
+llmctrlx chat -u "Why is the sky blue?"
+.Ed
+.Pp
+.Sy Tip:
+Add shell aliases or a small wrapper function to source-and-run in
+a single command, e.g.\&
+.Li alias ailocal='source ~/llmctrlx/ollama.env && llmctrlx chat' .
 .Sh PLUGINS
 .Nm
 supports dynamic plugins to extend its functionality.
@@ -88,7 +158,7 @@ environment variable or pass the
 flag:
 .Bd -literal -offset indent
 # Permanently via environment variable
-export LLMCTRLX_PLUGINS_DIR="/usr/local/share/llmctrlx/plugins"
+export LLMCTRLX_PLUGINS_DIR="~/llmctrlx/default/plugins"
 
 # Or per-invocation
 llmctrlx chat -X /usr/local/share/llmctrlx/plugins -u "hello"
@@ -98,10 +168,10 @@ System-wide DEB/RPM/Homebrew installations include a collection of plugins in
 .Pa /usr/local/share/llmctrlx/plugins .
 You can copy only the plugins you want into a local directory:
 .Bd -literal -offset indent
-mkdir -p ~/.llmctrlx_plugins
-cp /usr/local/share/llmctrlx/plugins/logger.plugin.js ~/.llmctrlx_plugins/
-cp /usr/local/share/llmctrlx/plugins/prompt-guard.plugin.js ~/.llmctrlx_plugins/
-export LLMCTRLX_PLUGINS_DIR="~/.llmctrlx_plugins"
+mkdir -p ~/llmctrlx/default/plugins
+cp /usr/local/share/llmctrlx/plugins/logger.plugin.js ~/llmctrlx/default/plugins/
+cp /usr/local/share/llmctrlx/plugins/prompt-guard.plugin.js ~/llmctrlx/default/plugins/
+export LLMCTRLX_PLUGINS_DIR="~/llmctrlx/default/plugins"
 .Ed
 .Pp
 The
@@ -137,7 +207,7 @@ or the
 .Fl T
 flag:
 .Bd -literal -offset indent
-# Permanently via environment variable
+# Permanently via environment variable to included tools.
 export LLMCTRLX_TOOLS_DIR="/usr/local/share/llmctrlx/tools"
 
 # Or per-invocation
@@ -153,7 +223,7 @@ llmctrlx chat -T ~/my-tools -u "What time is it?"
 .Sh GLOBAL OPTIONS
 These options apply to most commands:
 .Bl -tag -width indent
-.It Fl a , -api_url Ar url
+.It Fl h , -host Ar url
 The URL of your LLM provider.
 Default:
 .Li http://127.0.0.1:11434 .
@@ -451,12 +521,6 @@ llmctrlx completion --shell fish
 .Sh SHELL COMPLETIONS
 .Nm
 supports auto-completion for bash, zsh, and fish shells.
-.Ss Automatic Installation
-.Bd -literal -offset indent
-node install-completion.ts
-node install-completion.ts bash
-node install-completion.ts zsh
-node install-completion.ts fish
 .Ed
 .Ss Manual Installation
 .Bd -literal -offset indent
