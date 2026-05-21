@@ -27,6 +27,9 @@ name: Test Plan
 model: test-model
 system: Testing system
 prompt: Analyze step outputs.
+policy:
+  exec:
+    allow: [echo]
 steps:
   - name: hello
     exec: echo hello
@@ -65,6 +68,9 @@ output:
     const planYaml = `version: 1
 name: Dry Run Plan
 model: test-model
+policy:
+  exec:
+    allow: [echo]
 steps:
   - name: hello
     exec: echo hello
@@ -109,6 +115,9 @@ system: Run this as {{USER}}
 vars:
   host: localhost
   env: dev
+policy:
+  exec:
+    allow: [echo, df]
 steps:
   - name: init
     exec: echo "{{host}} {{env}}"

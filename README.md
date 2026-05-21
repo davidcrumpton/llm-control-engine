@@ -408,6 +408,8 @@ policy:
     allow:
       - "gemini-*"
       - "gpt-*"
+  exec:
+    allow: [ssh]
 
 vars:
   host: localhost
@@ -427,6 +429,8 @@ prompt: Analyze the {{env}} host.
 - `--var <key=value>`: Set or override a plan variable; can be repeated.
 - `-R, --record <file>`: Record the plan execution to a JSON file for later replay.
 - `--dry-run`: Show the ordered steps without executing any commands.
+
+> **Note**: For security, plans require an explicit `allow` list under `policy.exec` to run `exec` steps. If omitted, all executables are denied. It is an error to list the same command in both `allow` and `deny`.
 
 **Examples:**
 

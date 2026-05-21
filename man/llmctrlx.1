@@ -436,7 +436,14 @@ Plans may include reusable variables via a top-level
 mapping, overridable on the command line.
 A
 .Li policy:
-section may restrict which models and tools are allowed.
+section may restrict which models, tools, and executables are allowed.
+Note that for security, plans require an explicit
+.Li allow
+list under
+.Li policy.exec
+to run
+.Li exec
+steps. If omitted, all executables are denied.
 .Pp
 Options:
 .Bl -tag -width indent

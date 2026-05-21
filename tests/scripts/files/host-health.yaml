@@ -11,6 +11,8 @@ policy:
       - "gpt-*"
       - "claude-*"
       - "llama*"
+  exec:
+    allow: [hostname, uptime, top, free, df, netstat]
 vars:
   server: localhost
   env: prod

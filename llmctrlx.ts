@@ -9,10 +9,10 @@
  */
 
 import getopts from 'getopts'
-import path from 'path'
+// import path from 'path'
 import { fileURLToPath, pathToFileURL } from 'url'
 import { dirname, join } from 'path'
-import os from 'os'
+// import os from 'os'
 
 import { OllamaProvider, LMStudioProvider, OpenAIProvider } from './src/providers/index.js'
 import {
@@ -53,7 +53,7 @@ const _dirname =
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.8.31'
+const APP_VERSION = '0.8.32'
 const APP_TAGLINE =
   'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION =
@@ -70,7 +70,7 @@ function parseSize(val: string): number | null {
     case "k": return num * 1024;
     case "m": return num * 1024 * 1024;
     case "g": return num * 1024 * 1024 * 1024;
-    default:  return num;
+    default: return num;
   }
 }
 
@@ -131,7 +131,7 @@ function resolveProvider(cliVal: unknown, envVal: string | undefined, fallback: 
   if (cliVal !== undefined && cliVal !== '') val = cliVal;
   else if (envVal !== undefined && envVal !== '') val = envVal;
   else return fallback;
-  
+
   if (isProvider(val as string)) return val as Provider;
   console.error(`Error: Invalid provider "${val}". Supported providers are: ollama, lmstudio, openai`);
   process.exit(1);

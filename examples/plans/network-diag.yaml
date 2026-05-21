@@ -14,6 +14,10 @@ steps:
 
 prompt: Analyze the step data and the attachments to diagnose the network issue
 
+policy:
+  exec:
+    allow: [ssh]
+
 model: gemma4:e2b
 system: You are a senior Linux sysadmin.
 

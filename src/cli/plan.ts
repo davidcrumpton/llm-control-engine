@@ -25,63 +25,7 @@ const execFileAsync = promisify(execFile);
 
 // ─── Security Constraints ──────────────────────────────────────────────────────────
 
-const ALLOWED_STEP_EXECUTABLES = new Set([
-  "ls",
-  "cat",
-  "echo",
-  "pwd",
-  "date",
-  "whoami",
-  "df",
-  "du",
-  "uname",
-  "uptime",
-  "ps",
-  "git",
-  "node",
-  "npm",
-  "python",
-  "python3",
-  "grep",
-  "awk",
-  "sed",
-  "find",
-  "wc",
-  "sort",
-  "uniq",
-  "head",
-  "tail",
-  "jq",
-  "curl",
-  "wget",
-  "tar",
-  "zip",
-  "unzip",
-  "cp",
-  "mv",
-  "mkdir",
-  "rm",
-  "touch",
-  "chmod",
-  "chown",
-  "env",
-  "which",
-  "xargs",
-  "printenv",
-  "id",
-  "pip",
-  "pip3",
-  "yq",
-  "cut",
-  "tr",
-  "gzip",
-  "gunzip",
-  "make",
-  "cmake",
-  "cargo",
-  "go",
-  "ssh",
-]);
+
 
 const STEP_TIMEOUT_MS = 60_000;
 const MAX_STDOUT_BYTES = 5 * 1024 * 1024;
@@ -370,14 +314,6 @@ async function executeStepAction(
         .match(/[^\s"']+|"([^"]*)"|'([^']*)'/g)
         ?.map((t) => t.replace(/^['"]|['"]$/g, "")) || [];
     const [executable, ...args] = tokens;
-
-    if (!ALLOWED_STEP_EXECUTABLES.has(executable)) {
-      return {
-        stdout: "",
-        stderr: `Executable '${executable}' not in allow-list`,
-        exitCode: 1,
-      };
-    }
 
     try {
       // Security: Use a safe environment subset to prevent leaking system tokens

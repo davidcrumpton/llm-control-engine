@@ -50,6 +50,19 @@ export function validatePolicy(plan: Plan): void {
       }
     }
   }
+
+  if (policy.exec) {
+    const { allow, deny } = policy.exec;
+    if (allow && Array.isArray(allow) && deny && Array.isArray(deny)) {
+      for (const cmd of allow) {
+        if (deny.includes(cmd)) {
+          throw new Error(
+            `Policy violation: Command '${cmd}' is in both allow and deny lists (policy.exec).`,
+          );
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -96,13 +109,27 @@ export function validateStep(step: PlanStep, policy: PlanPolicy = {}): void {
 
   if (step.exec) {
     // Extract just the executable name (first token) for policy matching.
-    // Full shell-metacharacter and allow-list checks still happen at runtime
-    // in executeStep(); this enforces plan-level constraints on top of that.
+    // Full shell-metacharacter checks still happen at runtime in executeStepAction.
     const executable = step.exec.trim().split(/\s+/)[0];
     const execPolicy = policy.exec || {};
 
-    // Allow by default: no allow list concept for exec.
-    // Plans only need to express what is explicitly forbidden.
+    // Deny by default: executable must appear in the allow list
+    if (!execPolicy.allow || !Array.isArray(execPolicy.allow)) {
+      throw new Error(
+        `Policy violation: Executable '${executable}' is not allowed in step '${step.id}' (policy.exec.allow is missing or empty).`,
+      );
+    }
+
+    const matchedAllow = execPolicy.allow.find((pattern) =>
+      matchPattern(executable, pattern),
+    );
+    if (!matchedAllow) {
+      throw new Error(
+        `Policy violation: Executable '${executable}' is not allowed in step '${step.id}' (policy.exec.allow: [${execPolicy.allow.join(", ")}]).`,
+      );
+    }
+
+    // Explicit deny always wins
     if (execPolicy.deny && Array.isArray(execPolicy.deny)) {
       const matchedPattern = execPolicy.deny.find((pattern) =>
         matchPattern(executable, pattern),

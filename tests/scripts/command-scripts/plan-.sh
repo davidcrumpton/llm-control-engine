@@ -16,4 +16,12 @@ assert_fails "plan: bad file name test" \
 assert_fails "plan: bad option name test" \
   llmctrlx plan ./tests/scripts/files/host-health.yaml --dry-runnnn
 
+# 3. Get a plan with command has conflict in allow and deny section
+assert_fails "plan: command has conflict in allow and deny section" \
+  llmctrlx plan ./tests/scripts/files/cross-constraints-plan.yaml
+
+# 4. Get a plan with empty exec allow list
+assert_fails "plan: empty exec allow list test" \
+  llmctrlx plan ./tests/scripts/files/empty-exec-allow-plan.yaml
+
 print_assert_summary
