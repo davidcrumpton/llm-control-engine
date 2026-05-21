@@ -211,6 +211,7 @@ export interface ToolPolicy {
 }
 
 export interface ExecPolicy {
+  allow?: string[];
   deny?: string[];
 }
 
