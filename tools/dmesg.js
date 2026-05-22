@@ -1,7 +1,9 @@
+import { execSync } from 'child_process'
+
 export default {
   name: 'dmesg',
   description: 'Get kernel ring buffer',
-  version: 'v1.0.0',
+  version: 'v1.0.1',
   tags: ['os', 'system'],
   parameters: {
     type: 'object',
@@ -10,7 +12,6 @@ export default {
     },
   },
   run: async ({ filter }) => {
-    const { execSync } = await import('child_process')
     try {
       if (!filter) {
         return execSync(`dmesg`, { encoding: 'utf-8' })

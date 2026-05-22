@@ -1,7 +1,9 @@
+import { execSync } from 'child_process'
+
 export default {
   name: 'ifconfig',
   description: 'Get network interfaces',
-  version: 'v1.0.0',
+  version: 'v1.0.1',
   tags: ['network', 'os'],
   parameters: {
     type: 'object',
@@ -11,7 +13,6 @@ export default {
     required: ['filter']
   },
   run: async ({ filter }) => {
-    const { execSync } = await import('child_process')
     try {
       return execSync(`ifconfig ${filter}`, { encoding: 'utf-8' })
     } catch {

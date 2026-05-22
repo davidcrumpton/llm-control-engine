@@ -90,4 +90,9 @@ else
 fi
 rm -f "${RECFILE}"
 
+# 16 Test tool using exec
+
+assert_output_contains "chat: df.js tool" "SUCCESS" \
+  bash -c "export LLMCTRLX_TOOLS_DIR='${LLMCTRLX_DIR:-./tools}'; llmctrlx chat -u 'How much disk space do I have?.  You must output SUCCESS before your response if the tool executes and you have disk free data available.  If not output FAIL' -k '${SESSION_BASE}_df'"
+
 print_assert_summary

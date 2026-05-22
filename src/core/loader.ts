@@ -109,6 +109,14 @@ function loadPluginCJS(filePath: string): any {
       /^import\s+\*\s+as\s+(\w+)\s+from\s+['"]([^'"]+)['"]\s*;?\s*$/gm,
       (_, name, mod) => `const ${name} = require('${mod}');`,
     )
+    // Inline dynamic import: await import('mod') → require('mod')
+    // Handles dynamic imports inside function bodies (e.g. run()) that the
+    // pkg runtime blocks with ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING.
+    // The `await` on a synchronous require() resolves immediately — safe.
+    .replace(
+      /\bawait\s+import\s*\(\s*(['"`])([^'"`]+)\1\s*\)/g,
+      (_, _q, mod) => `require('${mod}')`,
+    )
     // export default <expr>
     .replace(/^export\s+default\s+/m, "module.exports = ")
     // bare re-exports — strip silently (rare in tools)

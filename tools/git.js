@@ -1,7 +1,9 @@
+import { execSync } from 'child_process'
+
 export default {
   name: 'git',
   description: 'Get git repo info',
-  version: 'v1.0.0',
+  version: 'v1.0.1',
   tags: ['git', 'code'],
   parameters: {
     type: 'object',
@@ -11,7 +13,6 @@ export default {
     required: ['repo']
   },
   run: async ({ repo }) => {
-    const { execSync } = await import('child_process')
     try {
       return execSync(`git log -n 1`, { encoding: 'utf-8' })
     } catch {

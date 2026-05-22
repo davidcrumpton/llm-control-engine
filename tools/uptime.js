@@ -1,11 +1,12 @@
+import { execSync } from 'child_process'
+
 export default {
   name: 'uptime',
   description: 'Get system uptime',
-  version: 'v1.0.0',
+  version: 'v1.0.1',
   tags: ['os', 'system'],
   parameters: { type: 'object', properties: {} },
   run: async () => {
-    const { execSync } = await import('child_process')
     return execSync('uptime').toString()
   }
 }

@@ -30,20 +30,6 @@ This creates the `llmctrlx` executable in your global npm bin path.
 
 ### Completion Installation Information
 
-#### Automatic Installation
-
-Use the provided installer script:
-
-```bash
-# Install for your current shell
-node install-completion.ts
-
-# Or specify a shell
-node install-completion.ts bash
-node install-completion.ts zsh
-node install-completion.ts fish
-```
-
 #### Manual Installation
 
 Generate the completion script for your shell:

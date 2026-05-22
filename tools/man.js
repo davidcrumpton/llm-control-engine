@@ -1,7 +1,9 @@
+import { execSync } from 'child_process'
+
 export default {
   name: 'man',
   description: 'Get a specific section of a man page',
-  version: 'v1.0.0',
+  version: 'v1.0.1',
   tags: ['os', 'system'],
   policies: { maxCalls: 2, requires: ['whatis'] },
   parameters: {
@@ -13,7 +15,6 @@ export default {
     required: ['command']
   },
   run: async ({ command, section }) => {
-    const { execSync } = await import('child_process')
 
     try {
       const output = execSync(`man ${command} | col -b`, { encoding: 'utf-8' })
