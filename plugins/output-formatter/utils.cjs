@@ -1,22 +1,18 @@
-// plugins/output-formatter/utils.js
+// plugins/output-formatter/utils.cjs
 let yaml;
 try {
-  yaml = (await import('js-yaml')).default;
+  yaml = require('js-yaml');
 } catch {
   yaml = null;
 }
 
-export function detectFormat(ctx) {
+function detectFormat(ctx) {
   const meta = ctx.data.requestMeta || {};
 
-  // CLI flag: --format json
   if (meta.flags?.format) return meta.flags.format;
   if (meta.flags?.json) return 'json';
-
-  // Environment variable
   if (process.env.LLMCTRLX_FORMAT) return process.env.LLMCTRLX_FORMAT;
 
-  // Prompt hints
   const p = String(ctx?.data?.prompt || '').toLowerCase();
   if (p.includes('format as json')) return 'json';
   if (p.includes('format as yaml')) return 'yaml';
@@ -27,7 +23,7 @@ export function detectFormat(ctx) {
   return null;
 }
 
-export async function applyFormat(format, text) {
+async function applyFormat(format, text) {
   switch (format) {
     case 'json':
       return forceJson(text);
@@ -35,7 +31,7 @@ export async function applyFormat(format, text) {
       if (yaml) {
         return yaml.dump(JSON.parse(forceJson(text)));
       } else {
-        return forceJson(text); // fallback to json
+        return forceJson(text);
       }
     case 'markdown':
       return ensureMarkdown(text);
@@ -52,14 +48,10 @@ function forceJson(text) {
   try {
     return JSON.stringify(JSON.parse(text), null, 2);
   } catch {
-    // Try to repair common JSON issues
-    const repaired = text
-      .replace(/(\w+):/g, '"$1":')
-      .replace(/'/g, '"');
+    const repaired = text.replace(/(\w+):/g, '"$1":').replace(/'/g, '"');
     try {
       return JSON.stringify(JSON.parse(repaired), null, 2);
     } catch {
-      // If still not JSON, treat as plain text and wrap in JSON
       return JSON.stringify({ response: text.trim() }, null, 2);
     }
   }
@@ -81,11 +73,14 @@ function toTable(text) {
       return [header, sep, ...rows].join('\n');
     }
     if (typeof obj === 'object') {
-      return Object.entries(obj)
-        .map(([k, v]) => `| ${k} | ${v} |`)
-        .join('\n');
+      return Object.entries(obj).map(([k, v]) => `| ${k} | ${v} |`).join('\n');
     }
   } catch {
     return text;
   }
 }
+
+module.exports = {
+  detectFormat,
+  applyFormat
+};

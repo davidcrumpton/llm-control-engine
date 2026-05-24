@@ -1,10 +1,10 @@
-// plugins/output-formatter/output-formatter.unified.js
-import { detectFormat, applyFormat } from './utils.js';
+// plugins/output-formatter/output-formatter.unified.plugin.cjs
+const { detectFormat, applyFormat } = require('./utils.cjs');
 
-export default {
+module.exports = {
   type: 'hook',
   name: 'output-formatter',
-  version: 'v1.0.1',
+  version: '1.1.0',
   description: 'Unified plugin version: formats model output into JSON, YAML, Markdown, tables, or minimal text.',
   tags: ['formatting', 'output', 'cli'],
 
@@ -23,12 +23,10 @@ export default {
     if (event !== 'response:filter') return {};
 
     const raw = data.content;
-
-    // 1. Detect format from context or plugin parameters
     const format = detectFormat({ data }) || parameters.defaultFormat;
+    
     if (!format || format === 'none') return {};
 
-    // 2. Apply formatting
     const formatted = await applyFormat(format, raw);
 
     return {

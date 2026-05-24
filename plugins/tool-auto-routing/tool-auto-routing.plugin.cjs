@@ -1,4 +1,4 @@
-// plugins/tool-auto-routing/tool-auto-routing.unified.plugin.js
+// plugins/tool-auto-routing/tool-auto-routing.unified.plugin.cjs
 const DEFAULT_ROUTING_RULES = {
   search: {
     keywords: ['search', 'find', 'lookup', 'query'],
@@ -17,21 +17,18 @@ const DEFAULT_ROUTING_RULES = {
   },
 };
 
-export default {
+module.exports = {
   type: 'hook',
   name: 'tool-auto-routing',
-  version: 'v1.0.0',
-  description: 'Unified plugin version: automatically routes prompts to appropriate tools based on keywords.',
+  version: '1.1.0',
+  description: 'Unified plugin version: automatically routes prompts to appropriate tools.',
   tags: ['routing', 'tools', 'automation'],
 
   parameters: {
     type: 'object',
     properties: {
       enabled: { type: 'boolean', default: true },
-      routingRules: {
-        type: 'object',
-        default: DEFAULT_ROUTING_RULES,
-      },
+      routingRules: { type: 'object', default: DEFAULT_ROUTING_RULES },
     },
   },
 
@@ -40,20 +37,13 @@ export default {
 
     const { prompt } = data;
 
-    // Check for routing triggers
-    for (const [action, rule] of Object.entries(parameters.routingRules)) {
-      const matches = rule.keywords.some(keyword =>
-        prompt.toLowerCase().includes(keyword.toLowerCase())
-      );
-
-      if (matches) {
-        // Rewrite prompt to explicitly request tool usage
-        const enhancedPrompt = `${rule.instruction}${prompt}`;
+    for (const rule of Object.values(parameters.routingRules)) {
+      if (rule.keywords.some(k => prompt.toLowerCase().includes(k))) {
         return {
           outcome: 'routed',
           data: {
             ...data,
-            prompt: enhancedPrompt,
+            prompt: `${rule.instruction}${prompt}`,
             routedToTool: rule.tool,
           },
         };

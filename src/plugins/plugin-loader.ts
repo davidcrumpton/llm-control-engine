@@ -13,11 +13,23 @@
  *   - Added a path-confinement check: every resolved plugin path must
  *     sit inside the declared scan root. This blocks symlink escapes and
  *     path-traversal attacks.
+ *
+ * pkg-snapshot compatibility:
+ *   - `import(dataUri)` and `vm.SourceTextModule` are both unavailable
+ *     inside a frozen pkg CJS snapshot. To work around this, plugin
+ *     validation is delegated to a Worker thread (plugin-worker.cjs)
+ *     which runs in a fresh Node.js context where dynamic import works
+ *     normally. The main thread re-imports the same data: URI after the
+ *     Worker confirms the plugin shape is valid.
  */
 
 import { readdir, stat, readFile } from "node:fs/promises";
 import { join, extname, resolve } from "node:path";
+import { Worker } from "node:worker_threads";
+import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 
+// // const require = createRequire(import.meta.url);
 import {
   HookPlugin,
   UnifiedPlugin,
@@ -34,7 +46,7 @@ import { HookManager, HookLogger } from "./hook-manager.js";
  * Verify that `target` is strictly inside `root` (no traversal / symlink
  * escape). Both paths are resolved to absolute form before comparison.
  *
- * @param {string} root  - The trusted base directory.
+ * @param {string} root   - The trusted base directory.
  * @param {string} target - The path to validate.
  * @throws {Error} if target lies outside root.
  */
@@ -47,6 +59,17 @@ function assertConfined(root: string, target: string): void {
       `Path traversal detected: '${target}' is outside the allowed root '${root}'.`,
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Worker result type
+// ---------------------------------------------------------------------------
+
+interface WorkerResult {
+  ok?: boolean;
+  kind?: "legacy" | "unified";
+  meta?: Record<string, string>;
+  error?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -119,6 +142,67 @@ function convertUnifiedToLegacy(unified: UnifiedPlugin): HookPlugin {
 }
 
 // ---------------------------------------------------------------------------
+// Worker-based import helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate a plugin's export shape via a Worker thread, then re-import the
+ * same data: URI in the main thread to obtain callable functions.
+ *
+ * Why a Worker?
+ * pkg freezes the V8 snapshot context so neither `import(dataUri)` nor
+ * `vm.SourceTextModule` are available inside the bundle. A Worker thread
+ * spawns a fresh Node.js context outside the snapshot where dynamic import
+ * works normally. The Worker returns only serialisable metadata; the main
+ * thread then performs its own import of the identical data: URI (which
+ * succeeds because the Worker's successful import warms the runtime's module
+ * cache).
+ *
+ * Security: the source has already been read and confined before this
+ * function is called. No additional file-system access occurs here.
+ *
+ * @param dataUri   - The `data:text/javascript;base64,…` URI to import.
+ * @param filePath  - Original file path (used only for error messages).
+ * @param workerPath - Absolute path to plugin-worker.cjs.
+ */
+async function importViaWorker(
+  dataUri: string,
+  filePath: string,
+  workerPath: string,
+): Promise<unknown> {
+  // Step 1: validate shape in Worker (works outside pkg snapshot).
+  const result = await new Promise<WorkerResult>((res) => {
+    const worker = new Worker(workerPath, { workerData: { dataUri } });
+    worker.once("message", (msg: WorkerResult) => res(msg));
+    worker.once("error", (err) =>
+      res({ error: `Worker error: ${String(err)}` }),
+    );
+  });
+
+  if (result.error || !result.ok || !result.meta) {
+    throw new Error(
+      `Plugin validation failed for '${filePath}': ${result.error ?? "invalid export shape"}`,
+    );
+  }
+
+  // Step 2: re-import in the main thread to get callable functions.
+  // This succeeds in dev/tsx/ESM contexts. In a fully frozen pkg snapshot
+  // where even the main thread cannot import data: URIs, consider running
+  // hook execution entirely inside Workers and messaging results back.
+  try {
+    const mod: unknown = await import(dataUri);
+    return mod;
+  } catch (err) {
+    throw new Error(
+      `Worker validated plugin '${filePath}' but main-thread re-import failed. ` +
+        `If running inside a pkg snapshot without ESM support, move hook ` +
+        `execution into the Worker and use postMessage to relay results. ` +
+        `Original error: ${String(err)}`,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // PluginLoader
 // ---------------------------------------------------------------------------
 
@@ -128,7 +212,7 @@ export interface LoaderOptions {
 }
 
 const DEFAULT_OPTIONS: Required<LoaderOptions> = {
-  extensions: [".ts", ".js"],
+  extensions: [".ts", ".js", ".cjs", ".mjs"],
   suffix: ".plugin",
 };
 
@@ -136,6 +220,7 @@ export class PluginLoader {
   private manager: HookManager;
   private logger: HookLogger;
   private options: Required<LoaderOptions>;
+  private workerPath: string;
 
   constructor(
     manager: HookManager,
@@ -150,6 +235,23 @@ export class PluginLoader {
       error: () => {},
     };
     this.options = { ...DEFAULT_OPTIONS, ...options };
+
+    // pkg-binary safe: inside a pkg CJS snapshot, import.meta.url is not a
+    // valid file:// URL so new URL(..., import.meta.url) throws ERR_INVALID_URL.
+    // __dirname is always correct in CJS and pkg-compiled binaries.
+    let workerPathResolved: string;
+    try {
+      const dir =
+        typeof __dirname !== "undefined"
+          ? __dirname
+          : fileURLToPath(new URL(".", import.meta.url));
+      workerPathResolved = join(dir, "plugin-worker.cjs");
+    } catch {
+      workerPathResolved = fileURLToPath(
+        new URL("./plugin-worker.cjs", import.meta.url),
+      );
+    }
+    this.workerPath = workerPathResolved;
   }
 
   /**
@@ -243,15 +345,18 @@ export class PluginLoader {
    *
    * Security: instead of writing transformed source to a temp file and then
    * importing that file (TOCTOU race), we encode the transformed source as a
-   * `data:text/javascript` URI and import it directly from memory.  No file
+   * `data:text/javascript` URI and import it directly from memory. No file
    * system interaction occurs after the initial `readFile`, so there is no
    * window for an attacker to swap in malicious content.
+   *
+   * pkg compatibility: the data: URI is first validated by a Worker thread
+   * (plugin-worker.cjs) which runs outside the frozen snapshot context.
+   * The main thread then re-imports the same URI to obtain callable functions.
    *
    * @param filePath - Absolute path to the plugin file.
    * @param rootDir  - The scan root; used for confinement assertion.
    */
   async loadPlugin(filePath: string, rootDir?: string): Promise<string | null> {
-    // Confinement: if a root is known, assert the file is inside it.
     if (rootDir) {
       try {
         assertConfined(rootDir, filePath);
@@ -264,35 +369,58 @@ export class PluginLoader {
     }
 
     try {
-      // Resolve the plugin-api import URL once.
-      const pluginApiUrl = await import.meta
-        .resolve("llmctrlx/plugin-api/hooks");
+      // ── Resolve plugin-api URL (pkg-binary safe) ─────────────────────────
+      // In a pkg-compiled binary, import.meta.resolve() returns a relative
+      // snapshot path like './plugin-worker.cjs' — not a valid URL.
+      // When that happens we skip the import rewrite; the bundled binary
+      // already includes llmctrlx/plugin-api/hooks so the external plugin
+      // can import it directly without substitution.
+      //Bypass the worker logic for .cjs files:
+      //Inside the loadPlugin method, intercept the file path before it reads the file and creates a data URI:
+      // ── Resolve plugin-api URL (pkg-binary safe) ─────────────────────────
 
-      // Read the plugin source — single file-system access, no race window.
+      // ── Skip rewriting for CommonJS plugins ──────────────────────────────
+      let plugin: unknown;
+      // NEW: Natively require CommonJS files
+      if (filePath.endsWith(".cjs")) {
+        const requireFn = createRequire(filePath);
+        const mod = requireFn(filePath);
+        plugin = mod.default ?? mod.plugin ?? mod;
+      }
+      let pluginApiUrl: string | null = null;
+
+      try {
+        const resolved = await import.meta.resolve("llmctrlx/plugin-api/hooks");
+        new URL(resolved); // throws if not a valid absolute URL
+        pluginApiUrl = resolved;
+      } catch {
+        // pkg binary or unavailable — skip rewriting
+      }
+
+      // NEW: Natively require CommonJS files (pkg fully supports this at runtime)
+      if (filePath.endsWith(".cjs")) {
+        const mod = require(filePath);
+        plugin = mod.default ?? mod.plugin ?? mod;
+      }
+
       let content = await readFile(filePath, "utf8");
 
-      // Rewrite llmctrlx package imports to absolute file URLs.
-      content = content.replace(
-        /from ['"]llmctrlx\/plugin-api\/hooks['"]/g,
-        `from '${pluginApiUrl}'`,
-      );
+      if (pluginApiUrl) {
+        content = content.replace(
+          /from ['"]llmctrlx\/plugin-api\/hooks['"]/g,
+          `from '${pluginApiUrl}'`,
+        );
+      }
 
       // Rewrite relative imports to absolute file URLs.
       const pluginDir = resolve(filePath, "..");
       const relativeImportRegex = /from ['"](\.[^'"]*)['"]/g;
 
-      // We use a synchronous-ish replacement here, but we need to check file existence.
-      // Since this is ESM, we can't easily do async inside replace.
-      // However, we can pre-scan or just try both extensions in the URL.
-      // Better: Use a custom resolver or just assume if .js fails, .ts might work.
-      // Actually, we can use a helper to find the actual file on disk.
       const matches = [...content.matchAll(relativeImportRegex)];
       for (const match of matches) {
         const relativePath = match[1];
         let absolutePath = resolve(pluginDir, relativePath);
 
-        // If we are loading a .ts file, and the import is .js, but the .js doesn't exist,
-        // try to see if a .ts version exists.
         if (filePath.endsWith(".ts") && absolutePath.endsWith(".js")) {
           try {
             await stat(absolutePath);
@@ -302,12 +430,11 @@ export class PluginLoader {
               await stat(tsPath);
               absolutePath = tsPath;
             } catch {
-              // Both fail? Keep .js and let Node throw its own error.
+              // Keep .js and let Node throw its own error.
             }
           }
         }
 
-        // Confine intra-plugin relative imports.
         if (rootDir) {
           const base = resolve(rootDir);
           if (!resolve(absolutePath).startsWith(base + "/")) {
@@ -320,16 +447,25 @@ export class PluginLoader {
         content = content.replace(match[0], `from 'file://${absolutePath}'`);
       }
 
-      // ── Import from a data: URI (no temp file, no TOCTOU) ────────────────
-      // Encode as base64 so the source is not interpreted as a URL.
       const base64Source = Buffer.from(content, "utf8").toString("base64");
       const dataUri = `data:text/javascript;base64,${base64Source}`;
 
-      const mod: unknown = await import(dataUri);
-      const plugin: unknown =
-        (mod as Record<string, unknown>).default ??
-        (mod as Record<string, unknown>).plugin ??
-        mod;
+      // Inside loadPlugin(filePath)
+      if (filePath.endsWith(".cjs")) {
+        // Use CommonJS require directly for .cjs files
+        const req = createRequire(filePath);
+        plugin = req(filePath);
+      } else {
+        const mod: unknown = await importViaWorker(
+          dataUri,
+          filePath,
+          this.workerPath,
+        );
+        plugin =
+          (mod as Record<string, unknown>).default ??
+          (mod as Record<string, unknown>).plugin ??
+          mod;
+      }
 
       let hookPlugin: HookPlugin;
 

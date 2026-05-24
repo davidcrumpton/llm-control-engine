@@ -3,7 +3,7 @@ import { readdir, readFile } from "fs/promises";
 import path from "path";
 import type { CLIOptions } from "../types.js";
 
-const PLUGIN_EXT_REGEX = /\.plugin\.(ts|js)$/;
+const PLUGIN_EXT_REGEX = /\.plugin\.(ts|cjs)$/;
 
 /**
  * Discover plugin files in a directory
@@ -59,9 +59,12 @@ async function readPluginMetadata(filePath: string) {
   try {
     const content = await readFile(filePath, "utf-8");
 
-    // Improved description match: looks for JSDoc or standard comments
-    const descMatch = content.match(/\/\*\*?[\s\S]*?\*\s*(.+?)(?:\n|\*\/)/);
-    const versionMatch = content.match(/version[:\s]+['"`]([^'"`\s]+)['"`]/i);
+    let descMatch = content.match(/description[:\s]+['"`](.+?)['"`]/i);
+    if (!descMatch) {
+      descMatch = content.match(/\/\*\*?[\s\S]*?\*\s*(.+?)(?:\n|\*\/)/);
+    }
+
+    const versionMatch = content.match(/version[:\s]+['"`](.+?)['"`]/i);
 
     return {
       description: descMatch ? descMatch[1].trim() : "No description",

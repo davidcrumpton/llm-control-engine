@@ -66,7 +66,7 @@ This is the plugin system used by all existing plugins in the repository.
 export default {
   meta: {
     name: 'my-plugin',
-    version: '1.0.0',
+    version: '1.1.0',
     description: 'Does something useful.',
     author: 'Your Name',
   },
@@ -123,7 +123,7 @@ import { HookPriority } from 'llmctrlx/plugin-api/hooks';
 
 // HookPriority.SYSTEM  // 0 - Reserved for engine internals
 // HookPriority.HIGH    // 100 - High-priority plugins (security, auth)
-// HookPriority.NORMAL  // 500 - Default priority
+// HookPriority.NORMAL  // HookPriority.NORMAL - Default priority
 // HookPriority.LOW     // 900 - Low-priority plugins (analytics, logging)
 // HookPriority.MONITOR // 1000 - Monitor-only, runs last
 ```
@@ -159,7 +159,7 @@ const DEFAULT_CONFIG = {
 export default {
   meta: {
     name: 'prompt-guard',
-    version: '1.0.0',
+    version: '1.1.0',
     description:
       'Blocks prompts matching configurable deny-patterns (bail pattern demo).',
     author: 'LLM Control Engine',
@@ -258,7 +258,7 @@ Legacy:
 ```js
 meta: {
   name: 'prompt-guard',
-  version: '1.0.0',
+  version: '1.1.0',
   description: '...',
 }
 ```

@@ -1,31 +1,26 @@
-// plugins/output-formatter/output-formatter.plugin.js
-import { HookPriority } from 'llmctrlx/plugin-api/hooks';
-import { detectFormat, applyFormat } from './utils.js';
+// plugins/output-formatter/output-formatter.plugin.cjs
+// const { HookPriority } = require('llmctrlx/plugin-api/hooks');
+const { detectFormat, applyFormat } = require('./utils.cjs'); // Ensure utils is also .cjs
 
-export default {
+module.exports = {
   meta: {
     name: 'output-formatter',
-    version: '1.0.1',
+    version: '1.1.0',
     description: 'Transforms model output into Markdown, JSON, YAML, tables, or minimal text.',
     author: 'LLM Control Engine',
   },
 
-  install(tap) {
+
+install(tap) {
     tap(
       'response:filter',
       async (ctx) => {
         const raw = ctx.data.output;
-
-        // 1. Detect desired format (CLI flags, env vars, prompt hints)
         const format = detectFormat(ctx);
         if (!format) return {};
-
-        // 2. Apply formatting
         const formatted = await applyFormat(format, raw);
-
         return { data: { output: formatted } };
-      },
-      HookPriority.NORMAL
+      }
     );
   },
 };

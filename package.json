@@ -1,6 +1,6 @@
 {
   "name": "llmctrlx",
-  "version": "0.8.33",
+  "version": "0.8.36",
   "description": "A modular LLM control engine with dynamic tool loading and multi-provider support",
   "type": "module",
   "engines": {
@@ -45,22 +45,19 @@
     }
   },
   "bin": {
-    "llmctrlx": "llmctrlx.ts"
+    "llmctrlx": "dist/llmctrlx.cjs"
   },
   "man": "./man/llmctrlx.1",
   "pkg": {
-    "scripts": [
-      "llmctrlx.ts"
-    ],
-    "assets": [
-      "llmctrlx.ts",
-      "node_modules/undici/**/*"
-    ],
-    "targets": [
-      "node20-linux-x64",
-      "node20-macos-x64"
-    ]
-  },
+      "assets": [
+        "node_modules/undici/**/*",
+        "dist/plugin-worker.cjs"
+      ],
+      "targets": [
+        "node20-linux-x64",
+        "node20-macos-x64"
+      ]
+    },
   "files": [
     "dist",
     "llmctrlx.ts",
@@ -72,9 +69,7 @@
   ],
   "scripts": {
     "build:for_npm_link": "pkg llmctrlx.ts --targets node18-linux-x64,node18-macos-x64 --out-path dist/",
-    "build:bin": "esbuild llmctrlx.ts --inject:polyfill.js --bundle --packages=external --platform=node --format=cjs --outfile=dist/llmctrlx.cjs && npx @yao-pkg/pkg dist/llmctrlx.cjs --targets node20-linux-x64,node20-macos-x64 --out-path dist/",
-    "build": "tsc -p tsconfig.build.json && npm run build:bin",
-    "build:clean": "rm -rf dist && npm run build",
+    "build:bin": "esbuild llmctrlx.ts --inject:polyfill.js --bundle --packages=external --platform=node --format=cjs --outfile=dist/llmctrlx.cjs && cp src/plugins/plugin-worker.cjs dist/ && npx @yao-pkg/pkg . --out-path dist/",    "build:clean": "rm -rf dist && npm run build",
     "build:deb": "npm run build && fpm -s dir -t deb -n llmctrlx -v $(node -p \"require('./package.json').version\") dist/llmctrlx-linux=/usr/local/bin/llmctrlx man/llmctrlx.1=/usr/share/man/man1/llmctrlx.1 README.md=/usr/share/doc/llmctrlx/README.md LICENSE=/usr/share/doc/llmctrlx/LICENSE plugins/=/usr/local/share/llmctrlx/plugins/ tools/=/usr/local/share/llmctrlx/tools/ examples/=/usr/local/share/llmctrlx/examples/",
     "build:rpm": "npm run build && fpm -s dir -t rpm -n llmctrlx -v $(node -p \"require('./package.json').version\") dist/llmctrlx-linux=/usr/local/bin/llmctrlx man/llmctrlx.1=/usr/share/man/man1/llmctrlx.1 README.md=/usr/share/doc/llmctrlx/README.md LICENSE=/usr/share/doc/llmctrlx/LICENSE plugins/=/usr/local/share/llmctrlx/plugins/ tools/=/usr/local/share/llmctrlx/tools/ examples/=/usr/local/share/llmctrlx/examples/",
     "build:packages": "npm run build:deb && npm run build:rpm",
