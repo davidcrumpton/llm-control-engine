@@ -105,12 +105,12 @@ You can also copy only the plugins you want into a local directory:
 
 ```bash
 mkdir -p ~/.llmctrlx_plugins
-cp /usr/local/share/llmctrlx/plugins/logger.plugin.js ~/.llmctrlx_plugins/
-cp /usr/local/share/llmctrlx/plugins/prompt-guard.plugin.js ~/.llmctrlx_plugins/
+cp /usr/local/share/llmctrlx/plugins/logger.plugin.cjs ~/.llmctrlx_plugins/
+cp /usr/local/share/llmctrlx/plugins/prompt-guard.plugin.cjs ~/.llmctrlx_plugins/
 export LLMCTRLX_PLUGINS_DIR="~/.llmctrlx_plugins"
 ```
 
-`logger.plugin.js` and `prompt-guard.plugin.js` are great plugins to start off with.
+`logger.plugin.cjs` and `prompt-guard.plugin.cjs` are great plugins to start off with.
 
 To explicitly disable plugins even when `LLMCTRLX_PLUGINS_DIR` is set, use the `-x` flag:
 

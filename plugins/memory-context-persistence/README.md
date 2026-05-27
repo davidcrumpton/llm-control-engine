@@ -34,8 +34,8 @@ When processing a prompt, the plugin:
 
 ## Files
 
-- `memory-context-persistence.plugin.js` — legacy plugin entrypoint
-- `memory-context-persistence.unified.plugin.js` — unified plugin entrypoint
+- `memory-context-persistence.plugin.cjs` — legacy plugin entrypoint
+- `memory-context-persistence.unified.plugin.cjs` — unified plugin entrypoint
 
 ## Implementation
 

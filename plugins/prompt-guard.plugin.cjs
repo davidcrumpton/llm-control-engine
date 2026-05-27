@@ -1,4 +1,4 @@
-// plugins/prompt-guard.plugin.js
+// plugins/prompt-guard.plugin.cjs
 
 
 module.exports = {

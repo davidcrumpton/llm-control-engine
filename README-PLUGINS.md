@@ -11,7 +11,7 @@ The LLM Control Engine currently supports **two plugin architectures**:
 1. **Legacy Hook‑Based Plugin System**  
    - This is the system used by all example plugins in the repository today  
    - This is the system loaded by `PluginLoader`  
-   - This is the system used by `prompt-guard.plugin.js`  
+   - This is the system used by `prompt-guard.plugin.cjs`  
    - This system is **stable and fully supported**
 
 2. **Unified Plugin Specification (Experimental)**  

@@ -28,8 +28,8 @@ When a prompt mentions a supported technology, the plugin prepends relevant know
 
 ## Files
 
-- `knowledge-pack-loader.plugin.js` — legacy plugin entrypoint
-- `knowledge-pack-loader.unified.plugin.js` — unified plugin entrypoint
+- `knowledge-pack-loader.plugin.cjs` — legacy plugin entrypoint
+- `knowledge-pack-loader.unified.plugin.cjs` — unified plugin entrypoint
 
 ## Implementation
 

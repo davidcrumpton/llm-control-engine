@@ -33,8 +33,8 @@ The unified version allows customization of:
 
 ## Files
 
-- `prompt-sanitizer-debiaser.plugin.js` — legacy plugin entrypoint
-- `prompt-sanitizer-debiaser.unified.plugin.js` — unified plugin entrypoint
+- `prompt-sanitizer-debiaser.plugin.cjs` — legacy plugin entrypoint
+- `prompt-sanitizer-debiaser.unified.plugin.cjs` — unified plugin entrypoint
 
 ## Implementation
 

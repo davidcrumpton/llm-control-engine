@@ -31,8 +31,8 @@ class Llmctrlx < Formula
 
       To use the bundled plugins, copy them to your local plugins directory:
         mkdir -p ~/.llmctrlx_plugins
-        cp #{pkgshare}/plugins/logger.plugin.js ~/.llmctrlx_plugins/
-        cp #{pkgshare}/plugins/prompt-guard.plugin.js ~/.llmctrlx_plugins/
+        cp #{pkgshare}/plugins/logger.plugin.cjs ~/.llmctrlx_plugins/
+        cp #{pkgshare}/plugins/prompt-guard.plugin.cjs ~/.llmctrlx_plugins/
     EOS
   end
 

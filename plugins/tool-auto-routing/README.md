@@ -18,8 +18,8 @@ When a routing keyword is detected, the plugin prepends a tool usage instruction
 
 ## Files
 
-- `tool-auto-routing.plugin.js` — legacy plugin entrypoint
-- `tool-auto-routing.unified.plugin.js` — unified plugin entrypoint
+- `tool-auto-routing.plugin.cjs` — legacy plugin entrypoint
+- `tool-auto-routing.unified.plugin.cjs` — unified plugin entrypoint
 
 ## Implementation
 

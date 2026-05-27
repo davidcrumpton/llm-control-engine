@@ -29,8 +29,8 @@ This plugin listens on the `inference:pre` hook and analyzes prompts to recommen
 
 ## Files
 
-- `model-switcher.plugin.js` — legacy plugin entrypoint
-- `model-switcher.unified.plugin.js` — unified plugin entrypoint
+- `model-switcher.plugin.cjs` — legacy plugin entrypoint
+- `model-switcher.unified.plugin.cjs` — unified plugin entrypoint
 
 ## Implementation
 

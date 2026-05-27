@@ -27,8 +27,8 @@ Automatically detects CoT preferences from prompts:
 
 ## Files
 
-- `chain-of-thought-controller.plugin.js` — legacy plugin entrypoint
-- `chain-of-thought-controller.unified.plugin.js` — unified plugin entrypoint
+- `chain-of-thought-controller.plugin.cjs` — legacy plugin entrypoint
+- `chain-of-thought-controller.unified.plugin.cjs` — unified plugin entrypoint
 
 ## Implementation
 

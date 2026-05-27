@@ -28,7 +28,7 @@ It uses `./utils.js` to detect the requested format and apply the transformation
 
 ## Files
 
-- `output-formatter.plugin.js` — plugin entrypoint
+- `output-formatter.plugin.cjs` — plugin entrypoint
 - `utils.js` — format detection and transformation helpers
 
 ## Implementation

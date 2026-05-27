@@ -24,8 +24,8 @@ After inference completes, the plugin:
 
 ## Files
 
-- `self-critique-refinement.plugin.js` — legacy plugin entrypoint
-- `self-critique-refinement.unified.plugin.js` — unified plugin entrypoint
+- `self-critique-refinement.plugin.cjs` — legacy plugin entrypoint
+- `self-critique-refinement.unified.plugin.cjs` — unified plugin entrypoint
 
 ## Implementation
 

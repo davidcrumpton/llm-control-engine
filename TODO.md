@@ -2,7 +2,7 @@
 
 ## The thinking abortion bug
 
-The thinking abortion bug occurs when the model generates the thinking process, but then, instead of providing the final answer, it generates a new thought process to "continue" the thinking. This results in the model never actually providing the final answer.
+The thinking abortion bug occurs when the model generates the thinking process, but then, instead of providing the final answer, it generates a new thought process to "continue" the thinking. This results in the model never actually providing the final answer.  Testing shows this tends to occur with Gemini 4 models.
 
 ### Settings
 

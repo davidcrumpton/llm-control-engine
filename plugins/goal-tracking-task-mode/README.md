@@ -33,8 +33,8 @@ Checks if responses are relevant to current goals and refocuses if needed.
 
 ## Files
 
-- `goal-tracking-task-mode.plugin.js` — legacy plugin entrypoint
-- `goal-tracking-task-mode.unified.plugin.js` — unified plugin entrypoint
+- `goal-tracking-task-mode.plugin.cjs` — legacy plugin entrypoint
+- `goal-tracking-task-mode.unified.plugin.cjs` — unified plugin entrypoint
 
 ## Implementation
 

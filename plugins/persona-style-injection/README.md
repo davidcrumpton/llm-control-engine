@@ -31,8 +31,8 @@ Or custom instructions:
 
 ## Files
 
-- `persona-style-injection.plugin.js` — legacy plugin entrypoint
-- `persona-style-injection.unified.plugin.js` — unified plugin entrypoint
+- `persona-style-injection.plugin.cjs` — legacy plugin entrypoint
+- `persona-style-injection.unified.plugin.cjs` — unified plugin entrypoint
 
 ## Implementation
 

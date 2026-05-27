@@ -169,15 +169,15 @@ System-wide DEB/RPM/Homebrew installations include a collection of plugins in
 You can copy only the plugins you want into a local directory:
 .Bd -literal -offset indent
 mkdir -p ~/llmctrlx/default/plugins
-cp /usr/local/share/llmctrlx/plugins/logger.plugin.js ~/llmctrlx/default/plugins/
-cp /usr/local/share/llmctrlx/plugins/prompt-guard.plugin.js ~/llmctrlx/default/plugins/
+cp /usr/local/share/llmctrlx/plugins/logger.plugin.cjs ~/llmctrlx/default/plugins/
+cp /usr/local/share/llmctrlx/plugins/prompt-guard.plugin.cjs ~/llmctrlx/default/plugins/
 export LLMCTRLX_PLUGINS_DIR="~/llmctrlx/default/plugins"
 .Ed
 .Pp
 The
-.Pa logger.plugin.js
+.Pa logger.plugin.cjs
 and
-.Pa prompt-guard.plugin.js
+.Pa prompt-guard.plugin.cjs
 plugins are great to start off with.
 .Pp
 To explicitly disable plugins even when
