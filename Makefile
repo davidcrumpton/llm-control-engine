@@ -66,8 +66,13 @@ docker-logs: ## Tail docker compose logs
 	docker compose logs -f
 
 # -- Release -------------------------------------------------------------------
-release: check build ## Run all checks then trigger release
-	npm run release
+release: check build ## Verify everything, then print the tagging command
+	@echo ""
+	@echo "Everything passed. Releases are cut from a tag, and only from a tag."
+	@echo "The tag must match package.json, or the release workflow will refuse it:"
+	@echo ""
+	@echo "  git tag v$$(node -p \"require('./package.json').version\") && git push github --tags"
+	@echo ""
 
 pack-dry: ## Preview npm pack contents
 	npm pack --dry-run

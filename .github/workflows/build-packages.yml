@@ -1,11 +1,12 @@
 name: Build DEB and RPM Packages
 
+# Continuous check that packaging still works on main and in PRs. Tag builds are
+# handled by release.yml, which attaches these packages to the release instead
+# of leaving them as artifacts.
 on:
   push:
     branches:
       - main
-    tags:
-      - "v*.*.*"
   pull_request:
     branches:
       - main

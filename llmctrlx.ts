@@ -53,7 +53,12 @@ const _dirname =
 // Defaults
 // --------------------
 const APP_NAME = 'llmctrlx'
-const APP_VERSION = '0.8.36'
+// Injected by scripts/bundle.mjs from package.json, which is the single source of
+// truth for the version. The fallback only applies when running from source
+// (npm run dev / node), where the define is absent.
+declare const __APP_VERSION__: string | undefined
+const APP_VERSION =
+  typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.0.0-dev'
 const APP_TAGLINE =
   'A local LLM orchestration and execution CLI with tool and plugin support'
 const APP_DESCRIPTION =

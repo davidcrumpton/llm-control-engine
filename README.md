@@ -525,7 +525,19 @@ llmctrlx completion --shell fish
 
 The binaries work as standalone executables without requiring Node.js to be installed on the target system.
 
-Made changes.
+## Releasing
+
+Releases are cut from a tag, and only from a tag. `.github/workflows/release.yml` does the rest: it builds the binary natively on each target platform, smoke tests it, and publishes tarballs plus `.deb` and `.rpm` to the GitHub release.
+
+```bash
+make release                                  # lint, typecheck, tests, build
+git tag "v$(node -p "require('./package.json').version')"
+git push github --tags
+```
+
+- The tag must match `package.json`. The version is baked into the binary at build time, so a mismatch fails the workflow rather than publishing a mislabelled release.
+- `main` being ahead of the newest tag is normal. A release is for something a user installs and runs, so documentation-only changes ride along with the next code release instead of spending a version number.
+- Each platform tarball ships with a `.sha256` file; the Homebrew formula is written against those checksums.
 
 ## Session Usage Example
 

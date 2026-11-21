@@ -1,6 +1,6 @@
 {
   "name": "llmctrlx",
-  "version": "0.8.36",
+  "version": "0.8.37",
   "description": "A modular LLM control engine with dynamic tool loading and multi-provider support",
   "type": "module",
   "engines": {
@@ -49,17 +49,17 @@
   },
   "man": "./man/llmctrlx.1",
   "pkg": {
-      "assets": [
-        "node_modules/undici/**/*",
-        "dist/plugin-worker.cjs"
-      ],
-      "targets": [
-        "node20-macos-arm64",
-        "node20-macos-x64",
-        "node20-linux-arm64",
-        "node20-linux-x64"
-      ]
-    },
+    "assets": [
+      "node_modules/undici/**/*",
+      "dist/plugin-worker.cjs"
+    ],
+    "targets": [
+      "node20-macos-arm64",
+      "node20-macos-x64",
+      "node20-linux-arm64",
+      "node20-linux-x64"
+    ]
+  },
   "files": [
     "dist",
     "llmctrlx.ts",
@@ -71,7 +71,7 @@
   ],
   "scripts": {
     "build:for_npm_link": "pkg llmctrlx.ts --targets node18-linux-x64,node18-macos-x64 --out-path dist/",
-    "build:bin": "esbuild llmctrlx.ts --inject:polyfill.js --bundle --packages=external --platform=node --format=cjs --outfile=dist/llmctrlx.cjs && cp src/plugins/plugin-worker.cjs dist/ && node scripts/build-bin.mjs",
+    "build:bin": "node scripts/bundle.mjs && cp src/plugins/plugin-worker.cjs dist/ && node scripts/build-bin.mjs",
     "build:clean": "rm -rf dist && npm run build",
     "build:deb": "npm run build && fpm -s dir -t deb -n llmctrlx -v $(node -p \"require('./package.json').version\") dist/llmctrlx-linux=/usr/local/bin/llmctrlx man/llmctrlx.1=/usr/share/man/man1/llmctrlx.1 README.md=/usr/share/doc/llmctrlx/README.md LICENSE=/usr/share/doc/llmctrlx/LICENSE plugins/=/usr/local/share/llmctrlx/plugins/ tools/=/usr/local/share/llmctrlx/tools/ examples/=/usr/local/share/llmctrlx/examples/",
     "build:rpm": "npm run build && fpm -s dir -t rpm -n llmctrlx -v $(node -p \"require('./package.json').version\") dist/llmctrlx-linux=/usr/local/bin/llmctrlx man/llmctrlx.1=/usr/share/man/man1/llmctrlx.1 README.md=/usr/share/doc/llmctrlx/README.md LICENSE=/usr/share/doc/llmctrlx/LICENSE plugins/=/usr/local/share/llmctrlx/plugins/ tools/=/usr/local/share/llmctrlx/tools/ examples/=/usr/local/share/llmctrlx/examples/",
@@ -91,7 +91,6 @@
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build:clean && npm run test && npm run lint",
     "prepack": "npm run build",
-    "release": "semantic-release",
     "docker:build": "docker build -t llm-engine .",
     "docker:run": "docker compose up -d",
     "docker:down": "docker compose down",
@@ -109,9 +108,6 @@
   },
   "devDependencies": {
     "@eslint/js": "~9.27.0",
-    "@semantic-release/changelog": "^6.0.3",
-    "@semantic-release/git": "^10.0.1",
-    "@semantic-release/gitlab": "^13.2.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.19.39",
     "@vitest/coverage-v8": "^2.1.0",
@@ -121,7 +117,6 @@
     "memfs": "^4.57.2",
     "pkg": "^5.8.1",
     "prettier": "^3.8.3",
-    "semantic-release": "^24.2.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.59.0",

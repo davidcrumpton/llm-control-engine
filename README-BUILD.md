@@ -1,7 +1,5 @@
 # Quick Start Guide
 
-Use the commands below to get up and running. All commands assume you have dropped the release kit files into your repository root.
-
 ## Local Development
 
 `make install`        # Install dependencies
@@ -20,11 +18,24 @@ Use the commands below to get up and running. All commands assume you have dropp
 
 ## CI/CD
 
-Push to GitLab. The pipeline automatically runs lint → test → build → Docker. Releases are triggered manually on main via the release:npm job.
+Everything runs on GitHub Actions; there is no other CI.
 
-## Publishing
+- `.github/workflows/build-packages.yml` — on push to `main` and on pull requests: builds the DEB and RPM to prove packaging still works.
+- `.github/workflows/release.yml` — on a `v*.*.*` tag: builds the standalone binary natively on macOS arm64, macOS x64, Linux arm64 and Linux x64, smoke tests each one, and publishes them as release assets.
 
-`make release`        # Semantic release: version bump, changelog, npm publish, GitLab release
+## Releasing
+
+Releases are cut from a tag, and only from a tag.
+
+```sh
+make release                                   # verify: lint, typecheck, tests, build
+git tag "v$(node -p "require('./package.json').version')"
+git push github --tags
+```
+
+The tag must match the version in `package.json` — the binary bakes that version in at build time, so the release workflow fails rather than publish a mislabelled release.
+
+A release is for something a user installs and runs. Documentation-only changes do not get their own tag; they sit on `main` and ship with the next code release.
 
 ## Prerequisites
 
@@ -32,21 +43,17 @@ Push to GitLab. The pipeline automatically runs lint → test → build → Dock
 
 `Docker 27+` — for the multi-stage build and Compose v2
 
-`npm account` — with an access token configured as NPM_TOKEN in GitLab
+`fpm` — only needed to build DEB/RPM packages (`gem install fpm`)
 
-## CI variables
+## Testing
 
-GitLab Container Registry — enabled on your project for Docker image pushes
+`npm test` — run the suite once
 
-## NPM Extras
+`npm run test:coverage` — run with a v8 coverage report
 
-Run `npm test` to verify the scaffold compiles and all placeholder assertions pass.
-Run `npm run` test:coverage to check that your source modules meet the 80/75/80/80 coverage thresholds.
-Run `npm run` test:ui for the interactive Vitest dashboard in your browser.
+`npm run test:watch` — watch mode
 
 ## Installing
-
-Installation can vary by operating system but this works on some things.
 
 ### Local Install (not publishing to npm)
 
@@ -57,17 +64,29 @@ Installation can vary by operating system but this works on some things.
    npm link
 ```
 
-### Local Install (publishing to npm)
+### From a GitHub release
+
+Download the tarball for your platform from the releases page and put the
+`llmctrlx` binary on your `PATH`:
 
 ```sh
-   make install
-   make build:deb
-   make build:rpm
-   # use su/sudo/doas in case you don't have system permission
-   sudo dpkg -i dist/llmctrlx*.deb 
-   sudo rpm -i dist/llmctrlx*.rpm
+   tar -xzf llmctrlx-<version>-macos-arm64.tar.gz
+   sudo cp llmctrlx-<version>-macos-arm64/llmctrlx /usr/local/bin/llmctrlx
+```
 
-   # MacOS
+### From DEB/RPM
+
+```sh
+   npm run build:deb
+   npm run build:rpm
+   # use su/sudo/doas in case you don't have system permission
+   sudo dpkg -i dist/llmctrlx*.deb
+   sudo rpm -i dist/llmctrlx*.rpm
+```
+
+### Manual macOS install from a local build
+
+```sh
    chmod +x dist/llmctrlx-macos
    sudo cp dist/llmctrlx-macos /usr/local/bin/llmctrlx
 ```

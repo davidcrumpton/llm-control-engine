@@ -1,0 +1,172 @@
+name: Release
+
+# Releases are cut from a tag, and only from a tag. `main` is free to run ahead
+# of the newest tag; pushing to main builds and tests but never publishes.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+# Never publish two releases for the same tag at once.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  binaries:
+    name: binary (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # pkg fabricates a binary by patching a base Node build and executing
+          # it, so it cannot build for a foreign CPU without emulation. Each
+          # target is therefore built natively on a runner with the same arch.
+          - os: macos-14 # arm64
+            platform: macos-arm64
+          - os: macos-13 # x64
+            platform: macos-x64
+          - os: ubuntu-24.04 # x64
+            platform: linux-x64
+          - os: ubuntu-24.04-arm # arm64
+            platform: linux-arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build standalone binary
+        run: npm run build
+
+      - name: Smoke test binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          bins=(dist/llmctrlx-*)
+          if [ "${#bins[@]}" -ne 1 ]; then
+            echo "::error::expected exactly one binary in dist/, found: ${bins[*]}"
+            exit 1
+          fi
+          bin="${bins[0]}"
+
+          # The version is baked into the binary at build time, so a tag that
+          # does not match package.json would publish a mislabelled release.
+          expected="${GITHUB_REF_NAME#v}"
+          got="$("$bin" version | awk '{print $2}')"
+          if [ "${got#v}" != "$expected" ]; then
+            echo "::error::binary reports ${got} but tag is ${GITHUB_REF_NAME} — bump package.json before tagging"
+            exit 1
+          fi
+
+          # Bundled tools/plugins are pkg assets; if they did not get embedded,
+          # the release would ship a binary that cannot load them.
+          "$bin" tools --list
+          "$bin" plugins --list
+          echo "LLMCTRLX_BIN=$bin" >> "$GITHUB_ENV"
+
+      - name: Package tarball
+        shell: bash
+        run: |
+          set -euo pipefail
+          ver="${GITHUB_REF_NAME#v}"
+          name="llmctrlx-${ver}-${{ matrix.platform }}"
+          mkdir -p "stage/${name}"
+          cp "$LLMCTRLX_BIN" "stage/${name}/llmctrlx"
+          cp -R tools plugins man "stage/${name}/"
+          cp LICENSE README.md "stage/${name}/"
+          tar -czf "${name}.tar.gz" -C stage "${name}"
+
+          # The Homebrew formula is written against these checksums.
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "${name}.tar.gz" > "${name}.tar.gz.sha256"
+          else
+            shasum -a 256 "${name}.tar.gz" > "${name}.tar.gz.sha256"
+          fi
+          cat "${name}.tar.gz.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}
+          path: |
+            *.tar.gz
+            *.tar.gz.sha256
+
+  packages:
+    name: deb + rpm
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Ruby (for fpm)
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+
+      - name: Install fpm and system tools
+        run: |
+          gem install fpm
+          sudo apt-get update
+          sudo apt-get install -y rpm
+
+      - name: Build DEB and RPM packages
+        run: npm run build:packages
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: |
+            *.deb
+            *.rpm
+
+  release:
+    name: publish release
+    # Publishing waits for every platform, so a release is never partial.
+    needs: [binaries, packages]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+
+      - name: Create or update the GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          ls -l assets
+
+          tarballs=$(ls assets/*.tar.gz 2>/dev/null | wc -l | tr -d ' ')
+          if [ "$tarballs" -ne 4 ]; then
+            echo "::error::expected 4 platform tarballs, found ${tarballs}"
+            exit 1
+          fi
+
+          # Re-running a tag re-uploads rather than failing on "already exists".
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" assets/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" assets/* \
+              --title "$GITHUB_REF_NAME" \
+              --generate-notes
+          fi
