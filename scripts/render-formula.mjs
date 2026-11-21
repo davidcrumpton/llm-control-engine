@@ -15,8 +15,8 @@
  * formula with a stale or blank checksum fails at install time on the user's
  * machine, which is far worse than failing here.
  */
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
 const PLATFORMS = {
   'macos-arm64': 'SHA256_MACOS_ARM64',
@@ -96,6 +96,10 @@ if (leftover) {
   process.exit(1);
 }
 
+// The release workflow renders to Formula/llmctrlx.rb, which is a directory that
+// exists in the tap but not in this repository's checkout — creating it here is
+// what stops a clean runner from dying on ENOENT.
+mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, formula);
 console.log(`render-formula: wrote ${out} for ${version}`);
 for (const platform of Object.keys(PLATFORMS)) {
