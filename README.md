@@ -4,11 +4,13 @@ A local LLM orchestration and execution CLI with tool and plugin support, built 
 
 ## Prerequisites
 
-- Node.js installed
+- Node.js 20 or newer
 - Ollama or LM Studio running locally (or accessible remotely)
-- `ollama`, `node-fetch`, `getopts` and `uuid` packages installed (e.g., `npm install`)
+- Project dependencies installed with `npm install`
 
 ## Installation
+
+`llmctrlx` is **not published to npm yet**, so there is nothing to `npm install -g llmctrlx` — install it from a checkout.
 
 Install project dependencies:
 
@@ -503,12 +505,12 @@ llmctrlx completion --shell fish
 
 - Added `build:deb` and `build:rpm` scripts using `fpm` (effing package management)
 - Added `build:packages` script to build all packages after binaries
-- Created a Homebrew formula in ./homebrew/llmctrlx.rb for macOS installation
+- Added `homebrew/llmctrlx.rb.template` as a starting point for macOS/Linux installation (not yet usable — see Notes)
 
 ## Build Usage
 
-1. **Install dependencies**: `npm install` (already done)
-2. **Build binaries**: `npm run build:bin` (tested, creates `llmctrlx-linux` and `llmctrlx-macos` in dist)
+1. **Install dependencies**: `npm install`
+2. **Build binaries**: `npm run build:bin` — packages the host platform/arch and writes `dist/llmctrlx-<os>` (`llmctrlx-macos` on macOS, `llmctrlx-linux` on Linux)
 3. **Build packages** (requires `fpm` installed):
    - On macOS: `brew install fpm`
    - On Linux: `gem install fpm`
@@ -516,10 +518,10 @@ llmctrlx completion --shell fish
 
 ## Notes
 
-- The binaries are created successfully despite some ES module warnings from `pkg`
-- For Homebrew, the formula installs via npm. You can submit it to homebrew-core or use it locally with `brew install --build-from-source ./homebrew/llmctrlx.rb`
+- A build host can only package its own platform and arch. `pkg` fabricates a binary by patching a base Node build and executing it, so producing x86_64 output on Apple Silicon needs Rosetta. `package.json` `pkg.targets` lists the supported matrix; a full release build needs one CI runner per target. Build a specific one with `PKG_TARGETS=node20-linux-arm64 npm run build:bin`.
+- The `pkg` warnings about `chalk` (`#ansi-styles`, `#supports-color`) are harmless: `chalk` is declared in `package.json` but never imported by the source.
+- `homebrew/llmctrlx.rb.template` is a template, not a usable formula — it needs published release assets and real sha256 values first.
 - For DEB/RPM, the packages install the Linux binary to llmctrlx
-- Update the SHA256 in the Homebrew formula when publishing releases
 
 The binaries work as standalone executables without requiring Node.js to be installed on the target system.
 

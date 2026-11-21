@@ -1,0 +1,84 @@
+# Template — NOT installable. Rename to llmctrlx.rb once release assets exist.
+#
+# Why this is a template and not a formula:
+#   * llmctrlx is not published to npm, so the previous version of this formula
+#     downloaded https://registry.npmjs.org/llmctrlx/-/llmctrlx-<v>.tgz — a 404.
+#   * It also installed `llmctrlx.ts` and ran it through `depends_on "node"`,
+#     shipping TypeScript source instead of the standalone binary that
+#     `npm run build` produces.
+#   * No release assets are published yet, so every sha256 below is unknown.
+#
+# When a release workflow exists, it should attach one tarball per target, each
+# containing the standalone `llmctrlx` binary plus `tools/` and `plugins/`:
+#
+#   llmctrlx-<version>-macos-arm64.tar.gz
+#   llmctrlx-<version>-macos-x64.tar.gz
+#   llmctrlx-<version>-linux-arm64.tar.gz
+#   llmctrlx-<version>-linux-x64.tar.gz
+#
+# The binaries are self-contained; they do not need Node.js at runtime.
+class Llmctrlx < Formula
+  desc "Local LLM orchestration and execution CLI with tool and plugin support"
+  homepage "https://github.com/davidcrumpton/llm-control-engine"
+  version "0.8.36"
+  license "Apache-2.0"
+
+  on_macos do
+    on_arm do
+      url "https://github.com/davidcrumpton/llm-control-engine/releases/download/v#{version}/llmctrlx-#{version}-macos-arm64.tar.gz"
+      sha256 "TODO-fill-from-release"
+    end
+
+    on_intel do
+      url "https://github.com/davidcrumpton/llm-control-engine/releases/download/v#{version}/llmctrlx-#{version}-macos-x64.tar.gz"
+      sha256 "TODO-fill-from-release"
+    end
+  end
+
+  on_linux do
+    on_arm do
+      url "https://github.com/davidcrumpton/llm-control-engine/releases/download/v#{version}/llmctrlx-#{version}-linux-arm64.tar.gz"
+      sha256 "TODO-fill-from-release"
+    end
+
+    on_intel do
+      url "https://github.com/davidcrumpton/llm-control-engine/releases/download/v#{version}/llmctrlx-#{version}-linux-x64.tar.gz"
+      sha256 "TODO-fill-from-release"
+    end
+  end
+
+  def install
+    bin.install "llmctrlx"
+    (pkgshare/"tools").install Dir["tools/*"]
+    (pkgshare/"plugins").install Dir["plugins/*"]
+    man1.install "man/llmctrlx.1" if File.exist?("man/llmctrlx.1")
+  end
+
+  def caveats
+    <<~EOS
+      Tools are NOT loaded by default. To use the bundled tools, point llmctrlx at the
+      shared tools directory using -T or LLMCTRLX_TOOLS_DIR:
+
+        export LLMCTRLX_TOOLS_DIR="#{pkgshare}/tools"
+        llmctrlx chat -u "What time is it?"
+
+      Or create your own tools folder and copy/create tools there:
+        mkdir -p ~/my-tools
+        cp #{pkgshare}/tools/datetime.js ~/my-tools/
+        llmctrlx chat -T ~/my-tools -u "What time is it?"
+
+      To use the bundled plugins, point llmctrlx at them the same way:
+
+        export LLMCTRLX_PLUGINS_DIR="#{pkgshare}/plugins"
+
+      Or copy them to your local plugins directory:
+        mkdir -p ~/.llmctrlx_plugins
+        cp #{pkgshare}/plugins/logger.plugin.cjs ~/.llmctrlx_plugins/
+        cp #{pkgshare}/plugins/prompt-guard.plugin.cjs ~/.llmctrlx_plugins/
+    EOS
+  end
+
+  test do
+    assert_match "llmctrlx", shell_output("#{bin}/llmctrlx version")
+  end
+end
