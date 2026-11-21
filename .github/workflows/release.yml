@@ -196,3 +196,69 @@ jobs:
               --title "$GITHUB_REF_NAME" \
               --generate-notes
           fi
+
+  homebrew:
+    name: homebrew tap
+    # Runs after the release so the formula can only ever point at assets that
+    # are already downloadable.
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+
+      # The workflow's own GITHUB_TOKEN cannot push to a different repository,
+      # so the tap needs a PAT. Skip the job rather than fail the release when
+      # it is not configured — the release assets are already published by now.
+      - name: Decide whether the tap is reachable
+        id: tap
+        env:
+          TAP_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+        run: |
+          if [ -n "${TAP_TOKEN}" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::TAP_GITHUB_TOKEN is not set; skipping the Homebrew formula"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Render formula
+        if: steps.tap.outputs.enabled == 'true'
+        run: |
+          node scripts/render-formula.mjs \
+            --version "${GITHUB_REF_NAME#v}" \
+            --sums assets \
+            --out Formula/llmctrlx.rb
+          ruby -c Formula/llmctrlx.rb
+
+      - name: Push formula to the tap
+        if: steps.tap.outputs.enabled == 'true'
+        env:
+          TAP_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Fresh runner in CI, but keep the step re-runnable rather than dying
+          # on a leftover directory.
+          rm -rf tap
+          git clone --depth 1 "https://x-access-token:${TAP_TOKEN}@github.com/davidcrumpton/homebrew-tap.git" tap
+          cp Formula/llmctrlx.rb tap/Formula/llmctrlx.rb
+
+          cd tap
+          if git diff --quiet -- Formula/llmctrlx.rb && [ -z "$(git status --porcelain -- Formula/llmctrlx.rb)" ]; then
+            echo "formula already up to date for $GITHUB_REF_NAME"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/llmctrlx.rb
+          git commit -m "Brew formula update for llmctrlx version ${GITHUB_REF_NAME}"
+          git push

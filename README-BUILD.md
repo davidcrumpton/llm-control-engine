@@ -21,7 +21,7 @@
 Everything runs on GitHub Actions; there is no other CI.
 
 - `.github/workflows/build-packages.yml` — on push to `main` and on pull requests: builds the DEB and RPM to prove packaging still works.
-- `.github/workflows/release.yml` — on a `v*.*.*` tag: builds the standalone binary natively on macOS arm64, macOS x64, Linux arm64 and Linux x64, smoke tests each one, and publishes them as release assets.
+- `.github/workflows/release.yml` — on a `v*.*.*` tag: builds the standalone binary natively on macOS (arm64 + x64 from one runner) and Linux (x64 + arm64), smoke tests each one, publishes tarballs plus `.deb`/`.rpm` to the GitHub release, then renders the Homebrew formula and pushes it to `davidcrumpton/homebrew-tap`. The tap step needs a `TAP_GITHUB_TOKEN` secret; without it the release still succeeds and only the formula update is skipped.
 
 ## Releasing
 

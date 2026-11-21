@@ -10,7 +10,13 @@ A local LLM orchestration and execution CLI with tool and plugin support, built 
 
 ## Installation
 
-Prebuilt binaries for macOS and Linux (arm64 and x64) are attached to each [GitHub release](https://github.com/davidcrumpton/llm-control-engine/releases). Download the tarball for your platform, verify it against the `.sha256` beside it, and put `llmctrlx` on your `PATH`. The binaries are self-contained and do not need Node.js.
+Prebuilt binaries for macOS and Linux (arm64 and x64) are attached to each [GitHub release](https://github.com/davidcrumpton/llm-control-engine/releases). On macOS or Linux with Homebrew:
+
+```bash
+brew install davidcrumpton/tap/llmctrlx
+```
+
+Otherwise download the tarball for your platform, verify it against the `.sha256` beside it, and put `llmctrlx` on your `PATH`. The binaries are self-contained and do not need Node.js.
 
 `llmctrlx` is **not published to npm**, so there is nothing to `npm install -g llmctrlx`.
 
@@ -507,7 +513,7 @@ llmctrlx completion --shell fish
 
 - Added `build:deb` and `build:rpm` scripts using `fpm` (effing package management)
 - Added `build:packages` script to build all packages after binaries
-- `homebrew/llmctrlx.rb` — Homebrew formula built from the release assets (copy it into `davidcrumpton/homebrew-tap` to publish it)
+- `homebrew/llmctrlx.rb.template` is rendered into `davidcrumpton/homebrew-tap` by the release workflow, so `brew install davidcrumpton/tap/llmctrlx` follows every release automatically
 
 ## Build Usage
 
@@ -522,7 +528,7 @@ llmctrlx completion --shell fish
 
 - `pkg` can only build for a foreign CPU when it does not have to execute the base Node build, which is why cross-target builds pass `--no-bytecode`. Without it, an x86_64 base on Apple Silicon fails with `EBADARCH` — or, worse, races between crashing and silently shipping unoptimised source. The release workflow relies on this to build both macOS binaries on a single arm64 runner.
 - The `pkg` warnings about `chalk` (`#ansi-styles`, `#supports-color`) are harmless: `chalk` is declared in `package.json` but never imported by the source.
-- `homebrew/llmctrlx.rb` points at the v0.8.37 release assets using their published sha256 values. On a new release, bump `version` and the four checksums.
+- `homebrew/llmctrlx.rb.template` is rendered by `scripts/render-formula.mjs` into `Formula/llmctrlx.rb` in `davidcrumpton/homebrew-tap`, which the release workflow pushes on every tag. The tap's formulae are all generated, so don't hand-edit that file — edit the template here.
 - For DEB/RPM, the packages install the Linux binary to llmctrlx
 
 The binaries work as standalone executables without requiring Node.js to be installed on the target system.

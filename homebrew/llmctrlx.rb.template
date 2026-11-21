@@ -1,40 +1,41 @@
-# Homebrew formula for llmctrlx.
+# Homebrew formula for llmctrlx — TEMPLATE, not the installed formula.
 #
-# Generated against the v0.8.37 release assets. When a new release is cut, bump
-# `version` and replace the four sha256 values with the contents of the
-# published `.sha256` files (attached next to each tarball).
+# scripts/render-formula.mjs substitutes the version and the four sha256 values
+# and writes Formula/llmctrlx.rb into davidcrumpton/homebrew-tap. The tap's other
+# formulae are generated the same way (see its README: do not edit them by hand),
+# and the release workflow pushes this one on every tag, so it cannot drift from
+# the published assets.
 #
-# To install from the tap, copy this file to davidcrumpton/homebrew-tap/Formula/
-# as llmctrlx.rb; `brew install davidcrumpton/tap/llmctrlx` then works.
+# Render locally against a set of published checksums with:
+#   node scripts/render-formula.mjs --version 0.8.37 --sums <dir> --out /tmp/llmctrlx.rb
 #
-# The binaries are self-contained and do not need Node.js at runtime.
 class Llmctrlx < Formula
   desc "Local LLM orchestration and execution CLI with tool and plugin support"
   homepage "https://github.com/davidcrumpton/llm-control-engine"
-  version "0.8.37"
+  version "{{VERSION}}"
   license "Apache-2.0"
 
   on_macos do
     on_arm do
       url "https://github.com/davidcrumpton/llm-control-engine/releases/download/v#{version}/llmctrlx-#{version}-macos-arm64.tar.gz"
-      sha256 "b568e1db114a1517df54bff95a7ea887c771ae849695db5c2db5abbab6e45d70"
+      sha256 "{{SHA256_MACOS_ARM64}}"
     end
 
     on_intel do
       url "https://github.com/davidcrumpton/llm-control-engine/releases/download/v#{version}/llmctrlx-#{version}-macos-x64.tar.gz"
-      sha256 "07412d5041bc38558261122e14507ba4b01fb6ee9e92a39c1d70fd63bc471d14"
+      sha256 "{{SHA256_MACOS_X64}}"
     end
   end
 
   on_linux do
     on_arm do
       url "https://github.com/davidcrumpton/llm-control-engine/releases/download/v#{version}/llmctrlx-#{version}-linux-arm64.tar.gz"
-      sha256 "47d4b392164dbebcb88b62bd4e3fd94777c850be672033a9c97d4e8a63bf0b1b"
+      sha256 "{{SHA256_LINUX_ARM64}}"
     end
 
     on_intel do
       url "https://github.com/davidcrumpton/llm-control-engine/releases/download/v#{version}/llmctrlx-#{version}-linux-x64.tar.gz"
-      sha256 "045903ab23c3e5f7d52e2ae5cb8cbf67c78920dab96cfd070051b0fb08776049"
+      sha256 "{{SHA256_LINUX_X64}}"
     end
   end
 
