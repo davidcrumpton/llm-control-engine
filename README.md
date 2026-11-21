@@ -510,7 +510,7 @@ llmctrlx completion --shell fish
 ## Build Usage
 
 1. **Install dependencies**: `npm install`
-2. **Build binaries**: `npm run build:bin` — packages the host platform/arch and writes `dist/llmctrlx-<os>` (`llmctrlx-macos` on macOS, `llmctrlx-linux` on Linux)
+2. **Build binaries**: `npm run build:bin` — packages the host platform/arch and writes `dist/llmctrlx-<os>-<arch>` (e.g. `llmctrlx-macos-arm64`), plus `dist/llmctrlx-<os>` as a host alias for the deb/rpm scripts. Set `PKG_TARGETS` to build other targets.
 3. **Build packages** (requires `fpm` installed):
    - On macOS: `brew install fpm`
    - On Linux: `gem install fpm`
@@ -518,7 +518,7 @@ llmctrlx completion --shell fish
 
 ## Notes
 
-- A build host can only package its own platform and arch. `pkg` fabricates a binary by patching a base Node build and executing it, so producing x86_64 output on Apple Silicon needs Rosetta. `package.json` `pkg.targets` lists the supported matrix; a full release build needs one CI runner per target. Build a specific one with `PKG_TARGETS=node20-linux-arm64 npm run build:bin`.
+- `pkg` can only build for a foreign CPU when it does not have to execute the base Node build, which is why cross-target builds pass `--no-bytecode`. Without it, an x86_64 base on Apple Silicon fails with `EBADARCH` — or, worse, races between crashing and silently shipping unoptimised source. The release workflow relies on this to build both macOS binaries on a single arm64 runner.
 - The `pkg` warnings about `chalk` (`#ansi-styles`, `#supports-color`) are harmless: `chalk` is declared in `package.json` but never imported by the source.
 - `homebrew/llmctrlx.rb.template` is a template, not a usable formula — it needs published release assets and real sha256 values first.
 - For DEB/RPM, the packages install the Linux binary to llmctrlx
