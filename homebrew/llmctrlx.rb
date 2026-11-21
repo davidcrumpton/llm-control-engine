@@ -1,49 +1,40 @@
-# Template — NOT installable. Rename to llmctrlx.rb once release assets exist.
+# Homebrew formula for llmctrlx.
 #
-# Why this is a template and not a formula:
-#   * llmctrlx is not published to npm, so the previous version of this formula
-#     downloaded https://registry.npmjs.org/llmctrlx/-/llmctrlx-<v>.tgz — a 404.
-#   * It also installed `llmctrlx.ts` and ran it through `depends_on "node"`,
-#     shipping TypeScript source instead of the standalone binary that
-#     `npm run build` produces.
-#   * No release assets are published yet, so every sha256 below is unknown.
+# Generated against the v0.8.37 release assets. When a new release is cut, bump
+# `version` and replace the four sha256 values with the contents of the
+# published `.sha256` files (attached next to each tarball).
 #
-# When a release workflow exists, it should attach one tarball per target, each
-# containing the standalone `llmctrlx` binary plus `tools/` and `plugins/`:
+# To install from the tap, copy this file to davidcrumpton/homebrew-tap/Formula/
+# as llmctrlx.rb; `brew install davidcrumpton/tap/llmctrlx` then works.
 #
-#   llmctrlx-<version>-macos-arm64.tar.gz
-#   llmctrlx-<version>-macos-x64.tar.gz
-#   llmctrlx-<version>-linux-arm64.tar.gz
-#   llmctrlx-<version>-linux-x64.tar.gz
-#
-# The binaries are self-contained; they do not need Node.js at runtime.
+# The binaries are self-contained and do not need Node.js at runtime.
 class Llmctrlx < Formula
   desc "Local LLM orchestration and execution CLI with tool and plugin support"
   homepage "https://github.com/davidcrumpton/llm-control-engine"
-  version "0.8.36"
+  version "0.8.37"
   license "Apache-2.0"
 
   on_macos do
     on_arm do
       url "https://github.com/davidcrumpton/llm-control-engine/releases/download/v#{version}/llmctrlx-#{version}-macos-arm64.tar.gz"
-      sha256 "TODO-fill-from-release"
+      sha256 "b568e1db114a1517df54bff95a7ea887c771ae849695db5c2db5abbab6e45d70"
     end
 
     on_intel do
       url "https://github.com/davidcrumpton/llm-control-engine/releases/download/v#{version}/llmctrlx-#{version}-macos-x64.tar.gz"
-      sha256 "TODO-fill-from-release"
+      sha256 "07412d5041bc38558261122e14507ba4b01fb6ee9e92a39c1d70fd63bc471d14"
     end
   end
 
   on_linux do
     on_arm do
       url "https://github.com/davidcrumpton/llm-control-engine/releases/download/v#{version}/llmctrlx-#{version}-linux-arm64.tar.gz"
-      sha256 "TODO-fill-from-release"
+      sha256 "47d4b392164dbebcb88b62bd4e3fd94777c850be672033a9c97d4e8a63bf0b1b"
     end
 
     on_intel do
       url "https://github.com/davidcrumpton/llm-control-engine/releases/download/v#{version}/llmctrlx-#{version}-linux-x64.tar.gz"
-      sha256 "TODO-fill-from-release"
+      sha256 "045903ab23c3e5f7d52e2ae5cb8cbf67c78920dab96cfd070051b0fb08776049"
     end
   end
 
@@ -51,7 +42,7 @@ class Llmctrlx < Formula
     bin.install "llmctrlx"
     (pkgshare/"tools").install Dir["tools/*"]
     (pkgshare/"plugins").install Dir["plugins/*"]
-    man1.install "man/llmctrlx.1" if File.exist?("man/llmctrlx.1")
+    man1.install "man/llmctrlx.1"
   end
 
   def caveats
@@ -79,6 +70,6 @@ class Llmctrlx < Formula
   end
 
   test do
-    assert_match "llmctrlx", shell_output("#{bin}/llmctrlx version")
+    assert_match "llmctrlx v#{version}", shell_output("#{bin}/llmctrlx version")
   end
 end

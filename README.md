@@ -10,9 +10,11 @@ A local LLM orchestration and execution CLI with tool and plugin support, built 
 
 ## Installation
 
-`llmctrlx` is **not published to npm yet**, so there is nothing to `npm install -g llmctrlx` — install it from a checkout.
+Prebuilt binaries for macOS and Linux (arm64 and x64) are attached to each [GitHub release](https://github.com/davidcrumpton/llm-control-engine/releases). Download the tarball for your platform, verify it against the `.sha256` beside it, and put `llmctrlx` on your `PATH`. The binaries are self-contained and do not need Node.js.
 
-Install project dependencies:
+`llmctrlx` is **not published to npm**, so there is nothing to `npm install -g llmctrlx`.
+
+To run from a checkout instead, install project dependencies:
 
 ```bash
 npm install
@@ -505,7 +507,7 @@ llmctrlx completion --shell fish
 
 - Added `build:deb` and `build:rpm` scripts using `fpm` (effing package management)
 - Added `build:packages` script to build all packages after binaries
-- Added `homebrew/llmctrlx.rb.template` as a starting point for macOS/Linux installation (not yet usable — see Notes)
+- `homebrew/llmctrlx.rb` — Homebrew formula built from the release assets (copy it into `davidcrumpton/homebrew-tap` to publish it)
 
 ## Build Usage
 
@@ -520,7 +522,7 @@ llmctrlx completion --shell fish
 
 - `pkg` can only build for a foreign CPU when it does not have to execute the base Node build, which is why cross-target builds pass `--no-bytecode`. Without it, an x86_64 base on Apple Silicon fails with `EBADARCH` — or, worse, races between crashing and silently shipping unoptimised source. The release workflow relies on this to build both macOS binaries on a single arm64 runner.
 - The `pkg` warnings about `chalk` (`#ansi-styles`, `#supports-color`) are harmless: `chalk` is declared in `package.json` but never imported by the source.
-- `homebrew/llmctrlx.rb.template` is a template, not a usable formula — it needs published release assets and real sha256 values first.
+- `homebrew/llmctrlx.rb` points at the v0.8.37 release assets using their published sha256 values. On a new release, bump `version` and the four checksums.
 - For DEB/RPM, the packages install the Linux binary to llmctrlx
 
 The binaries work as standalone executables without requiring Node.js to be installed on the target system.
